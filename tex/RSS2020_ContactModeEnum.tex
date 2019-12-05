@@ -1,0 +1,179 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{times}
+
+% numbers option provides compact numerical references in the text.
+\usepackage[numbers]{natbib}
+\usepackage{multicol}
+\usepackage[bookmarks=true]{hyperref}
+\usepackage{amsmath,amssymb}
+\newcommand{\Mod}[1]{\ (\mathrm{mod}\ #1)}
+% \usepackage[standard]{ntheorem}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{graphicx}
+% \usepackage{caption}
+% \usepackage{figure}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{epstopdf}
+\usepackage{dblfloatfix}
+\usepackage{fixltx2e}
+% \usepackage{subfig}
+\usepackage{mathrsfs}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage[noend]{algpseudocode}
+\algnewcommand\algorithmicC{\textbf{continue}}
+\algnewcommand\Continue{\algorithmicC}
+\algnewcommand\algorithmicB{\textbf{break}}
+\algnewcommand\Break{\algorithmicB}
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+
+\def\subsubsection{\@startsection{subsubsection}% name
+                                 {3}% level
+                                 {\z@}% indent (formerly \parindent)
+                                 {0.5ex plus .5ex minus 0ex}% before skip
+                                 {0.5ex plus .5ex minus 0ex}% after skip
+                                 {\normalfont\normalsize\itshape}}% style
+
+% \def\ALG@step%
+%   {%
+%   \refstepcounter{ALG@line}% Step and anchor for hyperref
+%   \stepcounter{ALG@rem}% Regular step (equivalent to \addtocounter{ALG@rem}{1})
+%   \ifthenelse{\equal{\arabic{ALG@rem}}{\ALG@numberfreq}}%
+%     {\setcounter{ALG@rem}{0}\alglinenumber{\arabic{ALG@line}}}%
+%     {}%
+%   }%
+
+\makeatother
+\algdef{SE}[DOWHILE]{Do}{DoWhile}[1]{\algorithmicdo\ #1}[1]{\algorithmicwhile\ #1}
+
+\usepackage{booktabs}
+\newcommand\Tstrut{\rule{0pt}{2.5ex}}       % "top" strut
+\newcommand\Bstrut{\rule[-0.9ex]{0pt}{0pt}} % "bottom" strut
+\newcommand{\TBstrut}{\Tstrut\Bstrut} % top&bottom struts
+
+\usepackage{tabstackengine}
+\stackMath
+
+\usepackage{tikz}
+\usetikzlibrary{scopes}
+\usetikzlibrary{shapes.misc}
+\tikzset{cross/.style={cross out, draw=black, minimum size=2*(#1-\pgflinewidth), inner sep=0pt, outer sep=0pt},
+%default radius will be 1pt.
+cross/.default={2pt}}
+
+\let\labelindent\relax
+\usepackage{enumitem}
+% \newenvironment{enum}{\begin{enumerate}[wide, labelwidth=!, labelindent=0pt]}{\end{enumerate}}
+\newlist{inparaenum}{enumerate}{2}% allow two levels of nesting in an enumerate-like environment
+\setlist[inparaenum]{nosep,wide,labelwidth=!,labelindent=0pt}% compact spacing for all nesting levels
+\setlist[inparaenum,1]{label=\bfseries\arabic*)}% labels for top level
+\setlist[inparaenum,2]{label=\arabic{inparaenumi}{\alph*})}% labels for second level
+
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Definition}
+\newtheorem{corollary}{Corollary}
+\newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
+\DeclareMathOperator{\sign}{\text{sgn}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\intr}{int}
+\DeclareMathOperator{\dom}{dom}
+\DeclareMathOperator{\rot}{\text{rot}}
+\DeclareMathOperator{\adjoint}{Ad}
+
+\newcommand{\TODO}[1]{{\color{red} {{#1}}  }}
+
+\pdfinfo{
+   /Author (Eric Huang; Xianyi Chang; Matthew T. Mason)
+   /Title  (Efficient Contact Mode Enumeration in 2D and 3D)
+   /CreationDate (D:20161016120000)
+   /Subject (Robots)
+   /Keywords (Manipulation)
+}
+
+\begin{document}
+
+% paper title
+\title{\huge Efficient Contact Mode Enumeration in 2D and 3D}
+
+% You will get a Paper-ID when submitting a pdf file to the conference system
+\author{Author Names Omitted for Anonymous Review. Paper-ID [?]}
+
+% \author{\authorblockN{Eric Huang and Matthew T. Mason}
+% \authorblockA{Robotics Institute\\
+% Carnegie Mellon University,
+% Pittsburgh, Pennsylvania 15213\\ erich1@andrew.cmu.edu, matt.mason@cs.cmu.edu}}
+
+% avoiding spaces at the end of the author lines is not a problem with
+% conference papers because we don't use \thanks or \IEEEmembership
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+ 
+\IEEEpeerreviewmaketitle
+
+\section{Introduction}
+
+\section{Related Work}
+
+\begin{inparaenum}
+    \item Polyhedral convex cones
+    \item Matt's book
+    \item Max Haas's work
+    \item Bouligand derivative
+\end{inparaenum}
+
+\section{Background}
+
+The normal velocity equation
+\begin{equation}
+B^T\adjoint_{g_{oc}}^{-1}\xi = 
+B^T \begin{bmatrix}
+        R_{oc}^T & -R_{oc}^T\widehat{p}\\
+        0 & R^T
+    \end{bmatrix}\xi = 
+\begin{bmatrix} n & -n\widehat{p} \end{bmatrix}\xi
+\end{equation}
+
+\section{Contact Mode Enumeration in 2D}
+
+\begin{theorem}
+    The proposed algorithm is order $O(n\log n)$. Moreover the number of
+    distinct contact modes is order $O(n)$.
+\end{theorem}
+
+\begin{proof}
+    todo
+\end{proof}
+
+\section{Contact Mode Enumeration in 3D}
+
+\section{Implementation}
+
+\subsection{Hardware \& Software}
+All algorithms were run on a computer with an Intel i7-7820x CPU (3.5 MHz, 16
+threads). Implementations of the algorithms described in this paper are freely
+available at \url{http://www.github.com/<omitted>/contact_modes}.
+
+\section{Results}
+
+\subsection{Runtimes for 2D Problems}
+
+\subsection{Runtimes for 3D Problems}
+
+\section{Conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
+
+

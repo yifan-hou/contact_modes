@@ -1,0 +1,12 @@
+.pytest_cache/
+.vscode/
+python/src/contact_modes.egg-info/
+__pycache__/
+*.fdb_latexmk
+*.aux
+*.fls
+*.log
+*.out
+*.pdf
+*.synctex.gz
+data
