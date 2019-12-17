@@ -2,11 +2,79 @@ import numpy as np
 import scipy as sp
 import pyhull
 from pyhull.halfspace import Halfspace
-from .helpers import hat
+from .helpers import hat, lexographic_combinations
 from .interior_point import interior_point_halfspace
 
 
 DEBUG = True
+
+
+
+def enumerate_contact_separating_3d_exponential(points, normals):
+    # Check inputs dimensions.
+    assert(points.shape[1] == normals.shape[1])
+    assert(points.shape[0] == 3)
+    assert(normals.shape[0] == 3)
+
+    # Get dimensions.
+    n_pts = points.shape[1]
+
+    # Create halfspace inequalities, Ax - b ≥ 0.
+    n_pts = points.shape[1]
+    A = np.zeros((n_pts, 6))
+    for i in range(n_pts):
+        A[i,0:3] = normals[:,i].flatten()
+        A[i,3:6] = np.dot(normals[:,i].T, hat(points[:,i])).flatten()
+    # A *= -1
+    b = np.zeros((n_pts, 1))
+    if DEBUG:
+        print('A')
+        print(A)
+
+    # Enumerate contact modes and check for feasibility.
+    modes = []
+    for i in range(0, n_pts+1):
+        for c in lexographic_combinations(n_pts, i):
+            if DEBUG:
+                print('c', c)
+            mask = np.zeros(n_pts, dtype=bool)
+            mask[c] = 1
+            if DEBUG:
+                print('mask', mask)
+            C = A[mask, :]
+            H = A[~mask, :]
+
+            # Skip all 0 or 1 masks.
+            if np.sum(mask) == n_pts or np.sum(~mask) == n_pts:
+                m = np.array(['s'] * n_pts)
+                m[c] = 'c'
+                modes.append(m.tolist())
+                if DEBUG:
+                    print('Appending mode', m.tolist())
+                continue
+            # print(C)
+            # print(H)
+            null = sp.linalg.null_space(C)
+            # print(null)
+            # print('H * null')
+            # print(np.dot(H, null))
+            # if not H:
+            #     continue
+            H = np.dot(H, null)
+            b = np.zeros((H.shape[0], 1))
+            x = interior_point_halfspace(H, b)
+            # print('x')
+            # print(x)
+            # print(np.dot(H, x))
+            if 1e-5 < np.linalg.norm(np.dot(H, x)):
+                m = np.array(['s'] * n_pts)
+                m[c] = 'c'
+                modes.append(m.tolist())
+                if DEBUG:
+                    print('Appending mode', m.tolist())
+
+    # return np.array(sorted(modes))
+    return np.array(modes)
 
 def enumerate_contact_separating_3d(points, normals):
     # Check inputs dimensions.
