@@ -19,3 +19,44 @@ def hat(w):
 
 def halfspace_inequality(points, normals):
     pass
+
+class LexographicCombinations:
+    def __init__(self, n, t):
+        self.n = n
+        self.t = t
+        assert(0 <= t and t <= n)
+
+    def __iter__(self):
+        # Initialize combination vector.
+        self.c = [0] * (self.t + 2)
+        for j in range(self.t):
+            self.c[j] = j
+        self.c[self.t] = self.n
+        self.c[self.t+1] = 0
+        self.done = False
+
+        return self
+
+    def __next__(self):
+        # L4 [Done?]
+        if self.done:
+            raise StopIteration
+        # L2 [Visit]
+        c = self.c.copy()
+        # L3 [Find j]
+        j = 1
+        while self.c[j-1] + 1 == self.c[j]:
+            self.c[j-1] = j - 1
+            j = j + 1
+        # L4 [Done?]
+        if j > self.t:
+            self.done = True
+        # L5 [Increase c_j]
+        self.c[j-1] = self.c[j-1] + 1
+        # L2 [Visit]
+        return c[0:self.t]
+
+def lexographic_combinations(n, t):
+    if t > n:
+        return []
+    return LexographicCombinations(n, t)
