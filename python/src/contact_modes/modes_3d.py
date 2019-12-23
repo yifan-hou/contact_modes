@@ -6,7 +6,7 @@ from .helpers import hat, lexographic_combinations
 from .interior_point import interior_point_halfspace
 
 
-DEBUG = True
+DEBUG = False
 
 
 
@@ -44,28 +44,28 @@ def enumerate_contact_separating_3d_exponential(points, normals):
             C = A[mask, :]
             H = A[~mask, :]
 
-            # Skip all 0 or 1 masks.
-            if np.sum(mask) == n_pts or np.sum(~mask) == n_pts:
+            # Skip case where all contacts active.
+            if np.sum(mask) == n_pts:
                 m = np.array(['s'] * n_pts)
                 m[c] = 'c'
                 modes.append(m.tolist())
                 if DEBUG:
                     print('Appending mode', m.tolist())
                 continue
-            # print(C)
-            # print(H)
-            null = sp.linalg.null_space(C)
-            # print(null)
-            # print('H * null')
-            # print(np.dot(H, null))
-            # if not H:
-            #     continue
-            H = np.dot(H, null)
+
+            # Project into null space.
+            if np.sum(mask) > 0:
+                null = sp.linalg.null_space(C)
+                H = np.dot(H, null)
+                if DEBUG:
+                    print('projecting H into null space')
+                    print(H)
+            
+            # Compute interior point.
             b = np.zeros((H.shape[0], 1))
             x = interior_point_halfspace(H, b)
-            # print('x')
-            # print(x)
-            # print(np.dot(H, x))
+
+            # If point is strictly interior, then the mode string is valid.
             if 1e-5 < np.linalg.norm(np.dot(H, x)):
                 m = np.array(['s'] * n_pts)
                 m[c] = 'c'
@@ -124,8 +124,12 @@ def enumerate_contact_separating_3d(points, normals):
 
     # Compute dual convex hull.
     dual = [list(dual[i,:]) for i in range(n_pts)]
-    ret = pyhull.qconvex('s i', dual)
+    print('dual')
+    print(np.array(dual))
+    ret = pyhull.qconvex('s Fn', dual)
     print(ret)
+
+    return ret
 
     # Call qhalf.
     # Ab = np.concatenate((A, b), axis=1)
