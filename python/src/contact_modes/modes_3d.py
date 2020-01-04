@@ -9,6 +9,17 @@ from .interior_point import interior_point_halfspace
 DEBUG = False
 
 
+def contacts_to_half(points, normals):
+    # Create halfspace inequalities, Ax - b ≥ 0.
+    n_pts = points.shape[1]
+    A = np.zeros((n_pts, 6))
+    for i in range(n_pts):
+        A[i,0:3] = normals[:,i].flatten()
+        A[i,3:6] = np.dot(normals[:,i].T, hat(points[:,i])).flatten()
+    A *= -1
+    b = np.zeros((n_pts, 1))
+    return A, b
+    
 
 def enumerate_contact_separating_3d_exponential(points, normals):
     # Check inputs dimensions.
@@ -16,7 +27,7 @@ def enumerate_contact_separating_3d_exponential(points, normals):
     assert(points.shape[0] == 3)
     assert(normals.shape[0] == 3)
 
-    # Get dimensions.
+    # Get dimensions.2
     n_pts = points.shape[1]
 
     # Create halfspace inequalities, Ax - b ≥ 0.
@@ -127,7 +138,7 @@ def enumerate_contact_separating_3d(points, normals):
     print('dual')
     print(np.array(dual))
     ret = pyhull.qconvex('s Fn', dual)
-    print(ret)
+    print(np.array(ret))
 
     return ret
 
