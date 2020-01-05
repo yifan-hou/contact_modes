@@ -3,7 +3,7 @@ from time import time
 import numpy as np
 
 import contact_modes
-from contact_modes import (enumerate_contact_separating_3d,
+from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            enumerate_contact_separating_3d_exponential)
 
 
@@ -59,7 +59,37 @@ def test_enum_contact_separate_3d():
     print(modes.shape)
     t_start = time()
     # modes = enumerate_contact_separating_3d(points, normals)
+    enumerate_contact_separating_3d(points, normals)
     print('time', time() - t_start)
+
+    # Box against wall - Polar.
+    M = np.array([[1, 1, 0, 1, 1, 0],
+                  [1, 1, 0, 1, 0, 1],
+                  [0, 1, 1, 1, 0, 1],
+                  [0, 1, 1, 1, 1, 0],
+                  [1, 0, 0, 1, 1, 1],
+                  [1, 1, 0, 0, 1, 1],
+                  [0, 1, 1, 0, 1, 1],
+                  [0, 0, 1, 1, 1, 1]])
+    d = 4
+    
+    t_start = time()
+    L = FaceLattice(M, d)
+    print('time', time() - t_start)
+    
+    print(L.num_proper_faces())
+    print(L.num_faces())
+    # print(L.mode_strings())
+    # print(modes)
+    modes1 = L.mode_strings()
+    # for i in range(modes.shape[0]):
+    #     print(modes[i,:])
+    #     print(modes1[i,:])
+    #     print(modes[i,:] == modes1[i,:])
+    m0 = set([tuple(m) for m in modes])
+    m1 = set([tuple(m) for m in modes1])
+    print(m0.difference(m1))
+    # print(modes.tolist())
 
     # Create box-sandwich contact manifold.
     points = np.zeros((3,8))

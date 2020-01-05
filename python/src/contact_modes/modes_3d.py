@@ -84,8 +84,8 @@ def enumerate_contact_separating_3d_exponential(points, normals):
                 if DEBUG:
                     print('Appending mode', m.tolist())
 
-    # return np.array(sorted(modes))
-    return np.array(modes)
+    return np.array(sorted(modes))
+    # return np.array(modes)
 
 def enumerate_contact_separating_3d(points, normals):
     # Check inputs dimensions.
@@ -137,7 +137,7 @@ def enumerate_contact_separating_3d(points, normals):
     dual = [list(dual[i,:]) for i in range(n_pts)]
     print('dual')
     print(np.array(dual))
-    ret = pyhull.qconvex('s Fn', dual)
+    ret = pyhull.qconvex('s Fv', dual)
     print(np.array(ret))
 
     return ret
