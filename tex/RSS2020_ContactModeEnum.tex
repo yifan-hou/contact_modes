@@ -86,6 +86,7 @@ cross/.default={2pt}}
 \DeclareMathOperator{\dom}{dom}
 \DeclareMathOperator{\rot}{\text{rot}}
 \DeclareMathOperator{\adjoint}{Ad}
+\DeclareMathOperator{\relint}{relint}
 
 \newcommand{\TODO}[1]{{\color{red} {{#1}}  }}
 
@@ -222,7 +223,48 @@ that the number of modes is in fact $O(n)$.
 
 We present our 
 
-\subsubsection{Finding a Relative Interior Point}
+\subsubsection{Build normal velocity constraint matrix} 
+
+\subsubsection{Project to DIM(AFF(A))} 
+
+\subsubsection{Convert to polar form} 
+
+The polar form $P^\Delta$ of a polyhedra $P$ is defined only when $0 \in
+\relint(P)$. However, $0$ is on the boundary of the polyhedral cone
+$\mathcal{H}(A, 0)$. Therefore, our first step is to find a point $r \in
+\relint(\mathcal{H}(A,0))$. This is a classical problem in linear programming,
+and for our system, it amounts to solving the linear program
+
+\begin{alignat}{2}
+    &\!\!\min_{x} && {\begin{bmatrix}0& \cdots& 0& 1\end{bmatrix} \cdot x} \label{eq:itm-obj}\\
+    &\textup{s.t.} & & 
+      \begin{bmatrix}
+        f_g \\ \alpha \\ \beta \\ \gamma
+      \end{bmatrix} = 
+      \begin{bmatrix}
+        A & 0 & N_o^T & T_o^T & 0 \\
+        N_o & -N_m & 0 & 0 & 0 \\
+        T_o & -T_m & 0 & 0 & E \\
+        0 & 0 & U & -E^T & 0
+      \end{bmatrix}
+      \begin{bmatrix}
+        v\\ \dot{q}_m \\ \lambda_n \\ \lambda_f \\ \sigma
+      \end{bmatrix}\label{eq:itm-eq}\\
+      & & 
+        0\leq &
+          \begin{bmatrix}
+            \alpha \\ \beta \\ \gamma
+          \end{bmatrix}
+          \bot
+          \begin{bmatrix}
+            \lambda_n \\ \lambda_f \\ \sigma
+          \end{bmatrix}
+          \geq 0. \label{eq:itm-ineq}
+\end{alignat}
+
+\subsubsection{Build face lattice} 
+
+\subsubsection{Convert faces to mode strings} 
 
 \subsection{Sticking/Sliding Mode Enumeration}
 
