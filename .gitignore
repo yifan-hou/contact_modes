@@ -10,3 +10,5 @@ __pycache__/
 *.pdf
 *.synctex.gz
 data
+*.bbl
+*.blg

@@ -28,6 +28,7 @@
 \algnewcommand\Continue{\algorithmicC}
 \algnewcommand\algorithmicB{\textbf{break}}
 \algnewcommand\Break{\algorithmicB}
+\algnewcommand{\LineComment}[1]{\State {\color{blue}\(\triangleright\) #1}}
 \makeatletter
 \def\BState{\State\hskip-\ALG@thistlm}
 
@@ -115,7 +116,8 @@ cross/.default={2pt}}
 \maketitle
 
 \begin{abstract}
-
+This paper investigates the problem of polynomial-time contact mode enumeration
+for use within contact mechanics.
 \end{abstract}
  
 \IEEEpeerreviewmaketitle
@@ -131,7 +133,7 @@ cross/.default={2pt}}
     \item Bouligand derivative
 \end{inparaenum}
 
-\section{Background}
+\section{Mechanics of Contact}
 
 The normal velocity equation
 \begin{equation}
@@ -143,7 +145,19 @@ B^T \begin{bmatrix}
 \begin{bmatrix} n & -n\widehat{p} \end{bmatrix}\xi
 \end{equation}
 
+\section{Convex Polytopes}
+
+\subsection{Face Lattice}
+
+\subsection{Polarity}
+
 \section{Contact Mode Enumeration in 2D}
+
+For completeness' sake, this section provides an updated bound on the 2D contact
+mode enumeration algorithm outlined in \citet{Mason}. The algorithm was
+published with no analysis of the runtime and an $O(n^2)$ bound on the number of
+contact modes. We show that the runtime is optimal at $O(n\log n)$ and argue
+that the number of modes is in fact $O(n)$. 
 
 \begin{theorem}
     The proposed algorithm is order $O(n\log n)$. Moreover the number of
@@ -155,6 +169,96 @@ B^T \begin{bmatrix}
 \end{proof}
 
 \section{Contact Mode Enumeration in 3D}
+
+\subsection{Contacting/Separating Mode Enumeration}
+
+\begin{algorithm}[t]
+    \caption{C/S Mode Enumeration}\label{alg:match}
+    \begin{algorithmic}[1]
+        \Function{CS-Enumerate}{$P$, $N$}
+        \LineComment{\text{Build normal velocity constraint matrix}}
+        % \State $A \gets \begin{bmatrix}n_0 & -n_0\widehat{p}_0\\\vdots & \vdots\\ n_k & -n_k\widehat{p}_k\end{bmatrix},\; n_i = N_{\{i,\cdot\}},\; p_i = P_{\{i,\cdot\}}$
+        \State $A_{\{i,\cdot\}} \gets \begin{bmatrix}n_i & -n_i\widehat{p}_i\end{bmatrix},\; n_i = N_{\{i,\cdot\}},\; p_i = P_{\{i,\cdot\}}$
+        % \State $P \gets \mathcal{H}(A,0)$
+        \LineComment{\text{\TODO{TODO: Project to DIM(AFF(A))}}}
+        \LineComment{\text{Convert to polar form}}
+        \State $r \gets \Call{RelInt-Point}{\mathcal{H}(A,0)}$
+        \State $z \gets -Ar$
+        \State $A_{\{i,\cdot\}} \gets A_{\{i,\cdot\}} / z_i$
+        % \State $\mathcal{H}(A',z) \gets \Call{Translate}{\mathcal{H}(A,0), r}$
+        % \State $\mathcal{V}(A'') \gets \Call{Polar}{\mathcal{H}(A',z)}$
+        \LineComment{\text{Get facets from polar convex hull}}
+        \State $M \gets \Call{Conv-Hull}{\mathcal{V}(A)}$
+        \LineComment{\text{Build face lattice}}
+        \State $d \gets \Call{Dim-Aff}{A}$
+        \State $n_v, n_f \gets \Call{Size}{M}$
+        \State $L \gets \Call{List}{\varnothing, d+1}$
+        \State $L[0] \gets \{\Call{Range}{n_v}\}$
+        \For {$i \in \{0, \ldots, n_f-1\}$}
+        \State $L[1] \gets L[1] \cup \{\Call{Where}{M[:,i]}\}$
+        \EndFor
+        \For {$i \in \{1, \ldots, d-2\}$}
+        \For {$F, G \in L[i],\, F \neq G$}
+        \State $H \gets F \cap G$
+        \If {$\Call{Len}{H} \geq d-i-2$}
+        \State $L[i+1] \gets L[i+1]\cup\{H\}$
+        \EndIf
+        \EndFor
+        \EndFor
+        \State $L[d]\gets \{\varnothing\}$
+        \LineComment{\text{Convert faces to mode strings}}
+        \State $S \gets \varnothing$
+        \For {$i \in \{0, \ldots, d\}$}
+        \For {$F \in L[i]$}
+        \State $m \gets [s]\times n_v$
+        \State $m[F] \gets c$
+        \State $S \gets S \cup \{m\}$
+        \EndFor
+        \EndFor
+        \State \Return $S$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+We present our 
+
+\subsubsection{Finding a Relative Interior Point}
+
+\subsection{Sticking/Sliding Mode Enumeration}
+
+\begin{algorithm}[t]
+    \caption{S/S Mode Enumeration}\label{alg:match}
+    \begin{algorithmic}[1]
+        \Function{SS-Enumerate}{$P$, $N$, $m$}
+        \State $p_1, p_2, p_3 \gets \Call{Random-Select-3}{points}$
+        \State $\ell_1, \ell_2, \ell_3 \gets \Call{Distances}{p_1,p_2,p_3}$
+        \State $F_{1,2} \gets \emptyset$
+        \For {$f_1 \in mesh.faces$}
+        \State $F_2 \gets \Call{Query}{segtrees[f_1], \ell_1}$
+        \State $F_{1,2} \gets F_{1,2} \cup \{f_1,f_2\}, \, \forall f_2 \in F_2$
+        \EndFor
+        \State $F_{1,2,3} \gets \emptyset$
+        \For {$\{f_1, f_2\} \in F_{1,2}$}
+        \State $F_3 \gets \Call{Query}{segtrees[f_2], \ell_2}$
+        \For {$f_3 \in F_3$}
+        \If {$\ell_3 \in \Call{Range}{f_1,f_3}$}
+        \State $F_{1,2,3} \gets F_{1,2,3} \cup \{f_1,f_2,f_3\}$
+        \EndIf
+        \EndFor
+        \EndFor
+        \State $T_p \gets \Call{Compute-Transform}{p_1,p_2,p_3}$
+        \State $matches \gets []$
+        \For {$\{f_1, f_2, f_3\} \in F_{1,2,3}$}
+        \State $T_f \gets \Call{Compute-Transform}{f_1,f_2,f_3}$
+        \State $p_f \gets T_fT_p^{-1}\cdot points$
+        \State $score \gets \sum_{p \in p_f} sdf[p]$
+        \State $matches \gets matches \cup \{score, T_f\}$
+        \EndFor
+        \State $matches \gets \Call{Sort}{matches}$
+        \State \Return $matches[0:k]$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
 
 \section{Implementation}
 
