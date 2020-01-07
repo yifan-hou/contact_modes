@@ -87,6 +87,7 @@ cross/.default={2pt}}
 \DeclareMathOperator{\rot}{\text{rot}}
 \DeclareMathOperator{\adjoint}{Ad}
 \DeclareMathOperator{\relint}{relint}
+\DeclareMathOperator{\aff}{aff}
 
 \newcommand{\TODO}[1]{{\color{red} {{#1}}  }}
 
@@ -148,9 +149,32 @@ B^T \begin{bmatrix}
 
 \section{Convex Polytopes}
 
+Let $P \subseteq \mathbb{R}^d$ be a convex set. This work primarily uses the
+following two classes of convex sets. The $\mathcal{H}\text{-}polyhedron$ is an
+intersection of closed halfspaces
+\begin{equation}
+    \mathcal{H}(A,z) = \{x \in \mathbb{R}^d : Ax \leq z\}.
+\end{equation}
+The $\mathcal{V}\text{-}polytope$ is the convex hull of a finite point set
+\begin{equation}
+    \mathcal{V}(A) = \{x \in \mathbb{R}^d : x = At, t \geq 0, \mathbf{1}t = 1\}.
+\end{equation}
+
+Let $P \subseteq \mathbb{R}^d$ be a convex polyhedron. Let a \textit{face} of
+$P$ be any set of the form 
+\begin{equation}
+    F = P \cap \{x : cx = c_0, x \in \mathbb{R}^d\}.
+\end{equation}
+The dimension of a face is the dimension of its affine hull $\dim(F) =
+\dim(\aff(F))$. The faces of dimensions $0$, $1$, $\dim(P)-2$, and $\dim(P)-1$
+are called \textit{vertices}, \textit{edges}, \textit{ridges}, and
+\textit{facets}, respectively.
+
 \subsection{Face Lattice}
 
 \subsection{Polarity}
+
+\subsection{Fans}
 
 \section{Contact Mode Enumeration in 2D}
 
@@ -189,7 +213,7 @@ that the number of modes is in fact $O(n)$.
         % \State $\mathcal{H}(A',z) \gets \Call{Translate}{\mathcal{H}(A,0), r}$
         % \State $\mathcal{V}(A'') \gets \Call{Polar}{\mathcal{H}(A',z)}$
         \LineComment{\text{Get facets from polar convex hull}}
-        \State $M \gets \Call{Conv-Hull}{\mathcal{V}(A)}$
+        \State $M \gets \Call{Conv-Hull}{\mathcal{V}(A^T)}$
         \LineComment{\text{Build face lattice}}
         \State $d \gets \Call{Dim-Aff}{A}$
         \State $n_v, n_f \gets \Call{Size}{M}$
@@ -233,33 +257,24 @@ The polar form $P^\Delta$ of a polyhedra $P$ is defined only when $0 \in
 \relint(P)$. However, $0$ is on the boundary of the polyhedral cone
 $\mathcal{H}(A, 0)$. Therefore, our first step is to find a point $r \in
 \relint(\mathcal{H}(A,0))$. This is a classical problem in linear programming,
-and for our system, it amounts to solving the linear program
+and for our implementation, it amounts to solving the following linear program
 
 \begin{alignat}{2}
-    &\!\!\min_{x} && {\begin{bmatrix}0& \cdots& 0& 1\end{bmatrix} \cdot x} \label{eq:itm-obj}\\
+    &\!\!\min_{x} && {\begin{bmatrix}0& 1\end{bmatrix} \cdot
+    \begin{bmatrix}x\\c\end{bmatrix}} \label{eq:itm-obj}\\
     &\textup{s.t.} & & 
-      \begin{bmatrix}
-        f_g \\ \alpha \\ \beta \\ \gamma
-      \end{bmatrix} = 
-      \begin{bmatrix}
-        A & 0 & N_o^T & T_o^T & 0 \\
-        N_o & -N_m & 0 & 0 & 0 \\
-        T_o & -T_m & 0 & 0 & E \\
-        0 & 0 & U & -E^T & 0
-      \end{bmatrix}
-      \begin{bmatrix}
-        v\\ \dot{q}_m \\ \lambda_n \\ \lambda_f \\ \sigma
-      \end{bmatrix}\label{eq:itm-eq}\\
-      & & 
-        0\leq &
-          \begin{bmatrix}
-            \alpha \\ \beta \\ \gamma
-          \end{bmatrix}
-          \bot
-          \begin{bmatrix}
-            \lambda_n \\ \lambda_f \\ \sigma
-          \end{bmatrix}
-          \geq 0. \label{eq:itm-ineq}
+    \begin{bmatrix}A & 1 \\ B & 1 \end{bmatrix} \begin{bmatrix} x \\c
+    \end{bmatrix} \leq 0\label{eq:itm-eq}\\
+    & & 
+    0\leq &
+    \begin{bmatrix}
+    \alpha \\ \beta \\ \gamma
+    \end{bmatrix}
+    \bot
+    \begin{bmatrix}
+    \lambda_n \\ \lambda_f \\ \sigma
+    \end{bmatrix}
+    \geq 0. \label{eq:itm-ineq}
 \end{alignat}
 
 \subsubsection{Build face lattice} 
