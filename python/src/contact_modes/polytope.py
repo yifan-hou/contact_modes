@@ -67,6 +67,7 @@ class FaceLattice(object):
             H = L[-1]
             L.append([])
             vert_sets = set()
+            faces = dict()
             for i in range(len(H)):
                 for j in range(i + 1, len(H)):
                     if i == j:
@@ -74,6 +75,13 @@ class FaceLattice(object):
                     J = intersect(H[i], H[j])
                     if J is None:
                         continue
+                    if J.verts in faces.keys():
+                        if H[i] not in faces[J.verts].parents:
+                            faces[J.verts].parents.append(H[i])
+                        if H[j] not in faces[J.verts].parents:
+                            faces[J.verts].parents.append(H[j])
+                    else:
+                        faces[J.verts] = J
                     if J.verts in vert_sets:
                         continue
                     vert_sets.add(J.verts)
@@ -114,5 +122,64 @@ class FaceLattice(object):
                 modes.append(m.tolist())
         return np.array(sorted(modes))
         
-    def hasse_diagram(self, dot_file):
-        pass
+    def hesse_diagram(self, dot_file):
+        with open(dot_file, 'w') as dot:
+            G = []
+            G.append('graph {')
+            G.append('node [shape=circle, label="", style=filled, color="0 0 0", width=0.25]')
+            G.append('splines=false')
+            G.append('layout=neato')
+            # G.append('P')
+            # G.append('E')
+
+            # Create ranks manually
+            rank_sep = 0.9
+            node_sep = 0.50
+            names = dict()
+            L = self.L
+            for i in range(len(L)):
+                n_f = len(L[i])
+                l = (n_f - 1) * node_sep
+                for j in range(len(L[i])):
+                    F = L[i][j]
+                    f_n = 'f%d_%d' % (i,j)
+                    names[F] = f_n
+                    x = -l/2 + j * node_sep
+                    y = -rank_sep * i
+                    G.append(f_n + ' [pos="%f,%f!"]' % (x,y))
+
+            # G.append('{ rank=min P }')
+            # for i in range(len(L)):
+            #     order = ''
+            #     need_order = len(L[i]) > 1
+            #     for j in range(len(L[i])):
+            #         order += 'f%d_%d ' % (i,j)
+            #         names[L[i][j]] = 'f%d_%d ' % (i,j)
+            #     order = order.strip()
+            #     order = order.replace(' ', '--')
+            #     if need_order:
+            #         order += ' [style=invis]'
+            #         G.append('{ rank=same; rankdir=LR;')
+            #         G.append(order)
+            #         G.append('}')
+            #     if i == 0:
+            #         G.append('{rank=max ' + order + ' }')
+            #     if i == len(L)-1:
+            #         G.append('{rank=min ' + order + ' }')
+            # G.append('{ rank=max E }')
+            
+            # Create lattice
+            for i in range(len(L)):
+                for j in range(len(L[i])):
+                    F = L[i][j]
+                    f_n = names[F]
+                    print(f_n)
+                    if F.parents is None:
+                        continue
+                    for H in F.parents:
+                        h_n = names[H]
+                        G.append(f_n + '--' + h_n)
+
+            G.append('}')
+
+            dot.write('\n'.join(G) + '\n')
