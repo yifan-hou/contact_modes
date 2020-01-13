@@ -1,12 +1,14 @@
+from time import time
+
 import numpy as np
-import scipy as sp
 import pyhull
+import scipy as sp
 from pyhull.halfspace import Halfspace
+
 from .helpers import hat, lexographic_combinations
-from .interior_point import interior_point_halfspace
+from .interior_point import int_pt_cone, interior_point_halfspace
 
-
-DEBUG = False
+DEBUG = True
 
 
 def contacts_to_half(points, normals):
@@ -19,7 +21,34 @@ def contacts_to_half(points, normals):
     A *= -1
     b = np.zeros((n_pts, 1))
     return A, b
-    
+
+def sample_twist_contact_separating(points, normals, modestr):
+    A, b = contacts_to_half(points, normals)
+
+    print('mode', modestr)
+    c = np.where(modestr == 'c')[0]
+    print(c)
+
+    n_pts = points.shape[1]
+
+    mask = np.zeros(n_pts, dtype=bool)
+    mask[c] = 1
+    if DEBUG:
+        print('mask', mask)
+    C = A[mask, :]
+    H = A[~mask, :]
+
+    # Project into null space.
+    if np.sum(mask) > 0:
+        null = sp.linalg.null_space(C)
+        H = np.dot(H, null)
+        # print(H.shape)
+        return null @ int_pt_cone(H)
+    else:
+        return int_pt_cone(H)
+
+def sample_twist_sliding_sticking(points, normals, modestr):
+    pass
 
 def enumerate_contact_separating_3d_exponential(points, normals):
     # Check inputs dimensions.
@@ -71,10 +100,18 @@ def enumerate_contact_separating_3d_exponential(points, normals):
                 if DEBUG:
                     print('projecting H into null space')
                     print(H)
-            
+
             # Compute interior point.
-            b = np.zeros((H.shape[0], 1))
-            x = interior_point_halfspace(H, b)
+            # b = np.zeros((H.shape[0], 1))
+            # x = interior_point_halfspace(H, b)
+            # print('halfspace')
+            # print(c)
+            # print(x)
+            # print(H @ x)
+            x = int_pt_cone(H)
+            # print('cone')
+            # print(x)
+            # print(H @ x)
 
             # If point is strictly interior, then the mode string is valid.
             if 1e-5 < np.linalg.norm(np.dot(H, x)):
@@ -84,8 +121,8 @@ def enumerate_contact_separating_3d_exponential(points, normals):
                 if DEBUG:
                     print('Appending mode', m.tolist())
 
-    return np.array(sorted(modes))
-    # return np.array(modes)
+    # return np.array(sorted(modes))
+    return np.array(modes)
 
 def enumerate_contact_separating_3d(points, normals):
     # Check inputs dimensions.
@@ -93,21 +130,24 @@ def enumerate_contact_separating_3d(points, normals):
     assert(points.shape[0] == 3)
     assert(normals.shape[0] == 3)
 
-    # Create halfspace inequalities, Ax - b <= 0.
     n_pts = points.shape[1]
-    A = np.zeros((n_pts, 6))
-    for i in range(n_pts):
-        A[i,0:3] = normals[:,i].flatten()
-        A[i,3:6] = np.dot(normals[:,i].T, hat(points[:,i])).flatten()
-    A *= -1
-    b = np.zeros((n_pts, 1))
-    print('A')
-    print(A)
+
+    # Create halfspace inequalities, Ax - b <= 0.
+    A, b = contacts_to_half(points, normals)
+    if DEBUG:
+        print('A')
+        print(A)
 
     # Get interior point using linear programming.
     int_pt = interior_point_halfspace(A, b) # Wow such math
     print('int_pt')
-    print(int_pt)
+    print(int_pt, '\n' , A @ int_pt)
+
+    # Get interior point using SVD.
+    int_pt = int_pt_cone(-A)
+    # if DEBUG:
+    print('int_pt2')
+    print(int_pt, '\n', A @ int_pt)
 
     # Compute dual points.
     b_off = b - np.dot(A, int_pt)
@@ -125,8 +165,9 @@ def enumerate_contact_separating_3d(points, normals):
     orth = sp.linalg.orth((dual - dual[1,:]).T)
     if orth.shape[1] != 6:
         dual = np.dot((dual-dual[1,:]), orth)
-        print('orth @ dual')
-        print(dual)
+        if DEBUG:
+            print('orth @ dual')
+            print(dual)
     if DEBUG:
         print('null')
         print(null)
@@ -135,10 +176,11 @@ def enumerate_contact_separating_3d(points, normals):
 
     # Compute dual convex hull.
     dual = [list(dual[i,:]) for i in range(n_pts)]
-    print('dual')
-    print(np.array(dual))
-    ret = pyhull.qconvex('s Fv', dual)
-    print(np.array(ret))
+    ret = pyhull.qconvex('Fv', dual)
+    if DEBUG:
+        print('dual')
+        print(np.array(dual))
+        print(np.array(ret))
 
     return ret
 
