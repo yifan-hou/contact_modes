@@ -120,6 +120,7 @@ class FaceLattice(object):
                 # print(L[i][j].verts)
                 m[list(L[i][j].verts)] = 'c'
                 modes.append(m.tolist())
+                L[i][j].m = m
         return np.array(sorted(modes))
         
     def hesse_diagram(self, dot_file):

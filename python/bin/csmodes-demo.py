@@ -4,14 +4,15 @@ import sys
 from time import time
 
 import glm
+import imgui
 import numpy as np
 from numpy.linalg import norm
 
-import imgui
-
-from contact_modes import FaceLattice, get_data
-from contact_modes.viewer import Application, Viewer, Window, Shader, Box
+from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
+                           get_data, sample_twist_contact_separating)
+from contact_modes.viewer import SE3, Application, Box, Shader, Viewer, Window
 from contact_modes.viewer.backend import *
+
 
 np.seterr(divide='ignore')
 np.set_printoptions(suppress=True, precision=8)
@@ -22,12 +23,17 @@ class CSModesDemo(Application):
         super().__init__()
 
         # Create contact modes lattice
-        M = np.array([[1, 0, 0, 1],
-                      [1, 1, 0, 0],
-                      [0, 1, 1, 0],
-                      [0, 0, 1, 1]])
-        d = 2
-        self.cs_lattice = FaceLattice(M, d)
+        points = np.zeros((3,4))
+        normals = np.zeros((3,4))
+        points[:,0] = np.array([ 0.5, 0.5, -0.5])
+        points[:,1] = np.array([-0.5, 0.5, -0.5])
+        points[:,2] = np.array([-0.5,-0.5, -0.5])
+        points[:,3] = np.array([ 0.5,-0.5, -0.5])
+        normals[2,:] = 1.0
+        self.points = points
+        self.normals = normals
+        modes, lattice = enumerate_contact_separating_3d(points, normals)
+        self.cs_lattice = lattice
 
         # Create contact modes lattice
         M = np.array([[1, 1, 0, 0, 1, 0],
@@ -78,9 +84,29 @@ class CSModesDemo(Application):
     def reset_gui(self):
         # GUI state.
         self.play = False
+        self.time = 0
+        self.loop_time = 2.0 # seconds
+        self.twist = np.zeros((6,1))
         self.index = (0,0)
         self.lattice_width  = 100
         self.lattice_height = 265
+
+    def update_twist(self, index, lattice):
+        y, x = index
+        F = lattice.L[y][x]
+        self.twist = sample_twist_contact_separating(self.points, self.normals, F.m)
+        self.time = time()
+        self.mesh.o2w = SE3.identity()
+    
+    def update(self):
+        t = time()
+        if t - self.time > self.loop_time:
+            self.update_twist(self.index, self.cs_lattice)
+        else:
+            h = 0.001
+            g = self.mesh.get_tf_world()
+            self.mesh.set_tf_world(SE3.exp(h * self.twist) * g)
+            # print(self.mesh.get_tf_world().matrix())
 
     def next_index(self, index, lattice):
         L = lattice.L
@@ -91,6 +117,7 @@ class CSModesDemo(Application):
             y += 1
             if y >= len(L):
                 y = 0
+        self.update_twist((y, x), lattice)
         return (y, x)
 
     def prev_index(self, index, lattice):
@@ -102,6 +129,7 @@ class CSModesDemo(Application):
             if y < 0:
                 y = len(L)-1
             x = len(L[y])-1
+        self.update_twist((y, x), lattice)
         return (y, x)
 
     def draw_lattice(self, L, name='lattice', index=None):
@@ -215,6 +243,10 @@ class CSModesDemo(Application):
         imgui.text('sliding/sticking modes:')
         self.draw_lattice(self.ss_lattice, 'ss-lattice')
         imgui.end()
+
+        # Step.
+        if self.play:
+            self.update()
 
         # Render scene.
         self.basic_lighting_shader.use()

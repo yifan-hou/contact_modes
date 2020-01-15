@@ -7,8 +7,9 @@ from pyhull.halfspace import Halfspace
 
 from .helpers import hat, lexographic_combinations
 from .interior_point import int_pt_cone, interior_point_halfspace
+from .polytope import FaceLattice
 
-DEBUG = True
+DEBUG = False
 
 
 def contacts_to_half(points, normals):
@@ -25,9 +26,9 @@ def contacts_to_half(points, normals):
 def sample_twist_contact_separating(points, normals, modestr):
     A, b = contacts_to_half(points, normals)
 
-    print('mode', modestr)
+    # print('mode', modestr)
     c = np.where(modestr == 'c')[0]
-    print(c)
+    # print(c)
 
     n_pts = points.shape[1]
 
@@ -43,7 +44,10 @@ def sample_twist_contact_separating(points, normals, modestr):
         null = sp.linalg.null_space(C)
         H = np.dot(H, null)
         # print(H.shape)
-        return null @ int_pt_cone(H)
+        x = null @ int_pt_cone(H)
+        # return null @ int_pt_cone(H)
+        print(A @ x)
+        return x
     else:
         return int_pt_cone(H)
 
@@ -139,28 +143,26 @@ def enumerate_contact_separating_3d(points, normals):
         print(A)
 
     # Get interior point using linear programming.
-    int_pt = interior_point_halfspace(A, b) # Wow such math
-    print('int_pt')
-    print(int_pt, '\n' , A @ int_pt)
+    # int_pt = interior_point_halfspace(A, b) # Wow such math
+    # print('int_pt')
+    # print(int_pt, '\n' , A @ int_pt)
 
     # Get interior point using SVD.
-    int_pt = int_pt_cone(-A)
-    # if DEBUG:
-    print('int_pt2')
-    print(int_pt, '\n', A @ int_pt)
+    int_pt = int_pt_cone(A)
+    if DEBUG:
+        print('int_pt2')
+        print(int_pt, '\n', A @ int_pt)
 
     # Compute dual points.
     b_off = b - np.dot(A, int_pt)
     dual = A / b_off
-    # dual = np.concatenate((dual, np.zeros((1,6))), axis=0)
     if DEBUG:
         print('b off')
         print(b_off)
         print('dual')
         print(dual)
-    # dual = [list(dual[i,:]) for i in range(n_pts)]
 
-    # Reduce dual points to minimally affinely independent set (?)
+    # Project dual points into affine space.
     null = sp.linalg.null_space((dual - dual[1,:]))
     orth = sp.linalg.orth((dual - dual[1,:]).T)
     if orth.shape[1] != 6:
@@ -182,13 +184,22 @@ def enumerate_contact_separating_3d(points, normals):
         print(np.array(dual))
         print(np.array(ret))
 
-    return ret
+    # Build facet-vertex incidence matrix.
+    n_facets = int(ret[0])
+    M = np.zeros((n_pts, n_facets), int)
+    for i in range(1, len(ret)):
+        vert_set = [int(x) for x in ret[i].split(' ')][1:]
+        for v in vert_set:
+            M[v,i-1] = 1
+    if DEBUG:
+        print('M')
+        print(M)
 
-    # Call qhalf.
-    # Ab = np.concatenate((A, b), axis=1)
-    # hs = [Halfspace(A[i,:], b[i,0]) for i in range(n_pts)]
-    # print(pyhull.qhalf('s i', hs, int_pt))
-
+    # Build face lattice.
+    L = FaceLattice(M, len(dual[0]))
+    
+    # Return mode strings.
+    return L.mode_strings(), L
 
 def enum_sliding_sticking_3d(points, normals, cs_mode):
     pass

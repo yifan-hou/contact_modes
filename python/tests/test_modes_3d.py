@@ -63,6 +63,8 @@ def test_sample_twist():
     assert(False)
 
 def test_enum_contact_separate_3d():
+    np.set_printoptions(precision=8, suppress=None)
+
     # Create four planar contact points.
     points = np.zeros((3,4))
     normals = np.zeros((3,4))
@@ -76,10 +78,11 @@ def test_enum_contact_separate_3d():
     # contact_modes.enumerate_contact_separating_3d(points, normals)
     modes = enumerate_contact_separating_3d_exponential(points, normals)
     print(modes)
-    # modes = enumerate_contact_separating_3d(points, normals)
+    modes, lattice = enumerate_contact_separating_3d(points, normals)
+    print(modes)
 
-    # assert(False)
-    # return
+    assert(False)
+    return
 
     # Create contact manifold in the shape of an octagon.
     n = 6

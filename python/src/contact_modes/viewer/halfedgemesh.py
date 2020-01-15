@@ -768,6 +768,9 @@ class HalfedgeMesh(Shape):
         glBindVertexArray(0)
 
     def draw(self, shader):
+        model = self.get_tf_world().matrix().T
+        shader.set_mat4('model', model)
+
         glBindVertexArray(self.vao)
         glDrawArrays(GL_TRIANGLES, 0, self.num_elems_draw)
         # glDrawElements(GL_TRIANGLES, self.num_elems_draw, GL_UNSIGNED_INT, None)
