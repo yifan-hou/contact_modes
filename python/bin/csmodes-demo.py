@@ -77,7 +77,7 @@ class CSModesDemo(Application):
     def prev_index(self, index, lattice):
         pass
 
-    def draw_lattice(self, L, name='lattice'):
+    def draw_lattice(self, L, name='lattice', index=None):
         # imgui.begin("Contacting/Separating Modes")
 
         imgui.begin_child(name, 0, self.lattice_height, border=True)
@@ -132,6 +132,11 @@ class CSModesDemo(Application):
                     hx, hy = pos[H]
                     draw_list.add_line(hx, hy, fx, fy, color, thickness)
 
+        if index is not None:
+            x, y = pos[L[index[0]][index[1]]]
+            active = imgui.get_color_u32_rgba(1.0,0.0,0.0,1.0)
+            draw_list.add_circle_filled(x, y, radius, active)
+
         imgui.end_child()
 
         # imgui.end()
@@ -175,7 +180,7 @@ class CSModesDemo(Application):
         imgui.end_group()
         changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
         imgui.text('contacting/separating modes:')
-        self.draw_lattice(self.cs_lattice, 'cs-lattice')
+        self.draw_lattice(self.cs_lattice, 'cs-lattice', self.index)
         imgui.text('sliding/sticking modes:')
         self.draw_lattice(self.ss_lattice, 'ss-lattice')
         imgui.end()
