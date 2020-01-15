@@ -12,3 +12,4 @@ __pycache__/
 data
 *.bbl
 *.blg
+*.ini
