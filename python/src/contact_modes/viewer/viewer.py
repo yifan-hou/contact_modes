@@ -3,6 +3,7 @@ from __future__ import division
 
 from .backend import *
 
+import imgui
 
 class Viewer(object):
     """
@@ -16,33 +17,34 @@ class Viewer(object):
         self.applications = []
         self.windows = []
 
-    def init(self):
+        imgui.create_context()
+
+    def start(self):
         for win in self.windows:
             win.use()
             win.init()
 
-    def start(self):
         for win in self.windows:
-            glfw.ShowWindow(win.window)
+            glfw.show_window(win.window)
 
         while True:
             close = False
             for win in self.windows:
-                if glfw.WindowShouldClose(win.window):
+                if glfw.window_should_close(win.window):
                     close = True
             if close:
                 break
 
             for win in self.windows:
                 win.use()
+                # Poll for and process events.
+                glfw.poll_events()
                 # Render.
                 win.draw()
                 # Swap front and back buffers.
-                glfw.SwapBuffers(win.window)
-                # Poll for and process events.
-                glfw.PollEvents()
+                glfw.swap_buffers(win.window)
 
-        glfw.Terminate()
+        glfw.terminate()
 
     def add_window(self, window):
         self.windows.append(window)

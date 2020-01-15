@@ -5,6 +5,9 @@ import numpy as np
 from .backend import *
 from .camera import *
 
+import imgui
+from imgui.integrations.glfw import GlfwRenderer
+
 
 class Application(object):
     def __init__(self):
@@ -13,7 +16,7 @@ class Application(object):
     def init(self, viewer):
         self.viewer = viewer
 
-        window = Window(name='contact modes')
+        window = Window(width=1200, height=675, name='contact modes')
         window.set_on_init(self.init_win)
         window.set_on_draw(self.render)
         window.set_on_key_press(self.on_key_press)
@@ -25,6 +28,7 @@ class Application(object):
         viewer.add_window(window)
 
         self.window = window
+        self.imgui_impl = GlfwRenderer(window.window)
 
     def init_win(self):
         glEnable(GL_LIGHTING)
@@ -39,7 +43,31 @@ class Application(object):
         glHint(GL_POINT_SMOOTH_HINT, GL_NICEST)
 
     def render(self):
-        pass
+        # Clear frame.
+        glClearColor(0.2, 0.3, 0.3, 1.0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        # Draw.
+        self.draw_grid(5, 0.25)
+
+        # Menu.
+        self.imgui_impl.process_inputs()
+        imgui.new_frame()
+
+        if imgui.begin_main_menu_bar():
+            if imgui.begin_menu("File", True):
+                clicked_quit, selected_quit = imgui.menu_item(
+                        "Quit", 'Cmd+Q', False, True
+                    )
+
+                if clicked_quit:
+                    exit(1)
+
+                imgui.end_menu()
+            imgui.end_main_menu_bar()
+
+        imgui.render()
+        self.imgui_impl.render(imgui.get_draw_data())
 
     def draw_grid(self, size, step):
         glBegin(GL_LINES)

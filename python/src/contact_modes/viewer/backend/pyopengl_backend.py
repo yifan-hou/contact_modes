@@ -3,7 +3,8 @@ try:
     from AppKit import NSApp, NSApplication
 except:
     pass
-import cyglfw3 as glfw
+# import cyglfw3 as glfw
+import glfw
 import OpenGL
 from OpenGL.GL import shaders
 from OpenGL.GL import *
@@ -14,29 +15,34 @@ from OpenGL.GLUT import *
 class Window(object):
     def __init__(self, width=800, height=600, name='contact modes'):
         # Initialize glfw.
-        if not glfw.Init():
+        if not glfw.init():
             raise RuntimeError('Error: Failed to initialize GLFW.')
 
         # MSAA.
-        glfw.WindowHint(glfw.SAMPLES, 4)
+        glfw.window_hint(glfw.SAMPLES, 4)
+
+        # glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+        # glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+        # glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+        # glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
 
         # Create window.
         self.width = width
         self.height = height
-        win = glfw.CreateWindow(width, height, name)
-        glfw.SwapInterval(0)
-        glfw.MakeContextCurrent(win)
+        win = glfw.create_window(width, height, name, None, None)
+        glfw.make_context_current(win)
+        glfw.swap_interval(0)
 
         # Set positions.
-        x = 1920 + 1200/2 - width/2
-        y = 1920/2 - height/2
-        glfw.SetWindowPos(win, x, y)
+        x = int(1920 + 1200/2 - width/2)
+        y = int(1920/2 - height/2)
+        glfw.set_window_pos(win, x, y)
 
         # Add callbacks.
-        glfw.SetWindowSizeCallback(win, self.on_window_resize)
-        glfw.SetKeyCallback(win, self.key_callback)
-        glfw.SetMouseButtonCallback(win, self.mouse_button_callback)
-        glfw.SetCursorPosCallback(win, self.mouse_position_callback)
+        glfw.set_window_size_callback(win, self.on_window_resize)
+        glfw.set_key_callback(win, self.key_callback)
+        glfw.set_mouse_button_callback(win, self.mouse_button_callback)
+        glfw.set_cursor_pos_callback(win, self.mouse_position_callback)
 
         self.window = win
         self.xprev = self.width/2
@@ -44,7 +50,7 @@ class Window(object):
         self.mouse_buttons = 0
 
     def use(self):
-        glfw.MakeContextCurrent(self.window)
+        glfw.make_context_current(self.window)
 
     def set_viewer(self, viewer):
         self.viewer = viewer
@@ -54,6 +60,9 @@ class Window(object):
 
     def draw(self):
         self.on_draw()
+
+    def init(self):
+        self.on_init()
 
     ### USER CALLBACKS
     def set_on_init(self, on_init):
@@ -81,7 +90,7 @@ class Window(object):
     def flip_cursor(self, xpos, ypos):
         # Flip cursor position so that the origin is at the bottom-left of the
         # window. GLFW defaults to top-left.
-        return xpos, 600-ypos
+        return xpos, self.height-ypos
 
     def key_callback(self, window, key, scancode, action, mods):
         self.use()
@@ -95,7 +104,7 @@ class Window(object):
         if button == glfw.MOUSE_BUTTON_LEFT:
             if action == glfw.PRESS:
                 self.mouse_buttons = 1
-                xpos, ypos = glfw.GetCursorPos(window)
+                xpos, ypos = glfw.get_cursor_pos(window)
                 xpos, ypos = self.flip_cursor(xpos, ypos)
                 self.on_mouse_press(xpos, ypos, self.mouse_buttons, None)
             if action == glfw.RELEASE:
@@ -103,7 +112,7 @@ class Window(object):
         if button == glfw.MOUSE_BUTTON_RIGHT:
             if action == glfw.PRESS:
                 self.mouse_buttons = 4
-                xpos, ypos = glfw.GetCursorPos(window)
+                xpos, ypos = glfw.get_cursor_pos(window)
                 xpos, ypos = self.flip_cursor(xpos, ypos)
                 self.on_mouse_press(xpos, ypos, self.mouse_buttons, None)
             if action == glfw.RELEASE:
