@@ -9,8 +9,8 @@ from numpy.linalg import norm
 
 import imgui
 
-from contact_modes import FaceLattice
-from contact_modes.viewer import Application, Viewer, Window
+from contact_modes import FaceLattice, get_data
+from contact_modes.viewer import Application, Viewer, Window, Shader, Box
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
@@ -54,6 +54,25 @@ class CSModesDemo(Application):
     def init_win_0(self):
         super().init_win()
 
+        # Create box.
+        self.mesh = Box()
+
+        # Basic lighting shader.
+        vertex_source = os.path.join(get_data(), 'shader', 'basic_lighting.vs')
+        fragment_source = os.path.join(get_data(), 'shader', 'basic_lighting.fs')
+        self.basic_lighting_shader = Shader(vertex_source, fragment_source)
+
+        # Lamp shader.
+        vertex_source = os.path.join(get_data(), 'shader', 'flat.vs')
+        fragment_source = os.path.join(get_data(), 'shader', 'flat.fs')
+        self.lamp_shader = Shader(vertex_source, fragment_source)
+
+        # Normal shader.
+        vertex_source = os.path.join(get_data(), 'shader', 'normals.vs')
+        fragment_source = os.path.join(get_data(), 'shader', 'normals.fs')
+        geometry_source = os.path.join(get_data(), 'shader', 'normals.gs')
+        self.normal_shader = Shader(vertex_source, fragment_source, geometry_source)
+
         self.reset_gui()
 
     def reset_gui(self):
@@ -70,12 +89,20 @@ class CSModesDemo(Application):
         if x >= len(L[y]):
             x = 0
             y += 1
-            if y >= len(L[y]):
+            if y >= len(L):
                 y = 0
         return (y, x)
 
     def prev_index(self, index, lattice):
-        pass
+        L = lattice.L
+        y, x = index
+        x -= 1
+        if x < 0:
+            y -= 1
+            if y < 0:
+                y = len(L)-1
+            x = len(L[y])-1
+        return (y, x)
 
     def draw_lattice(self, L, name='lattice', index=None):
         # imgui.begin("Contacting/Separating Modes")
@@ -146,10 +173,14 @@ class CSModesDemo(Application):
         glClearColor(0.2, 0.3, 0.3, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        # Draw.
-        self.draw_grid(5, 0.25)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_MULTISAMPLE)
+        glEnable(GL_BLEND)
+        # glEnable(GL_CULL_FACE)
 
-        # Menu.
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        # Create GUI.
         self.imgui_impl.process_inputs()
         imgui.new_frame()
 
@@ -185,15 +216,69 @@ class CSModesDemo(Application):
         self.draw_lattice(self.ss_lattice, 'ss-lattice')
         imgui.end()
 
-        # 
+        # Render scene.
+        self.basic_lighting_shader.use()
+
+        model = glm.mat4(1.0)
+        self.basic_lighting_shader.set_mat4('model', np.asarray(model))
+
+        view = self.camera.get_view()
+        self.basic_lighting_shader.set_mat4('view', np.asarray(view))
+
+        width = self.window.width
+        height = self.window.height
+        projection = glm.perspective(glm.radians(50.0), width/height, 0.1, 100.0)
+        self.basic_lighting_shader.set_mat4('projection', np.asarray(projection))
+
+        lightPos = np.array([1.0, 1.2, 2.0])
+        self.basic_lighting_shader.set_vec3('lightPos', np.asarray(lightPos))
+        self.basic_lighting_shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
+
+        # camera
+        cameraPos = glm.vec3(glm.column(glm.inverse(view), 3))
+        self.basic_lighting_shader.set_vec3('viewPos', np.asarray(cameraPos))
+
+        # Draw object.
+        self.basic_lighting_shader.set_float('alpha', 0.5)
+        self.mesh.draw(self.basic_lighting_shader)
+
+        # Draw edges and light.
+        self.lamp_shader.use()
+        self.lamp_shader.set_mat4('model', np.asarray(model))
+        self.lamp_shader.set_mat4('view', np.asarray(view))
+        self.lamp_shader.set_mat4('projection', np.asarray(projection))
+        self.lamp_shader.set_vec3('objectColor', np.zeros((3,1), 'float32'))
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        # if self.draw_wireframe:
+        self.mesh.draw(self.lamp_shader)
+
+        # Draw light box.
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        light_model = glm.mat4(1.0)
+        light_model = glm.translate(light_model, lightPos)
+        self.lamp_shader.set_mat4('model', np.asarray(light_model))
+        self.lamp_shader.set_vec3('objectColor', np.ones((3,1), 'float32'))
+        # self.light_box.draw(self.lamp_shader)
+
+        # Draw grid.
+        model = glm.mat4(1.0)
+        model = glm.translate(model, np.array([0, 0, -0.5]))
+        self.lamp_shader.set_vec3('objectColor', np.ones((3,1),'float32'))
+        self.lamp_shader.set_mat4('model', np.asarray(model))
+        self.draw_grid(5, 0.25)
 
         # Render GUI
         imgui.render()
         self.imgui_impl.render(imgui.get_draw_data())
 
     def on_key_press_0(self, win, key, scancode, action, mods):
-        # print(key)
-        pass
+        if key == glfw.KEY_SPACE and action == glfw.PRESS:
+            self.play = not self.play
+        if key == glfw.KEY_N and action == glfw.PRESS:
+            self.index = self.next_index(self.index, self.cs_lattice)
+        if key == glfw.KEY_P and action == glfw.PRESS:
+            self.index = self.prev_index(self.index, self.cs_lattice)
 
 viewer = Viewer()
 viewer.add_application(CSModesDemo())

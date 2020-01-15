@@ -28,7 +28,7 @@ class Application(object):
         viewer.add_window(window)
 
         self.window = window
-        self.imgui_impl = GlfwRenderer(window.window)
+        self.imgui_impl = GlfwRenderer(window.window, False)
 
     def init_win(self):
         glEnable(GL_LIGHTING)
