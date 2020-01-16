@@ -130,8 +130,24 @@ for use within contact mechanics.
 
 \begin{inparaenum}
     \item \TODO{Xianyi} Polyhedral convex cones
-    \item Matt's book
-    \item \TODO{Eric} Max Haas's work
+    \item \citet{mason_mechanics_2001} sketched an algorithm for contact mode
+    enumeration in 2D which intersects the positive (negative) rotation centers
+    on the positive (negative) oriented plane and intersects the rotation
+    centers at infinity on the equator. Though \citet{mason_mechanics_2001}
+    upper-bounded the number of modes at $O(n^2)$, the algorithm's runtime is
+    actually $O(n\log n)$ and the correct number of modes is $\Theta(n)$.
+    Unfortunately, the oriented plane technique does not generalize to 3D
+    contact mode enumeration.
+    \item \citet{haas-heger_passive_2018} independently published an algorithm
+    for partial contact mode enumeration in 2D. There, they interpret the
+    feasible modes as the regions of an arrangement of hyperplanes in 3D.
+    However, \citet{haas-heger_passive_2018}'s algorithm is at least
+    $\Omega(n^4)$ and does not enumerate separating modes. Regardless of these
+    issues, their work inspired us to investigate hyperplane arrangements in
+    higher dimensions for our algorithm.
+    \item To the best of our knowledge, our algorithm is the first known method
+    for contact mode enumeration in 3D.
+    
     \item Bouligand derivative
 \end{inparaenum}
 
@@ -351,7 +367,8 @@ available at \url{http://www.github.com/<omitted>/contact_modes}.
 \section{Conclusion}
 
 \bibliographystyle{plainnat}
-\bibliography{references}
+% \bibliography{references}
+\bibliography{zotero}
 
 \end{document}
 
