@@ -1,5 +1,8 @@
 import numpy as np
-
+import numpy.matlib
+import pyhull
+from scipy.optimize import linprog
+import scipy as sp
 
 def hat_2d():
     pass
@@ -60,3 +63,68 @@ def lexographic_combinations(n, t):
     if t > n:
         return []
     return LexographicCombinations(n, t)
+
+def exp_comb(m,n):
+    # m: number of contacts
+    # n: number of modes
+    c = np.zeros((m,n**m),dtype=int)
+    for i in range(m):
+        c_i = np.array([k*np.ones((n**(m-i-1))) for k in range(n)])
+        c[i] = np.matlib.repmat(c_i.flatten(),1,n**i)
+    return c.T
+
+def in_hull(p, hull):
+    dim = hull.shape[1]
+    num_p = p.shape[0]
+    num_v = hull.shape[0]
+
+    pc = np.sum(hull, axis=0) / num_v
+    A = hull - pc
+    p = p - pc
+
+    M = np.concatenate((p,A),axis=0)
+    rank_M = np.linalg.matrix_rank(M)
+    rank_hull = np.linalg.matrix_rank(A)
+
+    if rank_M < dim:
+        B = sp.linalg.orth(M.T)
+        #Q = np.dot(np.dot(B,np.linalg.inv(np.dot(B.T,B))),B.T)
+        #M_ = np.dot(M,Q)
+        M_ = np.linalg.pinv(B).dot(M.T).T
+        p = M_[0:num_p,0:rank_M]
+        A = M_[num_p:,0:rank_M]
+
+    res = np.zeros(num_p,dtype=bool)
+    for i in range(num_p):
+        mask = np.hstack((np.zeros(num_p,dtype=bool),np.ones(num_v,dtype=bool)))
+        mask[i] = True
+        if rank_hull < np.linalg.matrix_rank(M[mask]):
+            res[i] = False
+        else:
+            x = linprog(-p[i],A_ub=A, b_ub=np.ones(num_v))
+            res[i] = -x.fun<1
+
+    return res
+
+def zenotope_vertex(normals):
+    # N: normals of the hyperplanes
+    num_normals = normals.shape[0]
+    dim = normals.shape[1]
+    V = np.vstack((normals[0],-normals[0]))
+    Sign = np.array([[1],[-1]])
+    for i in range(1,num_normals):
+        normal = normals[i]
+        V_ = np.empty((0,dim))
+        Sign_ = np.empty((0,i+1))
+        for k in range(V.shape[0]):
+            v = V[k]
+            v_pm = np.vstack((v + normal,v - normal))
+            v_sign = np.hstack((np.array([Sign[k],Sign[k]]),[[1],[-1]]))
+            ind_v = np.logical_not(in_hull(v_pm, V))
+            Sign_ = np.vstack((Sign_,v_sign[ind_v]))
+            V_ = np.vstack((V_,v_pm[ind_v]))
+            
+        V = V_
+        Sign = Sign_
+
+    return V, Sign

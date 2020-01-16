@@ -120,6 +120,7 @@ class FaceLattice(object):
                 # print(L[i][j].verts)
                 m[list(L[i][j].verts)] = 'c'
                 modes.append(m.tolist())
+                L[i][j].m = m
         return np.array(sorted(modes))
         
     def hesse_diagram(self, dot_file):
@@ -147,26 +148,6 @@ class FaceLattice(object):
                     x = -l/2 + j * node_sep
                     y = -rank_sep * i
                     G.append(f_n + ' [pos="%f,%f!"]' % (x,y))
-
-            # G.append('{ rank=min P }')
-            # for i in range(len(L)):
-            #     order = ''
-            #     need_order = len(L[i]) > 1
-            #     for j in range(len(L[i])):
-            #         order += 'f%d_%d ' % (i,j)
-            #         names[L[i][j]] = 'f%d_%d ' % (i,j)
-            #     order = order.strip()
-            #     order = order.replace(' ', '--')
-            #     if need_order:
-            #         order += ' [style=invis]'
-            #         G.append('{ rank=same; rankdir=LR;')
-            #         G.append(order)
-            #         G.append('}')
-            #     if i == 0:
-            #         G.append('{rank=max ' + order + ' }')
-            #     if i == len(L)-1:
-            #         G.append('{rank=min ' + order + ' }')
-            # G.append('{ rank=max E }')
             
             # Create lattice
             for i in range(len(L)):
