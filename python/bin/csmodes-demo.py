@@ -84,7 +84,7 @@ class CSModesDemo(Application):
     def reset_gui(self):
         # GUI state.
         self.play = False
-        self.time = 0
+        self.time = time()
         self.loop_time = 2.0 # seconds
         self.twist = np.zeros((6,1))
         self.index = (0,0)
@@ -101,7 +101,8 @@ class CSModesDemo(Application):
     def update(self):
         t = time()
         if t - self.time > self.loop_time:
-            self.update_twist(self.index, self.cs_lattice)
+            # self.update_twist(self.index, self.cs_lattice)
+            self.index = self.next_index(self.index, self.cs_lattice)
         else:
             h = 0.001
             g = self.mesh.get_tf_world()
