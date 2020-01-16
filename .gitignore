@@ -9,7 +9,6 @@ __pycache__/
 *.out
 *.pdf
 *.synctex.gz
-data
 *.bbl
 *.blg
 *.ini
