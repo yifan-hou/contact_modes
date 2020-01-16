@@ -1,5 +1,7 @@
 import numpy as np
 
+from scipy.linalg import null_space as null
+
 
 def affine_dim(x):
     return linear_dim(x - x[None,0,:])
@@ -17,3 +19,7 @@ def linear_dim(x):
 
 def linear_basis():
     pass
+
+def affine_dep(X):
+    n_cols = X.shape[1]
+    return null(np.concatenate((X, np.ones((1, n_cols))), axis=0))

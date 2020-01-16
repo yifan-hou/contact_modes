@@ -5,9 +5,68 @@ import numpy as np
 import contact_modes
 from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            enumerate_contact_separating_3d_exponential)
-from contact_modes.helpers import in_hull
+
+
+np.set_printoptions(precision=8, suppress=None)
+
+def gen_box_ground():
+    # Create four planar contact points.
+    points = np.zeros((3,4))
+    normals = np.zeros((3,4))
+    points[:,0] = np.array([ 1, 1, 0])
+    points[:,1] = np.array([-1, 1, 0])
+    points[:,2] = np.array([-1,-1, 0])
+    points[:,3] = np.array([ 1,-1, 0])
+    normals[2,:] = 1.0
+
+    return points, normals
+
+def gen_octagon_ground():
+    n = 6
+    points = np.zeros((3,n))
+    normals = np.zeros((3,n))
+    for i in range(n):
+        points[0,i] = np.cos(i/8*2*np.pi)
+        points[1,i] = np.sin(i/8*2*np.pi)
+        normals[2,i] = 1.0
+    return points, normals
+
+def gen_box_wall():
+    # Create box-against-wall contact manifold.
+    points = np.zeros((3,8))
+    normals = np.zeros((3,8))
+    # box on x-y plane
+    points[:,0] = np.array([ 1, 1, 0])
+    points[:,1] = np.array([-1, 1, 0])
+    points[:,2] = np.array([-1,-1, 0])
+    points[:,3] = np.array([ 1,-1, 0])
+    # box against x-z wall
+    points[:,4] = np.array([ 1, 1, 2])
+    points[:,5] = np.array([-1, 1, 2])
+    points[:,6] = np.array([-1, 1, 0])
+    points[:,7] = np.array([ 1, 1, 0])
+    normals[2,0:4] = 1.0
+    normals[1,4:8] =-1.0
+    return points, normals
+
+def gen_box_sandwich():
+    pass
+
+def test_sample_twist():
+    np.set_printoptions(precision=8, suppress=True)
+    points, normals = gen_box_ground()
+    A, b = contact_modes.contacts_to_half(points, normals)
+    modes = enumerate_contact_separating_3d_exponential(points, normals)
+    print(modes)
+    for m in modes:
+        xi = contact_modes.sample_twist_contact_separating(points, normals, m)
+        print(xi)
+    assert(False)
+
 
 def test_enum_contact_separate_3d():
+    np.set_printoptions(precision=8, suppress=None)
+
     # Create four planar contact points.
     points = np.zeros((3,4))
     normals = np.zeros((3,4))
@@ -22,8 +81,15 @@ def test_enum_contact_separate_3d():
     modes = contact_modes.enumerate_contact_separating_3d_exponential(points, normals)
     print('contact mode: ')
     print(modes)
+
     # modes = enumerate_contact_separating_3d(points, normals)
-    '''
+
+    modes, lattice = enumerate_contact_separating_3d(points, normals)
+    print(modes)
+
+    #assert(False)
+    #return
+
     # Create contact manifold in the shape of an octagon.
     n = 6
     points = np.zeros((3,n))
@@ -56,12 +122,14 @@ def test_enum_contact_separate_3d():
     t_start = time()
     modes = contact_modes.enumerate_contact_separating_3d(points, normals)
     print('time', time() - t_start)
+
     print(modes)
     #print(modes.shape)
+
     t_start = time()
     # modes = enumerate_contact_separating_3d(points, normals)
     enumerate_contact_separating_3d(points, normals)
-    print('time', time() - t_start)
+    print('time 3d', time() - t_start)
 
     # Box against wall - Polar.
     M = np.array([[1, 1, 0, 1, 1, 0],
@@ -107,9 +175,9 @@ def test_enum_contact_separate_3d():
     normals[2,4:8] =-1.0
     modes = contact_modes.enumerate_contact_separating_3d(points, normals)
     print(modes)
-    # modes = enumerate_contact_separating_3d(points, normals)
-    #assert(False)
-    '''
+    modes = enumerate_contact_separating_3d(points, normals)
+    assert(False)
+    
 
 def test_enum_contact_all_3d():
 
@@ -148,7 +216,7 @@ def test_enum_contact_all_3d():
     print('contact mode: ')
     print(modes)
     print(len(modes))
-    
+
     # Create box-against-wall contact manifold.
     points = np.zeros((3, 8))
     normals = np.zeros((3, 8))
@@ -179,6 +247,3 @@ def test_enum_contact_all_3d():
     print(len(modes))
     # print(modes.shape)
     '''
-
-test_enum_contact_all_3d()
-#print(in_hull(np.array([[3,0,0]]),np.array([[1,1,0],[1,-1,0],[-1,1,0],[-1,-1,0]])))
