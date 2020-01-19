@@ -10,9 +10,9 @@ from numpy.linalg import norm
 
 from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            get_data, sample_twist_contact_separating)
-from contact_modes.viewer import SE3, Application, Box, Shader, Viewer, Window
+from contact_modes.viewer import (SE3, Application, Box, OITRenderer, Shader,
+                                  Viewer, Window)
 from contact_modes.viewer.backend import *
-
 
 np.seterr(divide='ignore')
 np.set_printoptions(suppress=True, precision=8)
@@ -66,20 +66,30 @@ class CSModesDemo(Application):
         # Basic lighting shader.
         vertex_source = os.path.join(get_data(), 'shader', 'basic_lighting.vs')
         fragment_source = os.path.join(get_data(), 'shader', 'basic_lighting.fs')
-        self.basic_lighting_shader = Shader(vertex_source, fragment_source)
+        self.basic_lighting_shader = Shader([vertex_source], [fragment_source])
 
         # Lamp shader.
         vertex_source = os.path.join(get_data(), 'shader', 'flat.vs')
         fragment_source = os.path.join(get_data(), 'shader', 'flat.fs')
-        self.lamp_shader = Shader(vertex_source, fragment_source)
+        self.lamp_shader = Shader([vertex_source], [fragment_source])
 
         # Normal shader.
         vertex_source = os.path.join(get_data(), 'shader', 'normals.vs')
         fragment_source = os.path.join(get_data(), 'shader', 'normals.fs')
         geometry_source = os.path.join(get_data(), 'shader', 'normals.gs')
-        self.normal_shader = Shader(vertex_source, fragment_source, geometry_source)
+        self.normal_shader = Shader([vertex_source], [fragment_source], geometry_source)
+
+        # Lamp shader.
+        vertex_source = os.path.join(get_data(), 'shader', 'depth_quad.vs')
+        fragment_source = os.path.join(get_data(), 'shader', 'depth_quad.fs')
+        self.depth_shader = Shader([vertex_source], [fragment_source])
 
         self.reset_gui()
+
+        # Initialize transparency.
+        self.oit_renderer = OITRenderer(self.window)
+        self.oit_renderer.init_opengl()
+        self.oit_renderer.set_draw_func(self.draw_scene)
 
     def reset_gui(self):
         # GUI state.
@@ -204,10 +214,20 @@ class CSModesDemo(Application):
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_MULTISAMPLE)
-        glEnable(GL_BLEND)
+        # glEnable(GL_BLEND)
         # glEnable(GL_CULL_FACE)
 
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        # Step.
+        if self.play:
+            self.update()
+
+        # Render scene.
+        # self.render_scene()
+        # self.render_transparency()
+        # self.draw_scene(self.basic_lighting_shader)
+        self.oit_renderer.render()
 
         # Create GUI.
         self.imgui_impl.process_inputs()
@@ -245,10 +265,46 @@ class CSModesDemo(Application):
         self.draw_lattice(self.ss_lattice, 'ss-lattice')
         imgui.end()
 
-        # Step.
-        if self.play:
-            self.update()
+        # Render GUI
+        imgui.render()
+        self.imgui_impl.render(imgui.get_draw_data())
 
+    def draw_scene(self, shader):
+        # ----------------------------------------------------------------------
+        # 1. Setup shader uniforms
+        # ----------------------------------------------------------------------
+        shader.use()
+
+        # model view projection
+        model = glm.mat4(1.0)
+        shader.set_mat4('model', np.asarray(model))
+
+        view = self.camera.get_view()
+        shader.set_mat4('view', np.asarray(view))
+
+        width = self.window.width
+        height = self.window.height
+        projection = glm.perspective(glm.radians(50.0), width/height, 0.1, 100.0)
+        shader.set_mat4('projection', np.asarray(projection))
+
+        # # lighting
+        # lightPos = np.array([1.0, 1.2, 2.0])
+        # shader.set_vec3('lightPos', np.asarray(lightPos))
+        # shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
+
+        # cameraPos = glm.vec3(glm.column(glm.inverse(view), 3))
+        # shader.set_vec3('viewPos', np.asarray(cameraPos))
+
+        # ----------------------------------------------------------------------
+        # 2. Draw scene
+        # ----------------------------------------------------------------------
+        self.mesh.draw(shader)
+
+        # self.mesh.draw_wireframe(shader)
+
+        self.grid.draw(shader)
+
+    def render_scene(self):
         # Render scene.
         self.basic_lighting_shader.use()
 
@@ -299,11 +355,7 @@ class CSModesDemo(Application):
         model = glm.translate(model, np.array([0, 0, -0.5]))
         self.lamp_shader.set_vec3('objectColor', np.ones((3,1),'float32'))
         self.lamp_shader.set_mat4('model', np.asarray(model))
-        self.draw_grid(5, 0.25)
-
-        # Render GUI
-        imgui.render()
-        self.imgui_impl.render(imgui.get_draw_data())
+        self.draw_grid(self.basic_lighting_shader)
 
     def on_key_press_0(self, win, key, scancode, action, mods):
         if key == glfw.KEY_SPACE and action == glfw.PRESS:

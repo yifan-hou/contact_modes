@@ -8,6 +8,7 @@ import glfw
 import OpenGL
 from OpenGL.GL import shaders
 from OpenGL.GL import *
+from OpenGL.GL.NV.depth_buffer_float import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 

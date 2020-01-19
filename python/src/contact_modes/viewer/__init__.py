@@ -8,3 +8,6 @@ from .box import *
 from .se3 import *
 from .so3 import *
 from .polytope import *
+from .oit import *
+from .grid import *
+from .quad import *

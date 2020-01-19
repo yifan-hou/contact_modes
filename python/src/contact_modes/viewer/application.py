@@ -4,6 +4,7 @@ import numpy as np
 
 from .backend import *
 from .camera import *
+from .grid import Grid
 
 import imgui
 from imgui.integrations.glfw import GlfwRenderer
@@ -42,13 +43,16 @@ class Application(object):
         glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
         glHint(GL_POINT_SMOOTH_HINT, GL_NICEST)
 
+        # 
+        self.grid = Grid(0.25, 5)
+
     def render(self):
         # Clear frame.
         glClearColor(0.2, 0.3, 0.3, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Draw.
-        self.draw_grid(5, 0.25)
+        self.draw_grid()
 
         # Menu.
         self.imgui_impl.process_inputs()
@@ -69,32 +73,8 @@ class Application(object):
         imgui.render()
         self.imgui_impl.render(imgui.get_draw_data())
 
-    def draw_grid(self, size, step):
-        glBegin(GL_LINES)
-
-        glColor3f(1.0, 1.0, 1.0)
-        for i in np.arange(step, size, step):
-            glVertex3f(-size, i, 0)   # lines parallel to X-axis
-            glVertex3f( size, i, 0)
-            glVertex3f(-size, -i, 0)   # lines parallel to X-axis
-            glVertex3f( size, -i, 0)
-
-            glVertex3f( i, -size, 0)   # lines parallel to Z-axis
-            glVertex3f( i,  size, 0)
-            glVertex3f(-i, -size, 0)   # lines parallel to Z-axis
-            glVertex3f(-i,  size, 0)
-
-        # x-axis
-        glColor3f(1.0, 0, 0)
-        glVertex3f(-size, 0, 0)
-        glVertex3f( size, 0, 0)
-
-        # z-axis
-        glColor3f(0,0,1.0)
-        glVertex3f(0, -size, 0)
-        glVertex3f(0,  size, 0)
-
-        glEnd()
+    def draw_grid(self, shader):
+        self.grid.draw(shader)
 
     def on_resize(self, width, height):
         glViewport(0, 0, width, height)
