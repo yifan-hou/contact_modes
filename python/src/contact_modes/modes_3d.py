@@ -48,7 +48,7 @@ def sample_twist_contact_separating(points, normals, modestr):
         # print(H.shape)
         x = null @ int_pt_cone(H)
         # return null @ int_pt_cone(H)
-        print(A @ x)
+        # print(A @ x)
         return x
     else:
         return int_pt_cone(H)

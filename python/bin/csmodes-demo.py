@@ -19,6 +19,12 @@ np.seterr(divide='ignore')
 np.set_printoptions(suppress=True, precision=8)
 np.random.seed(0)
 
+def box_ground():
+    pass
+
+def box_wall():
+    pass
+
 class CSModesDemo(Application):
     def __init__(self):
         super().__init__()
@@ -65,6 +71,8 @@ class CSModesDemo(Application):
         self.mesh = Box()
         self.mesh_wireframe = Box()
         self.mesh_wireframe.set_color(get_color('black'))
+
+        self.grid.get_tf_world().set_translation(np.array([0.0, 0.0, -0.5]))
 
         # Basic lighting shader.
         vertex_source = os.path.join(get_data(), 'shader', 'basic_lighting.vs')

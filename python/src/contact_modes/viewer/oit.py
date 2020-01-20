@@ -12,7 +12,7 @@ class OITRenderer(object):
         self.window = window
         self.peel_depth = 16
         self.max_peel_depth = 64
-        self.opacity = 0.6
+        self.opacity = 0.7
         self.show_controls = False
 
     def set_draw_func(self, draw_func):
