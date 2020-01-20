@@ -192,10 +192,47 @@ are called \textit{vertices}, \textit{edges}, \textit{ridges}, and
 \textit{facets}, respectively.
 
 \subsection{Face Lattice}
+The face lattice $L(P)$ is the partially ordered set (poset) of all faces of a polytope $P$, partially ordered by inclusion. Figure.\ref{} visualize the face lattice of a cube. The minimal element at the bottom is the empty face. The first layer of nodes correspond to eight vertices of the cube. The second layer of nodes represents the edges, while the nodes of the third layers are the six facets of the cube. The top element is the cube itself. 
+
+(Write this as theorem) There are several properties of the face lattice $L(P)$ of a polytope $P$ that are used in this paper:
+\begin{enumerate}
+    \item Every maximum chain of $L(P)$ has the length of $dim(P) + 1$. 
+    \item The reversed order of $L(P)$ is the opposite $L(P)^{op}$, which is also the face lattice of a convex polytope.
+\end{enumerate}
+
 
 \subsection{Polarity}
+Here we define the polar(dual) polytope $P^*$ of a polytope $P \subseteq \mathbb{R}^d$ 
+\begin{equation}
+    P^* = \{c \in \mathbb{R}^d: c^T x \leq 1, \forall x \in P\} \subseteq \mathbb{R}^d
+\end{equation}
+In this definition, we assume that $\mathbf{0}$ is in the interior of the polytope $P$ without loss of generality.   
+
+The face lattice of the polar polytope $P^*$ is the opposite of the face lattice of $P$:
+\begin{equation}
+    L(P^*) = L(P)^{op}
+\end{equation}
+From this theorem, we get the translation the inclusion of faces and interchanges:
+\begin{align}
+    \emptyset &\longleftrightarrow P \\
+    vertices &\longleftrightarrow facets \\
+    edges &\longleftrightarrow ridges \\
+    ... &\longleftrightarrow ...
+\end{align}
 
 \subsection{Fans}
+A fan in $\mathbb{R}^d$ is a family 
+\begin{equation}
+    \mathcal{F} = \{C_1, C_2, \hdots, C_N\}
+\end{equation}
+of nonempty polyhedral cones, with the following two properties:
+\begin{enumerate}
+    \item Every nonempty face of a cone in $\mathcal{F}$ is also a cone in $\mathcal{F}$.
+    \item The intersection of any two cones $in \mathcal{F}$ is a face of both.
+\end{enumerate}
+The fan $\mathcal{F}$ is \textit{complete} if the $\cup_{i=1}^N C_i = \mathbb{R}^d$.
+
+The arrangement/lattice of a Fan
 
 \section{Contact Mode Enumeration in 2D}
 
