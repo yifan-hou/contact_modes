@@ -1359,3 +1359,7 @@ class HalfedgeMesh(Shape):
                     break
             points[:,i,None] = p0 + a1*v1 + a2*v2
         return points
+
+    def set_color(self, color):
+        for f in self.faces:
+            f.set_color(color)

@@ -195,10 +195,12 @@ def test_enum_contact_all_3d():
     tangentials = np.zeros((3,4,2))
     tangentials[0,:,0] = 1
     tangentials[1,:,1] = 1
-    #modes = contact_modes.enumerate_all_modes_3d_exponential(points, normals,tangentials,4)
-    modes = contact_modes.enumerate_all_modes_3d(points, normals,tangentials,4)
+    modes_1 = contact_modes.enumerate_contact_separating_3d_exponential(points, normals)
+    #modes_2 = contact_modes.enumerate_all_modes_3d_exponential(points, normals,tangentials,2)
+    modes,lattice = contact_modes.enumerate_all_modes_3d(points, normals,tangentials,4)
     print('contact mode: ')
     print(modes)
+    print(len(modes))
     '''
     # Create contact manifold in the shape of an octagon.
     n = 6
@@ -211,12 +213,11 @@ def test_enum_contact_all_3d():
     tangentials = np.zeros((3,n,2))
     tangentials[0,:,0] = 1
     tangentials[1,:,1] = 1
-    modes = contact_modes.enumerate_contact_separating_3d_exponential(points, normals)
-    sliding_modes = contact_modes.enumerate_all_modes_3d_exponential(points, normals, tangentials, 2)
+    modes = contact_modes.enumerate_all_modes_3d(points, normals, tangentials, 4)
     print('contact mode: ')
     print(modes)
     print(len(modes))
-
+    
     # Create box-against-wall contact manifold.
     points = np.zeros((3, 8))
     normals = np.zeros((3, 8))
@@ -247,3 +248,5 @@ def test_enum_contact_all_3d():
     print(len(modes))
     # print(modes.shape)
     '''
+
+test_enum_contact_all_3d()

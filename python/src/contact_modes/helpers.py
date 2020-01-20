@@ -3,7 +3,8 @@ import numpy.matlib
 import pyhull
 from scipy.optimize import linprog
 import scipy as sp
-
+from time import time
+from .polytope import FaceLattice
 def hat_2d():
     pass
 
@@ -73,38 +74,24 @@ def exp_comb(m,n):
         c[i] = np.matlib.repmat(c_i.flatten(),1,n**i)
     return c.T
 
-def in_hull(p, hull):
-    dim = hull.shape[1]
+def in_convex_hull(p, hull):
     num_p = p.shape[0]
     num_v = hull.shape[0]
-
+    dim = hull.shape[1]
+    res = np.zeros(num_p, dtype=bool)
     pc = np.sum(hull, axis=0) / num_v
     A = hull - pc
     p = p - pc
-
-    M = np.concatenate((p,A),axis=0)
-    rank_M = np.linalg.matrix_rank(M)
-    rank_hull = np.linalg.matrix_rank(A)
-
-    if rank_M < dim:
-        B = sp.linalg.orth(M.T)
-        #Q = np.dot(np.dot(B,np.linalg.inv(np.dot(B.T,B))),B.T)
-        #M_ = np.dot(M,Q)
-        M_ = np.linalg.pinv(B).dot(M.T).T
-        p = M_[0:num_p,0:rank_M]
-        A = M_[num_p:,0:rank_M]
-
-    res = np.zeros(num_p,dtype=bool)
     for i in range(num_p):
-        mask = np.hstack((np.zeros(num_p,dtype=bool),np.ones(num_v,dtype=bool)))
-        mask[i] = True
-        if rank_hull < np.linalg.matrix_rank(M[mask]):
-            res[i] = False
-        else:
-            x = linprog(-p[i],A_ub=A, b_ub=np.ones(num_v))
-            res[i] = -x.fun<1
-
+        Ae = hull.T
+        be = p[i]
+        Au = np.ones((1,num_v))
+        bu = 1
+        bounds = tuple([(0,None) for i in range(num_v)])
+        x = linprog(np.zeros(num_v), A_ub=Au, b_ub=bu, A_eq = Ae, b_eq = be, bounds = bounds)
+        res[i] = x.success
     return res
+
 
 def zenotope_vertex(normals):
     # N: normals of the hyperplanes
@@ -112,19 +99,78 @@ def zenotope_vertex(normals):
     dim = normals.shape[1]
     V = np.vstack((normals[0],-normals[0]))
     Sign = np.array([[1],[-1]])
+    print('num of normals: ',num_normals)
     for i in range(1,num_normals):
+        print('normal',i)
         normal = normals[i]
         V_ = np.empty((0,dim))
         Sign_ = np.empty((0,i+1))
+
+        orth = sp.linalg.orth((V - V[1, :]).T)
+        if orth.shape[1] == dim:
+            null = np.zeros((6,0))
+        else:
+            null = sp.linalg.null_space((V - V[1, :]))
+        if orth.shape[1] != V.shape[1]:
+            orth = sp.linalg.orth((V - V[1, :]).T)
+            V_reduced = np.dot((V - V[1, :]), orth)
+        else:
+            orth = np.identity(V.shape[1])
+            V_reduced = V - V[1, :]
+        if V_reduced.shape[1] > 1:
+            ret = pyhull.qconvex('n', V_reduced)
+            Face = np.array([np.fromstring(ret[i], dtype=float, sep=' ') for i in range(2, len(ret))])
+            A = Face[:, 0:-1]
+            b = Face[:, -1]
+
+
         for k in range(V.shape[0]):
             v = V[k]
             v_pm = np.vstack((v + normal,v - normal))
             v_sign = np.hstack((np.array([Sign[k],Sign[k]]),[[1],[-1]]))
-            ind_v = np.logical_not(in_hull(v_pm, V))
+            '''
+            if V_reduced.shape[1]>1:
+                ind_v = np.logical_not(np.all(np.dot(A, np.dot(v_pm - V[1,:],orth).T) + np.vstack((b,b)).T <=0 ,axis=0)
+                                         & np.all(np.abs(np.dot(v_pm - V[1,:],null))<1e-5,axis=1))
+            else:
+                ind_v = np.logical_not(in_convex_hull(v_pm, V))
+            '''
+            ind_v = [True,True]
             Sign_ = np.vstack((Sign_,v_sign[ind_v]))
             V_ = np.vstack((V_,v_pm[ind_v]))
-            
-        V = V_
-        Sign = Sign_
+
+        # take the convex hull of V_
+        orth =  sp.linalg.orth((V_ - V_[1, :]).T)
+        if orth.shape[1] != V.shape[1]:
+            Vr = np.dot((V_ - V_[1, :]), orth)
+        else:
+            Vr = V_ - V_[1, :]
+        vertices = [list(Vr[i]) for i in range(Vr.shape[0])]
+        ret = pyhull.qconvex('Fx', vertices)
+
+        ind_vertices = [int(ret[j]) for j in range(1,len(ret))]
+        V = V_[ind_vertices]
+        Sign = Sign_[ind_vertices]
 
     return V, Sign
+
+def feasible_faces(Lattice, V, Sign, ind_feasible):
+    #Faces = []
+    Modes = []
+    for layer in Lattice.L:
+        for face in layer:
+            if any([i in face.verts for i in ind_feasible]):
+                sign = Sign[list(face.verts)]
+                mode_sign = np.zeros(Sign.shape[1],dtype=int)
+                mode_sign[np.all(sign == 1, axis=0)] = 1
+                mode_sign[np.all(sign == -1, axis=0)] = -1
+
+                #Faces.append(face)
+                Modes.append(mode_sign)
+                face.m = mode_sign
+            else:
+                layer.remove(face)
+    return Modes, Lattice
+
+
+

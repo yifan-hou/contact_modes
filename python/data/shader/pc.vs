@@ -1,4 +1,4 @@
-#version 330 core
+#version 410 core
 layout (location = 0) in vec3 aPos;
 layout (location = 3) in vec3 aOffset;
 layout (location = 4) in vec3 aColor;

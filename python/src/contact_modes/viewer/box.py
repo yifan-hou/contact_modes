@@ -13,6 +13,7 @@ class Box(Polytope):
         V[1,:] = 0.5*np.array([y, -y, y, -y, y, -y, y, -y])
         V[2,:] = 0.5*np.array([-z, -z, z, z, -z, -z, z, z])
         super(Box, self).__init__(V)
+        # super().__init__(V)
         self.x = x
         self.y = y
         self.z = z
