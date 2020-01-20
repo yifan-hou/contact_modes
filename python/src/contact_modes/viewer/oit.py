@@ -5,7 +5,7 @@ from .backend import *
 from .shader import *
 from .quad import Quad
 
-DEBUG = True
+DEBUG = False
 
 class OITRenderer(object):
     def __init__(self, window):
@@ -13,6 +13,7 @@ class OITRenderer(object):
         self.peel_depth = 16
         self.max_peel_depth = 64
         self.opacity = 0.6
+        self.show_controls = False
 
     def set_draw_func(self, draw_func):
         self.draw_func = draw_func
@@ -212,3 +213,6 @@ class OITRenderer(object):
         self.quad.draw(self.shader_peeling_final)
         self.shader_peeling_final.disable()
 
+    def render_controls(self):
+        if self.show_controls:
+            pass

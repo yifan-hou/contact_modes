@@ -9,7 +9,8 @@ import numpy as np
 from numpy.linalg import norm
 
 from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
-                           get_data, sample_twist_contact_separating)
+                           get_color, get_data,
+                           sample_twist_contact_separating)
 from contact_modes.viewer import (SE3, Application, Box, OITRenderer, Shader,
                                   Viewer, Window)
 from contact_modes.viewer.backend import *
@@ -62,6 +63,8 @@ class CSModesDemo(Application):
 
         # Create box.
         self.mesh = Box()
+        self.mesh_wireframe = Box()
+        self.mesh_wireframe.set_color(get_color('black'))
 
         # Basic lighting shader.
         vertex_source = os.path.join(get_data(), 'shader', 'basic_lighting.vs')
@@ -117,6 +120,7 @@ class CSModesDemo(Application):
             h = 0.001
             g = self.mesh.get_tf_world()
             self.mesh.set_tf_world(SE3.exp(h * self.twist) * g)
+            self.mesh_wireframe.set_tf_world(SE3.exp(h * self.twist) * g)
             # print(self.mesh.get_tf_world().matrix())
 
     def next_index(self, index, lattice):
@@ -287,20 +291,22 @@ class CSModesDemo(Application):
         projection = glm.perspective(glm.radians(50.0), width/height, 0.1, 100.0)
         shader.set_mat4('projection', np.asarray(projection))
 
-        # # lighting
-        # lightPos = np.array([1.0, 1.2, 2.0])
-        # shader.set_vec3('lightPos', np.asarray(lightPos))
-        # shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
+        # lighting
+        lightPos = np.array([1.0, 1.2, 2.0])
+        shader.set_vec3('lightPos', np.asarray(lightPos))
+        shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
 
-        # cameraPos = glm.vec3(glm.column(glm.inverse(view), 3))
-        # shader.set_vec3('viewPos', np.asarray(cameraPos))
+        cameraPos = glm.vec3(glm.column(glm.inverse(view), 3))
+        shader.set_vec3('viewPos', np.asarray(cameraPos))
 
         # ----------------------------------------------------------------------
         # 2. Draw scene
         # ----------------------------------------------------------------------
         self.mesh.draw(shader)
 
-        # self.mesh.draw_wireframe(shader)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        self.mesh_wireframe.draw(shader)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         self.grid.draw(shader)
 

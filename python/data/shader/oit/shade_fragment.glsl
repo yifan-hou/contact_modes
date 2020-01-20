@@ -32,24 +32,41 @@
 //
 //----------------------------------------------------------------------------------
 #version 410 core
-layout(location=0) in vec3 vTexCoord;
+layout(location=0) in vec3 objectColor;
+layout(location=1) in vec3 Normal;
+layout(location=2) in vec3 FragPos;
 
 uniform float uAlpha;
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+uniform vec3 lightColor;
 
 vec4 ShadeFragment()
 {
-    vec4 color;
+    vec4 FragColor;
 
-    float xWorldPos = vTexCoord.x;
-    float yWorldPos = vTexCoord.y;
-    float diffuse = vTexCoord.z;
+    // ambient
+    float ambientStrength = 0.2;
+    vec3 ambient = ambientStrength * lightColor;
 
-    float Freq = 4.0;
-    float i = floor(xWorldPos * Freq);
-    float j = floor(yWorldPos * Freq);
-    color.rgb = (mod(i, 2.5) == 0) ? vec3(.4,.85,.0) : vec3(1.0);
+    // diffuse 
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * lightColor;
 
-    color.rgb *= diffuse;
-    color.a = uAlpha;
-    return color;
+    // specular
+    float specularStrength = 0.2;
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * lightColor;  
+
+    vec3 result = (ambient + diffuse + specular) * objectColor;
+
+    // apply gamma correction
+    float gamma = 2.2;
+    FragColor = vec4(pow(result, vec3(1.0/gamma)), uAlpha);
+
+    return FragColor;
 }
