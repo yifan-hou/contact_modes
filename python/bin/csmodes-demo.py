@@ -12,7 +12,7 @@ from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            get_color, get_data,
                            sample_twist_contact_separating)
 from contact_modes.viewer import (SE3, Application, Box, OITRenderer, Shader,
-                                  Viewer, Window)
+                                  Viewer, Window, Arrow, Cylinder)
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
@@ -23,6 +23,9 @@ def box_ground():
     pass
 
 def box_wall():
+    pass
+
+def box_corner():
     pass
 
 class CSModesDemo(Application):
@@ -59,7 +62,7 @@ class CSModesDemo(Application):
 
         window = self.window
         window.set_on_init(self.init_win_0)
-        window.set_on_draw(self.draw_win_0)
+        window.set_on_draw(self.draw)
         # window.set_on_draw(self.render)
         window.set_on_key_press(self.on_key_press_0)
         # window.set_on_key_release(self.on_key_release_0)
@@ -69,40 +72,31 @@ class CSModesDemo(Application):
 
         # Create box.
         self.mesh = Box()
-        self.mesh_wireframe = Box()
+        self.mesh_wireframe = Box(1.0 + 1e-4, 1.0 + 1e-4, 1.0 + 1e-4)
         self.mesh_wireframe.set_color(get_color('black'))
 
         self.grid.get_tf_world().set_translation(np.array([0.0, 0.0, -0.5]))
+
+        self.arrow = Arrow()
+        # self.arrow = Cylinder(radius=0.25)
+        self.arrow.set_color(get_color('blue'))
 
         # Basic lighting shader.
         vertex_source = os.path.join(get_data(), 'shader', 'basic_lighting.vs')
         fragment_source = os.path.join(get_data(), 'shader', 'basic_lighting.fs')
         self.basic_lighting_shader = Shader([vertex_source], [fragment_source])
 
-        # Lamp shader.
-        vertex_source = os.path.join(get_data(), 'shader', 'flat.vs')
-        fragment_source = os.path.join(get_data(), 'shader', 'flat.fs')
-        self.lamp_shader = Shader([vertex_source], [fragment_source])
-
-        # Normal shader.
-        vertex_source = os.path.join(get_data(), 'shader', 'normals.vs')
-        fragment_source = os.path.join(get_data(), 'shader', 'normals.fs')
-        geometry_source = os.path.join(get_data(), 'shader', 'normals.gs')
-        self.normal_shader = Shader([vertex_source], [fragment_source], geometry_source)
-
-        # Lamp shader.
-        vertex_source = os.path.join(get_data(), 'shader', 'depth_quad.vs')
-        fragment_source = os.path.join(get_data(), 'shader', 'depth_quad.fs')
-        self.depth_shader = Shader([vertex_source], [fragment_source])
-
-        self.reset_gui()
+        self.reset_state()
 
         # Initialize transparency.
         self.oit_renderer = OITRenderer(self.window)
         self.oit_renderer.init_opengl()
         self.oit_renderer.set_draw_func(self.draw_scene)
 
-    def reset_gui(self):
+        # Initialize GUI.
+        self.init_gui()
+
+    def reset_state(self):
         # GUI state.
         self.play = False
         self.time = time()
@@ -125,7 +119,7 @@ class CSModesDemo(Application):
             # self.update_twist(self.index, self.cs_lattice)
             self.index = self.next_index(self.index, self.cs_lattice)
         else:
-            h = 0.001
+            h = 0.005
             g = self.mesh.get_tf_world()
             self.mesh.set_tf_world(SE3.exp(h * self.twist) * g)
             self.mesh_wireframe.set_tf_world(SE3.exp(h * self.twist) * g)
@@ -219,25 +213,19 @@ class CSModesDemo(Application):
 
         # imgui.end()
 
-    def draw_win_0(self):
+    def draw(self):
         # Clear frame.
         glClearColor(0.2, 0.3, 0.3, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_MULTISAMPLE)
-        # glEnable(GL_BLEND)
-        # glEnable(GL_CULL_FACE)
-
-        # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
         # Step.
         if self.play:
             self.update()
 
         # Render scene.
-        # self.render_scene()
-        # self.render_transparency()
         # self.draw_scene(self.basic_lighting_shader)
         self.oit_renderer.render()
 
@@ -245,37 +233,11 @@ class CSModesDemo(Application):
         self.imgui_impl.process_inputs()
         imgui.new_frame()
 
-        if imgui.begin_main_menu_bar():
-            if imgui.begin_menu("File", True):
-                clicked_quit, selected_quit = imgui.menu_item(
-                        "Quit", 'Cmd+Q', False, True
-                    )
-                if clicked_quit:
-                    exit(1)
-                imgui.end_menu()
-            imgui.end_main_menu_bar()
+        self.draw_menu()
 
-        imgui.begin("Contact Modes", True)
-        imgui.begin_group()
-        if imgui.button("prev"):
-            self.index = self.prev_index(self.index, self.cs_lattice)
-        imgui.same_line()
-        if not self.play:
-            if imgui.button("play"):
-                self.play = not self.play
-        else:
-            if imgui.button("stop"):
-                self.play = not self.play
-        imgui.same_line()
-        if imgui.button("next"):
-            self.index = self.next_index(self.index, self.cs_lattice)
-        imgui.end_group()
-        changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
-        imgui.text('contacting/separating modes:')
-        self.draw_lattice(self.cs_lattice, 'cs-lattice', self.index)
-        imgui.text('sliding/sticking modes:')
-        self.draw_lattice(self.ss_lattice, 'ss-lattice')
-        imgui.end()
+        self.draw_lattice_gui()
+
+        self.draw_scene_gui()
 
         # Render GUI
         imgui.render()
@@ -316,60 +278,106 @@ class CSModesDemo(Application):
         self.mesh_wireframe.draw(shader)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
-        self.grid.draw(shader)
+        if self.show_grid:
+            self.grid.draw(shader)
 
-    def render_scene(self):
-        # Render scene.
-        self.basic_lighting_shader.use()
+        self.arrow.draw(shader)
 
-        model = glm.mat4(1.0)
-        self.basic_lighting_shader.set_mat4('model', np.asarray(model))
+    def init_gui(self):
+        self.init_scene_gui()
 
-        view = self.camera.get_view()
-        self.basic_lighting_shader.set_mat4('view', np.asarray(view))
+    def draw_menu(self):
+        if imgui.begin_main_menu_bar():
+            if imgui.begin_menu("File", True):
+                clicked_quit, selected_quit = imgui.menu_item(
+                        "Quit", 'Cmd+Q', False, True
+                    )
+                if clicked_quit:
+                    exit(1)
+                imgui.end_menu()
+            imgui.end_main_menu_bar()
 
-        width = self.window.width
-        height = self.window.height
-        projection = glm.perspective(glm.radians(50.0), width/height, 0.1, 100.0)
-        self.basic_lighting_shader.set_mat4('projection', np.asarray(projection))
+    def draw_lattice_gui(self):
+        imgui.begin("Contact Modes", True)
+        imgui.begin_group()
+        if imgui.button("prev"):
+            self.index = self.prev_index(self.index, self.cs_lattice)
+        imgui.same_line()
+        if not self.play:
+            if imgui.button("play"):
+                self.play = not self.play
+        else:
+            if imgui.button("stop"):
+                self.play = not self.play
+        imgui.same_line()
+        if imgui.button("next"):
+            self.index = self.next_index(self.index, self.cs_lattice)
+        imgui.end_group()
+        changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
+        imgui.text('contacting/separating modes:')
+        self.draw_lattice(self.cs_lattice, 'cs-lattice', self.index)
+        imgui.text('sliding/sticking modes:')
+        self.draw_lattice(self.ss_lattice, 'ss-lattice')
+        imgui.end()
 
-        lightPos = np.array([1.0, 1.2, 2.0])
-        self.basic_lighting_shader.set_vec3('lightPos', np.asarray(lightPos))
-        self.basic_lighting_shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
+    def init_scene_gui(self):
+        self.load_scene = True
+        self.peel_depth = 16
+        self.alpha = 0.7
+        self.object_color = get_color('clay')
+        self.arrow_color = get_color('red')
+        self.obstacle_color = get_color('teal')
+        self.show_grid = True
 
-        # camera
-        cameraPos = glm.vec3(glm.column(glm.inverse(view), 3))
-        self.basic_lighting_shader.set_vec3('viewPos', np.asarray(cameraPos))
+    def draw_scene_gui(self):
+        imgui.begin("Scene", True)
 
-        # Draw object.
-        self.basic_lighting_shader.set_float('alpha', 0.5)
-        self.mesh.draw(self.basic_lighting_shader)
+        imgui.text('environment:')
+        imgui.push_style_var(imgui.STYLE_BUTTON_TEXT_ALIGN, (0.05, 0.5))
 
-        # Draw edges and light.
-        self.lamp_shader.use()
-        self.lamp_shader.set_mat4('model', np.asarray(model))
-        self.lamp_shader.set_mat4('view', np.asarray(view))
-        self.lamp_shader.set_mat4('projection', np.asarray(projection))
-        self.lamp_shader.set_vec3('objectColor', np.zeros((3,1), 'float32'))
+        if imgui.button('box-ground', width=100):
+            pass
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-        # if self.draw_wireframe:
-        self.mesh.draw(self.lamp_shader)
+        if imgui.button('box-wall', width=100):
+            pass
 
-        # Draw light box.
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-        light_model = glm.mat4(1.0)
-        light_model = glm.translate(light_model, lightPos)
-        self.lamp_shader.set_mat4('model', np.asarray(light_model))
-        self.lamp_shader.set_vec3('objectColor', np.ones((3,1), 'float32'))
-        # self.light_box.draw(self.lamp_shader)
+        if imgui.button('box-corner', width=100):
+            pass
 
-        # Draw grid.
-        model = glm.mat4(1.0)
-        model = glm.translate(model, np.array([0, 0, -0.5]))
-        self.lamp_shader.set_vec3('objectColor', np.ones((3,1),'float32'))
-        self.lamp_shader.set_mat4('model', np.asarray(model))
-        self.draw_grid(self.basic_lighting_shader)
+        if imgui.button('box-3', width=100):
+            pass
+
+        imgui.pop_style_var()
+
+        imgui.text('render:')
+        changed, self.alpha = imgui.slider_float('alpha', self.alpha, 0.0, 1.0)
+        if changed or self.load_scene:
+            self.oit_renderer.opacity = self.alpha
+
+        changed, self.peel_depth = imgui.slider_int(
+            'peel', self.peel_depth, 0, self.oit_renderer.max_peel_depth)
+        if changed or self.load_scene:
+            self.oit_renderer.peel_depth = self.peel_depth
+
+        changed, new_color = imgui.color_edit3('object', *self.object_color)
+        if changed or self.load_scene:
+            self.mesh.set_color(np.array(new_color))
+            self.object_color = new_color
+        
+        changed, new_color = imgui.color_edit3('arrow', *self.arrow_color)
+        if changed or self.load_scene:
+            self.arrow.set_color(np.array(new_color))
+            self.arrow_color = new_color
+
+        changed, new_color = imgui.color_edit3('obs', *self.obstacle_color)
+        if changed or self.load_scene:
+            # self.arrow.set_color(np.array(new_color))
+            self.obstacle_color = new_color
+
+        changed, self.show_grid = imgui.checkbox('grid', self.show_grid)
+        
+        self.load_scene = False
+        imgui.end()
 
     def on_key_press_0(self, win, key, scancode, action, mods):
         if key == glfw.KEY_SPACE and action == glfw.PRESS:
