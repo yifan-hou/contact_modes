@@ -2,6 +2,7 @@
 import os
 import sys
 from time import time
+import argparse
 
 import glm
 import imgui
@@ -15,7 +16,7 @@ from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
 
 from contact_modes.viewer import (SE3, Application, Arrow, Box, Cylinder,
                                   Icosphere, OITRenderer, Shader, Viewer,
-                                  Window)
+                                  Window, BasicLightingRenderer)
 
 from contact_modes.viewer.backend import *
 
@@ -25,11 +26,13 @@ np.seterr(divide='ignore')
 np.set_printoptions(suppress=True, precision=8)
 np.random.seed(0)
 
+parser = argparse.ArgumentParser(description='Contact Modes Demo')
+parser.add_argument('-t', '--oit', action='store_true')
+ARGS = parser.parse_args()
 
 class CSModesDemo(Application):
     def __init__(self):
         super().__init__()
-
 
         # Create contact modes lattice
         points = np.zeros((3,4))
@@ -46,8 +49,8 @@ class CSModesDemo(Application):
         tangentials = np.zeros((3, 4, 2))
         tangentials[0, :, 0] = 1
         tangentials[1, :, 1] = 1
-        modes, ss_lattice = enumerate_all_modes_3d(points, normals, tangentials, 4)
-        self.ss_lattice = ss_lattice#FaceLattice(M, d)
+        # modes, ss_lattice = enumerate_all_modes_3d(points, normals, tangentials, 4)
+        # self.ss_lattice = ss_lattice#FaceLattice(M, d)
 
     def init(self, viewer):
         super().init(viewer)
@@ -69,17 +72,15 @@ class CSModesDemo(Application):
         self.velocity_arrow = Arrow()
         self.contact_sphere = Icosphere()
 
-        # Basic lighting shader.
-        vertex_source = os.path.join(get_data(), 'shader', 'basic_lighting.vs')
-        fragment_source = os.path.join(get_data(), 'shader', 'basic_lighting.fs')
-        self.basic_lighting_shader = Shader([vertex_source], [fragment_source])
-
         self.reset_state()
 
-        # Initialize transparency.
-        #self.oit_renderer = OITRenderer(self.window)
-        #self.oit_renderer.init_opengl()
-        #self.oit_renderer.set_draw_func(self.draw_scene)
+        # Initialize renderer.
+        if ARGS.oit:
+            self.renderer = OITRenderer(self.window)
+        else:
+            self.renderer = BasicLightingRenderer(self.window)
+        self.renderer.init_opengl()
+        self.renderer.set_draw_func(self.draw_scene)
 
         # Initialize GUI.
         self.init_gui()
@@ -171,7 +172,7 @@ class CSModesDemo(Application):
 
         # Render scene.
         # self.draw_scene(self.basic_lighting_shader)
-        self.oit_renderer.render()
+        self.renderer.render()
 
         # Create GUI.
         self.imgui_impl.process_inputs()
@@ -324,7 +325,7 @@ class CSModesDemo(Application):
                 if F.parents is None:
                     continue
                 for H in F.parents:
-                    print(i,j)
+                    # print(i,j)
                     if H in pos:
                         hx, hy = pos[H]
                         draw_list.add_line(hx, hy, fx, fy, color, thickness)
@@ -372,12 +373,12 @@ class CSModesDemo(Application):
         imgui.text('render:')
         changed, self.alpha = imgui.slider_float('alpha', self.alpha, 0.0, 1.0)
         if changed or self.load_scene:
-            self.oit_renderer.opacity = self.alpha
+            self.renderer.opacity = self.alpha
 
         changed, self.peel_depth = imgui.slider_int(
-            'peel', self.peel_depth, 0, self.oit_renderer.max_peel_depth)
+            'peel', self.peel_depth, 0, self.renderer.max_peel_depth)
         if changed or self.load_scene:
-            self.oit_renderer.peel_depth = self.peel_depth
+            self.renderer.peel_depth = self.peel_depth
 
         changed, new_color = imgui.color_edit3('object', *self.object_color)
         if changed or self.load_scene:
