@@ -11,3 +11,7 @@ from .polytope import *
 from .oit import *
 from .grid import *
 from .quad import *
+from .cone import *
+from .cylinder import *
+from .arrow import *
+from .icosphere import *

@@ -40,6 +40,9 @@ class SE3(object):
 
     def set_translation(self, t):
         self.t = t.reshape((3,1))
+    
+    def set_rotation(self, R):
+        self.R.set_matrix(R)
 
     def __str__(self):
         return self.matrix().__str__()

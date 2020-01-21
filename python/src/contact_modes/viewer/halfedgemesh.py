@@ -482,6 +482,8 @@ class HalfedgeMesh(Shape):
         self.vao = None
         self.vbo = None
         self.ebo = None
+        # Wireframe
+        self.wireframe = None
 
     def copy(self):
         mesh = HalfedgeMesh()
@@ -767,6 +769,9 @@ class HalfedgeMesh(Shape):
 
         glBindVertexArray(0)
 
+    def set_wireframe(self, wireframe):
+        self.wireframe = wireframe
+
     def draw(self, shader):
         model = self.get_tf_world().matrix().T
         shader.set_mat4('model', model)
@@ -775,6 +780,13 @@ class HalfedgeMesh(Shape):
         glDrawArrays(GL_TRIANGLES, 0, self.num_elems_draw)
         # glDrawElements(GL_TRIANGLES, self.num_elems_draw, GL_UNSIGNED_INT, None)
         glBindVertexArray(0)
+
+    def draw_wireframe(self, shader):
+        if self.wireframe is not None:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            self.wireframe.get_tf_world().set_matrix(self.get_tf_world().matrix())
+            self.wireframe.draw(shader)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
     def draw_edges(self):
         glBegin(GL_LINES)

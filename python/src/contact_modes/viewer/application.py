@@ -86,6 +86,8 @@ class Application(object):
         pass
 
     def on_mouse_press(self, x, y, button, modifiers):
+        if imgui.get_io().want_capture_mouse:
+            return
         x = 2.0 * (x / self.window.width) - 1.0
         y = 2.0 * (y / self.window.height) - 1.0
         if button == 1: # left click
@@ -94,6 +96,8 @@ class Application(object):
             self.camera.mouse_zoom(x, y, False)
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
+        if imgui.get_io().want_capture_mouse:
+            return
         x = 2.0 * (x / self.window.width) - 1.0
         y = 2.0 * (y / self.window.height) - 1.0
         if button == 1: # left click
