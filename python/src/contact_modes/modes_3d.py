@@ -377,17 +377,12 @@ def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
             T[i,j,0:3] = T_i
             T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
 
-    # keep track for the modes of each face normal
-    s_mode_str = [str(i) for i in range(num_sliding_planes)]
-    N_modes = np.hstack((np.array(['s']*n_pts),np.matlib.repmat(s_mode_str,1,n_pts).flatten()))
     N = np.vstack((A,T.reshape(-1,T.shape[2])))
     #N = A
 
-    V, Sign = zenotope_vertex(N)# TODO: debug this!!!
+    V, Sign = zenotope_vertex(N)
 
     # project V into affine space
-    # Project dual points into affine space.
-    #null = sp.linalg.null_space((V - V[1,:]))
     orth = sp.linalg.orth((V - V[1,:]).T)
     if orth.shape[1] != V.shape[1]:
         V = np.dot((V-V[1,:]), orth)
@@ -407,28 +402,25 @@ def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
         vert_set = [int(x) for x in ret[i].split(' ')][1:]
         for v in vert_set:
             M[v,i-1] = 1
-    if DEBUG:
-        print('M')
-        print(M)
 
     # Build face lattice.
     L = FaceLattice(M, dim_V)
     ind_feasible = np.where(np.all(Sign[:,0:A.shape[0]] == 1,axis=1))[0]
     # get feasible mode out from face lattice
     Modes, FeasibleLattice = feasible_faces(L,V,Sign,ind_feasible)
-    '''
+    # filter lattice
     Modes_str = []
     for mode in Modes:
         mode_str = ['s'] * n_pts
         for i in range(n_pts):
-            m = mode[[i,n_pts+i*2,n_pts+i*2+1]] #TODO: make this generealized
+            m = mode[[i,n_pts+i*num_sliding_planes,n_pts+i*num_sliding_planes+1]] #TODO: make this generealized
             if m[0] == 1:
                 mode_str[i] = 's'
             else:
                 mode_str[i] = str(m[1:])
         if not mode_str in Modes_str:
             Modes_str.append(mode_str)
-    '''
+
 
     return Modes, FeasibleLattice
 

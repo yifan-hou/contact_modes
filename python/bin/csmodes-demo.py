@@ -10,7 +10,8 @@ from numpy.linalg import norm
 
 from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            get_color, get_data,
-                           sample_twist_contact_separating)
+                           sample_twist_contact_separating,
+                           enumerate_all_modes_3d)
 from contact_modes.viewer import (SE3, Application, Box, OITRenderer, Shader,
                                   Viewer, Window)
 from contact_modes.viewer.backend import *
@@ -43,6 +44,10 @@ class CSModesDemo(Application):
         self.cs_lattice = lattice
 
         # Create contact modes lattice
+        tangentials = np.zeros((3, 4, 2))
+        tangentials[0, :, 0] = 1
+        tangentials[1, :, 1] = 1
+        modes, ss_lattice = enumerate_all_modes_3d(points, normals, tangentials, 4)
         M = np.array([[1, 1, 0, 0, 1, 0],
                 [1, 1, 1, 0, 0, 0],
                 [1, 0, 1, 1, 0, 0],
@@ -52,7 +57,7 @@ class CSModesDemo(Application):
                 [0, 0, 1, 1, 0, 1],
                 [0, 0, 0, 1, 1, 1]])
         d = 3
-        self.ss_lattice = FaceLattice(M, d)
+        self.ss_lattice = ss_lattice#FaceLattice(M, d)
 
     def init(self, viewer):
         super().init(viewer)
@@ -98,9 +103,9 @@ class CSModesDemo(Application):
         self.reset_gui()
 
         # Initialize transparency.
-        self.oit_renderer = OITRenderer(self.window)
-        self.oit_renderer.init_opengl()
-        self.oit_renderer.set_draw_func(self.draw_scene)
+        #self.oit_renderer = OITRenderer(self.window)
+        #self.oit_renderer.init_opengl()
+        #self.oit_renderer.set_draw_func(self.draw_scene)
 
     def reset_gui(self):
         # GUI state.
@@ -207,8 +212,10 @@ class CSModesDemo(Application):
                 if F.parents is None:
                     continue
                 for H in F.parents:
-                    hx, hy = pos[H]
-                    draw_list.add_line(hx, hy, fx, fy, color, thickness)
+                    print(i,j)
+                    if H in pos:
+                        hx, hy = pos[H]
+                        draw_list.add_line(hx, hy, fx, fy, color, thickness)
 
         if index is not None:
             x, y = pos[L[index[0]][index[1]]]
@@ -238,8 +245,8 @@ class CSModesDemo(Application):
         # Render scene.
         # self.render_scene()
         # self.render_transparency()
-        # self.draw_scene(self.basic_lighting_shader)
-        self.oit_renderer.render()
+        self.draw_scene(self.basic_lighting_shader)
+        #self.oit_renderer.render()
 
         # Create GUI.
         self.imgui_impl.process_inputs()

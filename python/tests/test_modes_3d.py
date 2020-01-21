@@ -189,12 +189,10 @@ def test_enum_contact_all_3d():
     points[:, 2] = np.array([-1, -1, 0])
     points[:, 3] = np.array([1, -1, 0])
     normals[2, :] = 1.0
-    # print(points)
-    # print(normals)
-    #
     tangentials = np.zeros((3,4,2))
     tangentials[0,:,0] = 1
     tangentials[1,:,1] = 1
+
     modes_1 = contact_modes.enumerate_contact_separating_3d_exponential(points, normals)
     #modes_2 = contact_modes.enumerate_all_modes_3d_exponential(points, normals,tangentials,2)
     modes,lattice = contact_modes.enumerate_all_modes_3d(points, normals,tangentials,4)
