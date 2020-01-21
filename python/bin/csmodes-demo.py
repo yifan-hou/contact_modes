@@ -11,41 +11,23 @@ from numpy.linalg import norm
 from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            get_color, get_data,
                            sample_twist_contact_separating)
-from contact_modes.viewer import (SE3, Application, Box, OITRenderer, Shader,
-                                  Viewer, Window, Arrow, Cylinder)
+from contact_modes.viewer import (SE3, Application, Arrow, Box, Cylinder,
+                                  Icosphere, OITRenderer, Shader, Viewer,
+                                  Window)
 from contact_modes.viewer.backend import *
+
+from modes_cases import *
 
 np.seterr(divide='ignore')
 np.set_printoptions(suppress=True, precision=8)
 np.random.seed(0)
 
-def box_ground():
-    pass
-
-def box_wall():
-    pass
-
-def box_corner():
-    pass
 
 class CSModesDemo(Application):
     def __init__(self):
         super().__init__()
 
-        # Create contact modes lattice
-        points = np.zeros((3,4))
-        normals = np.zeros((3,4))
-        points[:,0] = np.array([ 0.5, 0.5, -0.5])
-        points[:,1] = np.array([-0.5, 0.5, -0.5])
-        points[:,2] = np.array([-0.5,-0.5, -0.5])
-        points[:,3] = np.array([ 0.5,-0.5, -0.5])
-        normals[2,:] = 1.0
-        self.points = points
-        self.normals = normals
-        modes, lattice = enumerate_contact_separating_3d(points, normals)
-        self.cs_lattice = lattice
-
-        # Create contact modes lattice
+        # TODO REMOVE Create contact modes lattice
         M = np.array([[1, 1, 0, 0, 1, 0],
                 [1, 1, 1, 0, 0, 0],
                 [1, 0, 1, 1, 0, 0],
@@ -70,16 +52,12 @@ class CSModesDemo(Application):
     def init_win_0(self):
         super().init_win()
 
-        # Create box.
-        self.mesh = Box()
-        self.mesh_wireframe = Box(1.0 + 1e-4, 1.0 + 1e-4, 1.0 + 1e-4)
-        self.mesh_wireframe.set_color(get_color('black'))
+        # Create basic test case.
+        self.build_mode_case(box_ground)
 
-        self.grid.get_tf_world().set_translation(np.array([0.0, 0.0, -0.5]))
-
-        self.arrow = Arrow()
-        # self.arrow = Cylinder(radius=0.25)
-        self.arrow.set_color(get_color('blue'))
+        self.normal_arrow = Arrow()
+        self.velocity_arrow = Arrow()
+        self.contact_sphere = Icosphere()
 
         # Basic lighting shader.
         vertex_source = os.path.join(get_data(), 'shader', 'basic_lighting.vs')
@@ -96,6 +74,20 @@ class CSModesDemo(Application):
         # Initialize GUI.
         self.init_gui()
 
+    # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # State 
+    # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    def build_mode_case(self, mode_case_func):
+        self.points, self.normals, self.target, self.obs = mode_case_func()
+
+        self.target_start = self.target.get_tf_world().matrix()
+
+        # Build mode lattices.
+        modes, lattice = enumerate_contact_separating_3d(self.points, self.normals)
+        self.cs_lattice = lattice
+
     def reset_state(self):
         # GUI state.
         self.play = False
@@ -111,7 +103,7 @@ class CSModesDemo(Application):
         F = lattice.L[y][x]
         self.twist = sample_twist_contact_separating(self.points, self.normals, F.m)
         self.time = time()
-        self.mesh.o2w = SE3.identity()
+        self.target.get_tf_world().set_matrix(self.target_start)
     
     def update(self):
         t = time()
@@ -120,10 +112,10 @@ class CSModesDemo(Application):
             self.index = self.next_index(self.index, self.cs_lattice)
         else:
             h = 0.005
-            g = self.mesh.get_tf_world()
-            self.mesh.set_tf_world(SE3.exp(h * self.twist) * g)
-            self.mesh_wireframe.set_tf_world(SE3.exp(h * self.twist) * g)
-            # print(self.mesh.get_tf_world().matrix())
+            g = self.target.get_tf_world()
+            g_hat = SE3.log(SE3.exp(h * self.twist) * g)
+            self.target.set_tf_world(SE3.exp(g_hat))
+            # print(self.target.get_tf_world().matrix())
 
     def next_index(self, index, lattice):
         L = lattice.L
@@ -148,6 +140,127 @@ class CSModesDemo(Application):
             x = len(L[y])-1
         self.update_twist((y, x), lattice)
         return (y, x)
+
+    # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # Draw
+    # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+
+    def draw(self):
+        # Clear frame.
+        glClearColor(0.2, 0.3, 0.3, 1.0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_MULTISAMPLE)
+
+        # Step.
+        if self.play:
+            self.update()
+
+        # Render scene.
+        # self.draw_scene(self.basic_lighting_shader)
+        self.oit_renderer.render()
+
+        # Create GUI.
+        self.imgui_impl.process_inputs()
+        imgui.new_frame()
+
+        self.draw_menu()
+
+        self.draw_lattice_gui()
+
+        self.draw_scene_gui()
+
+        # Render GUI
+        imgui.render()
+        self.imgui_impl.render(imgui.get_draw_data())
+
+    def draw_scene(self, shader):
+        # ----------------------------------------------------------------------
+        # 1. Setup shader uniforms
+        # ----------------------------------------------------------------------
+        shader.use()
+
+        # model view projection
+        model = glm.mat4(1.0)
+        shader.set_mat4('model', np.asarray(model))
+
+        view = self.camera.get_view()
+        shader.set_mat4('view', np.asarray(view))
+
+        width = self.window.width
+        height = self.window.height
+        projection = glm.perspective(glm.radians(50.0), width/height, 0.1, 100.0)
+        shader.set_mat4('projection', np.asarray(projection))
+
+        # lighting
+        lightPos = np.array([1.0, 1.2, 2.0])
+        shader.set_vec3('lightPos', np.asarray(lightPos))
+        shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
+
+        cameraPos = glm.vec3(glm.column(glm.inverse(view), 3))
+        shader.set_vec3('viewPos', np.asarray(cameraPos))
+
+        # ----------------------------------------------------------------------
+        # 2. Draw scene
+        # ----------------------------------------------------------------------
+        self.target.draw(shader)
+        self.target.draw_wireframe(shader)
+
+        for o in self.obs:
+            o.draw(shader)
+
+        if self.show_grid:
+            self.grid.draw(shader)
+
+        index = self.index
+        points = self.points
+        normals = self.normals
+        csmode = self.cs_lattice.L[index[0]][index[1]].m
+        for i in range(len(csmode)):
+            pass
+
+        # self.arrow.draw(shader)
+        # self.contact_sphere.draw(shader)
+
+    def init_gui(self):
+        self.init_scene_gui()
+
+    def draw_menu(self):
+        if imgui.begin_main_menu_bar():
+            if imgui.begin_menu("File", True):
+                clicked_quit, selected_quit = imgui.menu_item(
+                        "Quit", 'Cmd+Q', False, True
+                    )
+                if clicked_quit:
+                    exit(1)
+                imgui.end_menu()
+            imgui.end_main_menu_bar()
+
+    def draw_lattice_gui(self):
+        imgui.begin("Contact Modes", True)
+        imgui.begin_group()
+        if imgui.button("prev"):
+            self.index = self.prev_index(self.index, self.cs_lattice)
+        imgui.same_line()
+        if not self.play:
+            if imgui.button("play"):
+                self.play = not self.play
+        else:
+            if imgui.button("stop"):
+                self.play = not self.play
+        imgui.same_line()
+        if imgui.button("next"):
+            self.index = self.next_index(self.index, self.cs_lattice)
+        imgui.end_group()
+        changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
+        imgui.text('contacting/separating modes:')
+        self.draw_lattice(self.cs_lattice, 'cs-lattice', self.index)
+        imgui.text('sliding/sticking modes:')
+        self.draw_lattice(self.ss_lattice, 'ss-lattice')
+        imgui.end()
 
     def draw_lattice(self, L, name='lattice', index=None):
         # imgui.begin("Contacting/Separating Modes")
@@ -213,119 +326,14 @@ class CSModesDemo(Application):
 
         # imgui.end()
 
-    def draw(self):
-        # Clear frame.
-        glClearColor(0.2, 0.3, 0.3, 1.0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_MULTISAMPLE)
-
-        # Step.
-        if self.play:
-            self.update()
-
-        # Render scene.
-        # self.draw_scene(self.basic_lighting_shader)
-        self.oit_renderer.render()
-
-        # Create GUI.
-        self.imgui_impl.process_inputs()
-        imgui.new_frame()
-
-        self.draw_menu()
-
-        self.draw_lattice_gui()
-
-        self.draw_scene_gui()
-
-        # Render GUI
-        imgui.render()
-        self.imgui_impl.render(imgui.get_draw_data())
-
-    def draw_scene(self, shader):
-        # ----------------------------------------------------------------------
-        # 1. Setup shader uniforms
-        # ----------------------------------------------------------------------
-        shader.use()
-
-        # model view projection
-        model = glm.mat4(1.0)
-        shader.set_mat4('model', np.asarray(model))
-
-        view = self.camera.get_view()
-        shader.set_mat4('view', np.asarray(view))
-
-        width = self.window.width
-        height = self.window.height
-        projection = glm.perspective(glm.radians(50.0), width/height, 0.1, 100.0)
-        shader.set_mat4('projection', np.asarray(projection))
-
-        # lighting
-        lightPos = np.array([1.0, 1.2, 2.0])
-        shader.set_vec3('lightPos', np.asarray(lightPos))
-        shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
-
-        cameraPos = glm.vec3(glm.column(glm.inverse(view), 3))
-        shader.set_vec3('viewPos', np.asarray(cameraPos))
-
-        # ----------------------------------------------------------------------
-        # 2. Draw scene
-        # ----------------------------------------------------------------------
-        self.mesh.draw(shader)
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-        self.mesh_wireframe.draw(shader)
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-
-        if self.show_grid:
-            self.grid.draw(shader)
-
-        self.arrow.draw(shader)
-
-    def init_gui(self):
-        self.init_scene_gui()
-
-    def draw_menu(self):
-        if imgui.begin_main_menu_bar():
-            if imgui.begin_menu("File", True):
-                clicked_quit, selected_quit = imgui.menu_item(
-                        "Quit", 'Cmd+Q', False, True
-                    )
-                if clicked_quit:
-                    exit(1)
-                imgui.end_menu()
-            imgui.end_main_menu_bar()
-
-    def draw_lattice_gui(self):
-        imgui.begin("Contact Modes", True)
-        imgui.begin_group()
-        if imgui.button("prev"):
-            self.index = self.prev_index(self.index, self.cs_lattice)
-        imgui.same_line()
-        if not self.play:
-            if imgui.button("play"):
-                self.play = not self.play
-        else:
-            if imgui.button("stop"):
-                self.play = not self.play
-        imgui.same_line()
-        if imgui.button("next"):
-            self.index = self.next_index(self.index, self.cs_lattice)
-        imgui.end_group()
-        changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
-        imgui.text('contacting/separating modes:')
-        self.draw_lattice(self.cs_lattice, 'cs-lattice', self.index)
-        imgui.text('sliding/sticking modes:')
-        self.draw_lattice(self.ss_lattice, 'ss-lattice')
-        imgui.end()
-
     def init_scene_gui(self):
         self.load_scene = True
         self.peel_depth = 16
         self.alpha = 0.7
         self.object_color = get_color('clay')
-        self.arrow_color = get_color('red')
+        self.normal_color = get_color('green')
+        self.velocity_color = get_color('yellow')
+        self.contact_color = get_color('red')
         self.obstacle_color = get_color('teal')
         self.show_grid = True
 
@@ -336,13 +344,13 @@ class CSModesDemo(Application):
         imgui.push_style_var(imgui.STYLE_BUTTON_TEXT_ALIGN, (0.05, 0.5))
 
         if imgui.button('box-ground', width=100):
-            pass
+            self.build_mode_case(box_ground)
 
         if imgui.button('box-wall', width=100):
-            pass
+            self.build_mode_case(box_wall)
 
         if imgui.button('box-corner', width=100):
-            pass
+            self.build_mode_case(box_corner)
 
         if imgui.button('box-3', width=100):
             pass
@@ -361,17 +369,23 @@ class CSModesDemo(Application):
 
         changed, new_color = imgui.color_edit3('object', *self.object_color)
         if changed or self.load_scene:
-            self.mesh.set_color(np.array(new_color))
+            self.target.set_color(np.array(new_color))
             self.object_color = new_color
         
-        changed, new_color = imgui.color_edit3('arrow', *self.arrow_color)
+        changed, new_color = imgui.color_edit3('normal', *self.normal_color)
         if changed or self.load_scene:
-            self.arrow.set_color(np.array(new_color))
-            self.arrow_color = new_color
+            self.normal_arrow.set_color(np.array(new_color))
+            self.normal_color = new_color
+        
+        changed, new_color = imgui.color_edit3('vel', *self.velocity_color)
+        if changed or self.load_scene:
+            self.velocity_arrow.set_color(np.array(new_color))
+            self.velocity_color = new_color
 
         changed, new_color = imgui.color_edit3('obs', *self.obstacle_color)
         if changed or self.load_scene:
-            # self.arrow.set_color(np.array(new_color))
+            for o in self.obs:
+                o.set_color(np.array(new_color))
             self.obstacle_color = new_color
 
         changed, self.show_grid = imgui.checkbox('grid', self.show_grid)
