@@ -1,26 +1,24 @@
 #!/usr/bin/env python3
+import argparse
 import os
 import sys
 from time import time
-import argparse
 
-import glm
 import imgui
 import numpy as np
 from numpy.linalg import norm
 
-from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
-                           get_color, get_data,
-                           sample_twist_contact_separating,
-                           enumerate_all_modes_3d)
+import glm
+from contact_modes import (FaceLattice, enumerate_all_modes_3d,
+                           enumerate_contact_separating_3d, get_color,
+                           get_data, sample_twist_contact_separating,
+                           sample_twist_sliding_sticking)
 from contact_modes.modes_cases import *
-
-from contact_modes.viewer import (SE3, Application, Arrow, Box, Cylinder,
+from contact_modes.viewer import (SE3, Application, Arrow,
+                                  BasicLightingRenderer, Box, Cylinder,
                                   Icosphere, OITRenderer, Shader, Viewer,
-                                  Window, BasicLightingRenderer)
-
+                                  Window)
 from contact_modes.viewer.backend import *
-
 
 np.seterr(divide='ignore')
 np.set_printoptions(suppress=True, precision=8)
@@ -74,6 +72,9 @@ class CSModesDemo(Application):
     def init_win_0(self):
         super().init_win()
 
+        # Initialize GUI.
+        self.init_gui()
+
         # Create basic test case.
         self.build_mode_case(box_ground)
 
@@ -91,9 +92,6 @@ class CSModesDemo(Application):
         self.renderer.init_opengl()
         self.renderer.set_draw_func(self.draw_scene)
 
-        # Initialize GUI.
-        self.init_gui()
-
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
     # State 
@@ -105,8 +103,15 @@ class CSModesDemo(Application):
         self.target_start = self.target.get_tf_world().matrix()
 
         # Build mode lattices.
-        modes, lattice = enumerate_contact_separating_3d(self.points, self.normals)
-        self.cs_lattice = lattice
+        solver = self.solver_list[self.solver_index]
+        if solver == 'cs-modes':
+            modes, lattice = enumerate_contact_separating_3d(self.points, self.normals)
+            self.cs_lattice = lattice
+        if solver == 'all-modes':
+            modes, lattice = enumerate_all_modes_3d(self.points, -self.normals, self.tangents, 4)
+            self.cs_lattice = lattice
+
+        self.reset_state()        
 
     def reset_state(self):
         # GUI state.
@@ -115,13 +120,18 @@ class CSModesDemo(Application):
         self.loop_time = 2.0 # seconds
         self.twist = np.zeros((6,1))
         self.index = (0,0)
-        self.lattice_width  = 100
         self.lattice_height = 265
 
     def update_twist(self, index, lattice):
         y, x = index
         F = lattice.L[y][x]
-        self.twist = sample_twist_contact_separating(self.points, self.normals, F.m)
+
+        solver = self.solver_list[self.solver_index]
+        if solver == 'cs-modes':
+            self.twist = sample_twist_contact_separating(self.points, self.normals, F.m)
+        if solver == 'all-modes':
+            self.twist = sample_twist_sliding_sticking(self.points, -self.normals, self.tangents, F.m)
+
         self.time = time()
         self.target.get_tf_world().set_matrix(self.target_start)
     
@@ -407,7 +417,7 @@ class CSModesDemo(Application):
 
     def init_scene_gui(self):
         self.load_scene = True
-        self.solver_index = 0
+        self.solver_index = 1
         self.solver_list = ['all-modes', 'cs-modes', 'csss-modes', 'exp']
         self.case_index = 0
         self.case_list = ['box-ground', 'box-wall', 'box-corner']
