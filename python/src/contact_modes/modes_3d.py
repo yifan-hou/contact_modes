@@ -53,8 +53,41 @@ def sample_twist_contact_separating(points, normals, modestr):
     else:
         return int_pt_cone(H)
 
-def sample_twist_sliding_sticking(points, normals, modestr):
-    pass
+def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
+    # Create halfspace inequalities, Ax - b ≥ 0.
+    mode = modestr
+    n_pts = points.shape[1]
+    num_sliding_planes = int(len(modestr)/n_pts - 1)
+    A = np.zeros((n_pts, 6))
+    for i in range(n_pts):
+        A[i, 0:3] = normals[:, i].flatten()
+        A[i, 3:6] = np.dot(normals[:, i].T, hat(points[:, i])).flatten()
+
+    # Get linearized sliding sections from number of sliding modes
+    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
+    T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
+    for i in range(n_pts):
+        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
+        for j in range(num_sliding_planes):
+            T_i = np.dot(R,D[j])
+            T[i,j,0:3] = T_i
+            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
+
+    N = np.vstack((A,T.reshape(-1,T.shape[2])))
+
+    C = N[mode==0]
+    H = np.vstack((N[mode==1], -N[mode==-1]))
+
+    if all(C.shape):
+        null = sp.linalg.null_space(C)
+        H = np.dot(H, null)
+        # print(H.shape)
+        x = null @ int_pt_cone(H)
+        # return null @ int_pt_cone(H)
+        # print(A @ x)
+        return x
+    else:
+        return int_pt_cone(H)
 
 def enumerate_contact_separating_3d_exponential(points, normals):
     # Check inputs dimensions.
@@ -410,17 +443,32 @@ def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
     Modes, FeasibleLattice = feasible_faces(L,V,Sign,ind_feasible)
     # filter lattice
     Modes_str = []
-    for mode in Modes:
-        mode_str = ['s'] * n_pts
-        for i in range(n_pts):
-            m = mode[[i,n_pts+i*num_sliding_planes,n_pts+i*num_sliding_planes+1]] #TODO: make this generealized
-            if m[0] == 1:
-                mode_str[i] = 's'
+    Modes_dict = dict()
+    FilteredLattice = FaceLattice()
+    FilteredLattice.L = []
+    for layer in FeasibleLattice.L:
+        FilteredLattice.L.append([])
+        for face in layer:
+            mode_str = ['s'] * n_pts
+            mode = face.m
+            for i in range(n_pts):
+                m = mode[[i,n_pts+i*num_sliding_planes,n_pts+i*num_sliding_planes+1]]
+                if m[0] == 1:
+                    mode_str[i] = 's'
+                else:
+                    mode_str[i] = str(m[1:])
+            if not mode_str in Modes_str:
+                Modes_str.append(mode_str)
+                Modes_dict[str(mode_str)] = face
+                face.m_str = mode_str
+                face.modes = [face.m]
+                FilteredLattice.L[-1].append(face)
             else:
-                mode_str[i] = str(m[1:])
-        if not mode_str in Modes_str:
-            Modes_str.append(mode_str)
+                Modes_dict[str(mode_str)].verts += face.verts
+                Modes_dict[str(mode_str)].parents += face.parents
+                Modes_dict[str(mode_str)].modes += [face.m]
+                #layer.remove(face)
 
 
-    return Modes, FeasibleLattice
+    return Modes_str, FilteredLattice
 

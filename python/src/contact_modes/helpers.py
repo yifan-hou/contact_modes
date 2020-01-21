@@ -155,22 +155,24 @@ def zenotope_vertex(normals):
     return V, Sign
 
 def feasible_faces(Lattice, V, Sign, ind_feasible):
-    #Faces = []
+    FeasibleLattice = FaceLattice()
     Modes = []
-    for layer in Lattice.L:
-        for face in layer:
-            if any([i in face.verts for i in ind_feasible]):
-                sign = Sign[list(face.verts)]
+    FeasibleLattice.L = []
+
+    for i in range(len(Lattice.L)):
+        FeasibleLattice.L.append([])
+        for j in range(len(Lattice.L[i])):
+            if any([k in Lattice.L[i][j].verts for k in ind_feasible]):
+                sign = Sign[list(Lattice.L[i][j].verts)]
                 mode_sign = np.zeros(Sign.shape[1],dtype=int)
                 mode_sign[np.all(sign == 1, axis=0)] = 1
                 mode_sign[np.all(sign == -1, axis=0)] = -1
 
                 #Faces.append(face)
                 Modes.append(mode_sign)
-                face.m = mode_sign
-            else:
-                layer.remove(face)
-    return Modes, Lattice
+                Lattice.L[i][j].m = mode_sign
+                FeasibleLattice.L[i].append(Lattice.L[i][j])
+    return Modes, FeasibleLattice
 
 
 
