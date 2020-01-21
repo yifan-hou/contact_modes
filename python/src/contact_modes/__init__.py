@@ -5,3 +5,4 @@ from .modes_3d import *
 from .affine import *
 from .polytope import *
 from .util import *
+from .modes_cases import *

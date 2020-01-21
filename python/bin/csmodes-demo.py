@@ -13,6 +13,7 @@ from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            get_color, get_data,
                            sample_twist_contact_separating,
                            enumerate_all_modes_3d)
+from contact_modes.modes_cases import *
 
 from contact_modes.viewer import (SE3, Application, Arrow, Box, Cylinder,
                                   Icosphere, OITRenderer, Shader, Viewer,
@@ -20,7 +21,6 @@ from contact_modes.viewer import (SE3, Application, Arrow, Box, Cylinder,
 
 from contact_modes.viewer.backend import *
 
-from modes_cases import *
 
 np.seterr(divide='ignore')
 np.set_printoptions(suppress=True, precision=8)
@@ -52,15 +52,24 @@ class CSModesDemo(Application):
         # modes, ss_lattice = enumerate_all_modes_3d(points, normals, tangentials, 4)
         # self.ss_lattice = ss_lattice#FaceLattice(M, d)
 
+        M = np.array([[1, 1, 0, 0, 1, 0],
+                  [1, 1, 1, 0, 0, 0],
+                  [1, 0, 1, 1, 0, 0],
+                  [1, 0, 0, 1, 1, 0],
+                  [0, 1, 0, 0, 1, 1],
+                  [0, 1, 1, 0, 0, 1],
+                  [0, 0, 1, 1, 0, 1],
+                  [0, 0, 0, 1, 1, 1]])
+        d = 3
+        self.ss_lattice = FaceLattice(M, d)
+
     def init(self, viewer):
         super().init(viewer)
 
         window = self.window
         window.set_on_init(self.init_win_0)
         window.set_on_draw(self.draw)
-        # window.set_on_draw(self.render)
         window.set_on_key_press(self.on_key_press_0)
-        # window.set_on_key_release(self.on_key_release_0)
 
     def init_win_0(self):
         super().init_win()
@@ -91,7 +100,7 @@ class CSModesDemo(Application):
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
     def build_mode_case(self, mode_case_func):
-        self.points, self.normals, self.target, self.obs = mode_case_func()
+        self.points, self.normals, self.tangents, self.target, self.obs = mode_case_func()
 
         self.target_start = self.target.get_tf_world().matrix()
 
@@ -268,14 +277,15 @@ class CSModesDemo(Application):
         imgui.end_group()
         changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
         imgui.text('contacting/separating modes:')
-        self.draw_lattice(self.cs_lattice, 'cs-lattice', self.index)
+        if self.big_lattice:
+            self.draw_big_lattice(self.cs_lattice, 'cs-lattice', self.index)
+        else:
+            self.draw_lattice(self.cs_lattice, 'cs-lattice', self.index)
         imgui.text('sliding/sticking modes:')
         self.draw_lattice(self.ss_lattice, 'ss-lattice')
         imgui.end()
 
     def draw_lattice(self, L, name='lattice', index=None):
-        # imgui.begin("Contacting/Separating Modes")
-
         imgui.begin_child(name, 0, self.lattice_height, border=True)
 
         win_pos = imgui.get_window_position()
@@ -337,10 +347,70 @@ class CSModesDemo(Application):
 
         imgui.end_child()
 
-        # imgui.end()
+    def draw_big_lattice(self, L, name='lattice', index=None):
+        imgui.begin_child(name, 0, self.lattice_height, border=True)
+
+        win_pos = imgui.get_window_position()
+
+        L = L.L
+
+        # Calculate rank and node separation sizes.
+        region_min = imgui.get_window_content_region_min()
+        region_max = imgui.get_window_content_region_max()
+        region_size = (region_max.x - region_min.x, region_max.y - region_min.y)
+
+        n_r = len(L)+1
+        n_n = np.max([len(l) for l in L])+1
+        rank_sep = region_size[1] / n_r
+        node_sep = region_size[0] / n_n
+        # radius = np.min([node_sep, rank_sep]) / 8
+        radius = 2.5
+        off_x = win_pos.x + region_min.x + node_sep
+        off_y = win_pos.y + region_min.y + rank_sep
+
+        draw_list = imgui.get_window_draw_list()
+
+        # Create ranks manually
+        color = imgui.get_color_u32_rgba(*get_color('safety yellow'), 1.0)
+        offset = np.max([(len(l) - 1) * node_sep for l in L])/2
+        for i in range(len(L)):
+            n_f = len(L[i])
+            l = max(radius, (n_f - 1) * node_sep)
+            x0 = off_x + offset + -l/2 + 0
+            y0 = off_y + rank_sep * i
+            x1 = off_x + offset + -l/2 + l
+            y1 = off_y + rank_sep * i
+            draw_list.add_line(x0, y0, x1, y1, color, radius)
+
+        # Create lattice
+        thickness = 1
+        # for i in range(len(L)):
+        #     for j in range(len(L[i])):
+        #         F = L[i][j]
+        #         # f_n = names[F]
+        #         # print(f_n)
+        #         fx, fy = pos[F]
+        #         if F.parents is None:
+        #             continue
+        #         for H in F.parents:
+        #             # print(i,j)
+        #             if H in pos:
+        #                 hx, hy = pos[H]
+        #                 draw_list.add_line(hx, hy, fx, fy, color, thickness)
+
+        # if index is not None:
+        #     x, y = pos[L[index[0]][index[1]]]
+        #     active = imgui.get_color_u32_rgba(1.0,0.0,0.0,1.0)
+        #     draw_list.add_circle_filled(x, y, radius, active)
+
+        imgui.end_child()
 
     def init_scene_gui(self):
         self.load_scene = True
+        self.solver_index = 0
+        self.solver_list = ['all-modes', 'cs-modes', 'csss-modes', 'exp']
+        self.case_index = 0
+        self.case_list = ['box-ground', 'box-wall', 'box-corner']
         self.peel_depth = 16
         self.alpha = 0.7
         self.object_color = get_color('clay')
@@ -349,26 +419,28 @@ class CSModesDemo(Application):
         self.contact_color = get_color('red')
         self.obstacle_color = get_color('teal')
         self.show_grid = True
+        self.big_lattice = True
 
     def draw_scene_gui(self):
         imgui.begin("Scene", True)
 
-        imgui.text('environment:')
-        imgui.push_style_var(imgui.STYLE_BUTTON_TEXT_ALIGN, (0.05, 0.5))
+        imgui.text('test:')
 
-        if imgui.button('box-ground', width=100):
-            self.build_mode_case(box_ground)
+        changed0, self.solver_index = imgui.combo('solver', self.solver_index, 
+                                                 self.solver_list)
+        
+        changed1, self.case_index = imgui.combo('case', self.case_index, 
+                                                 self.case_list)
 
-        if imgui.button('box-wall', width=100):
-            self.build_mode_case(box_wall)
-
-        if imgui.button('box-corner', width=100):
-            self.build_mode_case(box_corner)
-
-        if imgui.button('box-3', width=100):
-            pass
-
-        imgui.pop_style_var()
+        if changed0 or changed1:
+            self.load_scene = True
+            new_scene = self.case_list[self.case_index]
+            if new_scene == 'box-ground':
+                self.build_mode_case(box_ground)
+            if new_scene == 'box-wall':
+                self.build_mode_case(box_wall)
+            if new_scene == 'box-corner':
+                self.build_mode_case(box_corner)
 
         imgui.text('render:')
         changed, self.alpha = imgui.slider_float('alpha', self.alpha, 0.0, 1.0)
@@ -402,6 +474,8 @@ class CSModesDemo(Application):
             self.obstacle_color = new_color
 
         changed, self.show_grid = imgui.checkbox('grid', self.show_grid)
+
+        changed, self.big_lattice = imgui.checkbox('big lattice', self.big_lattice)
         
         self.load_scene = False
         imgui.end()

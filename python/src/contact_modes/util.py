@@ -23,6 +23,8 @@ def get_color(name):
         return np.array([0.3294, 0.0, 0.5059], dtype='float32')
     if name.lower() == 'yellow':
         return np.array([1, 0.9882, 0.0040], dtype='float32')
+    if name.lower() == 'safety yellow':
+        return np.array([238, 210, 2], dtype='float32')/255
     if name.lower() == 'orange':
         return np.array([0.9961, 0.7294, 0.0549], dtype='float32')
     if name.lower() == 'green':
