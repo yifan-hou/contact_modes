@@ -108,7 +108,7 @@ class CSModesDemo(Application):
             modes, lattice = enumerate_contact_separating_3d(self.points, self.normals)
             self.cs_lattice = lattice
         if solver == 'all-modes':
-            modes, lattice = enumerate_all_modes_3d(self.points, -self.normals, self.tangents, 4)
+            modes, lattice = enumerate_all_modes_3d(self.points, self.normals, self.tangents, 4)
             self.cs_lattice = lattice
 
         self.reset_state()        
@@ -130,7 +130,10 @@ class CSModesDemo(Application):
         if solver == 'cs-modes':
             self.twist = sample_twist_contact_separating(self.points, self.normals, F.m)
         if solver == 'all-modes':
-            self.twist = sample_twist_sliding_sticking(self.points, -self.normals, self.tangents, F.m)
+            #print(F.m)
+            self.twist = sample_twist_sliding_sticking(self.points, self.normals, self.tangents, F.m)
+            #print(F.m)
+            #print(self.twist)
 
         self.time = time()
         self.target.get_tf_world().set_matrix(self.target_start)
@@ -143,8 +146,10 @@ class CSModesDemo(Application):
         else:
             h = 0.005
             g = self.target.get_tf_world()
-            g_hat = SE3.log(SE3.exp(h * self.twist) * g)
-            self.target.set_tf_world(SE3.exp(g_hat))
+            g_new = SE3.exp(h * self.twist) * g
+            self.target.set_tf_world(g_new)
+            #g_hat = SE3.log(SE3.exp(h * self.twist) * g)
+            #self.target.set_tf_world(SE3.exp(g_hat))
             # print(self.target.get_tf_world().matrix())
 
     def next_index(self, index, lattice):

@@ -99,9 +99,9 @@ def zenotope_vertex(normals):
     dim = normals.shape[1]
     V = np.vstack((normals[0],-normals[0]))
     Sign = np.array([[1],[-1]])
-    print('num of normals: ',num_normals)
+
     for i in range(1,num_normals):
-        print('normal',i)
+
         normal = normals[i]
         V_ = np.empty((0,dim))
         Sign_ = np.empty((0,i+1))
@@ -174,5 +174,53 @@ def feasible_faces(Lattice, V, Sign, ind_feasible):
                 FeasibleLattice.L[i].append(Lattice.L[i][j])
     return Modes, FeasibleLattice
 
+def get_lattice_mode(Lattice, Sign):
 
+    Modes = []
+    for i in range(len(Lattice.L)):
+        for j in range(len(Lattice.L[i])):
+            if len(Lattice.L[i][j].verts) != 0:
+                sign = Sign[list(Lattice.L[i][j].verts)]
+                mode_sign = np.zeros(Sign.shape[1],dtype=int)
+                mode_sign[np.all(sign == 1, axis=0)] = 1
+                mode_sign[np.all(sign == -1, axis=0)] = -1
+
+                #Faces.append(face)
+                Modes.append(mode_sign)
+                Lattice.L[i][j].m = mode_sign
+
+    return Modes
+
+def vertex2lattice(V):
+
+    dim_V = V.shape[1]
+    n_vert = V.shape[0]
+    if n_vert == 2:
+        M = np.array([[0,1,1],[1,0,1]])
+        L = FaceLattice(M, dim_V)
+        return L
+
+    # project V into affine space
+    orth = sp.linalg.orth((V - np.mean(V,0)).T)
+    if orth.shape[1] != V.shape[1]:
+        V = np.dot((V - np.mean(V,0)), orth)
+
+    vertices = [list(V[i]) for i in range(n_vert)]
+    ret = pyhull.qconvex('s Fv', vertices)
+    #print(np.array(ret))
+
+    # get the convex hull of V
+    # select faces with desired modes
+    # Build facet-vertex incidence matrix.
+
+    n_facets = int(ret[0])
+    M = np.zeros((n_vert , n_facets), int)
+    for i in range(1, len(ret)):
+        vert_set = [int(x) for x in ret[i].split(' ')][1:]
+        for v in vert_set:
+            M[v,i-1] = 1
+
+    # Build face lattice.
+    L = FaceLattice(M, dim_V)
+    return L
 
