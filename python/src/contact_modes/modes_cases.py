@@ -5,7 +5,7 @@ from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            get_color, get_data,
                            sample_twist_contact_separating)
 from contact_modes.viewer import (SE3, Application, Box, OITRenderer, Shader,
-                                  Viewer, Window, Arrow, Cylinder)
+                                  Viewer, Window, Arrow, Cylinder, BoxWithHole)
 
 
 def box_ground():
@@ -79,3 +79,51 @@ def box_wall():
 
 def box_corner():
     pass
+
+def peg_in_hole(n=8):
+    # --------------------------------------------------------------------------
+    # Contact points, normals, and tangents
+    # --------------------------------------------------------------------------
+    radius = 0.30
+    height = 2.0
+    side_length = 1.0
+    cylinder_scale = 1/1.5
+
+    top_points = np.zeros((3, n))
+    top_normals = np.zeros((3, n))
+    top_tangents = np.zeros((3, n, 2))
+    bot_points = np.zeros((3, n))
+    bot_normals = np.zeros((3, n))
+    bot_tangents = np.zeros((3, n, 2))
+    theta = np.array([i/n*2*np.pi for i in range(n)])
+    r = radius
+    h = height * cylinder_scale
+    l = side_length
+    for i in range(n):
+        t = theta[i]
+        c = np.cos(t)
+        s = np.sin(t)
+        
+        top_points[:,i] = np.array([r*c, r*s, h/2.0])
+        bot_points[:,i] = np.array([r*c, r*s,-h/2.0])
+
+        top_normals[:,i] = np.array([-c, -s, 0])
+        bot_normals[:,i] = np.array([-c, -s, 0])
+
+        top_tangents[:,i,0] = np.array([0.0, 0.0, 1.0])
+        bot_tangents[:,i,0] = np.array([0.0, 0.0, 1.0])
+
+        top_tangents[:,i,1] = np.cross(top_normals[:,i], top_tangents[:,i,0])
+        bot_tangents[:,i,1] = np.cross(bot_normals[:,i], bot_tangents[:,i,0])
+
+    points = np.concatenate((top_points, bot_points), axis=1)
+    normals = np.concatenate((top_normals, bot_normals), axis=1)
+    tangents = np.concatenate((top_tangents, bot_tangents), axis=1)
+
+    # --------------------------------------------------------------------------
+    # Object and obstacle meshes
+    # --------------------------------------------------------------------------
+    target = Cylinder(radius - 1e-4, height * cylinder_scale)
+    hole = BoxWithHole(radius, side_length, height)
+
+    return points, normals, tangents, target, [hole]

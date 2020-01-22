@@ -265,4 +265,4 @@ def test_enum_contact_all_3d():
     print(len(modes))
 
 
-test_enum_contact_all_3d()
+# test_enum_contact_all_3d()

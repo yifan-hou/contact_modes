@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 from time import time
@@ -7,37 +6,64 @@ import numpy as np
 import pyhull
 import scipy as sp
 from pyhull.halfspace import Halfspace
+
 from .helpers import hat, lexographic_combinations, exp_comb, zenotope_vertex, feasible_faces, vertex2lattice, get_lattice_mode
+
+from scipy.linalg import null_space as null
+
 from .interior_point import int_pt_cone, interior_point_halfspace
 from .polytope import FaceLattice
+from .se3 import *
 
 DEBUG = False
 
+def make_frame(z):
+    z = z.reshape((3,1))
+    z = z / np.linalg.norm(z)
+    n = null(z.T)
+    x = n[:,0,None]
+    x = x / np.linalg.norm(x)
+    y = np.cross(z, x, axis=0)
+    y = y / np.linalg.norm(y)
+    R = np.zeros((3,3), dtype='float32')
+    R[:,0,None] = x
+    R[:,1,None] = y
+    R[:,2,None] = z
+    return R
 
 def contacts_to_half(points, normals):
+    # n_pts = points.shape[1]
+    # A = np.zeros((n_pts, 6))
+    # for i in range(n_pts):
+    #     g_oc = SE3()
+    #     g_oc.set_rotation(make_frame(normals[:,i,None]))
+    #     g_oc.set_translation(points[:,i,None])
+    #     Ad = SE3.Ad(SE3.inverse(g_oc))
+    #     B = np.array([0, 0, 1., 0, 0, 0]).reshape((6,1))
+    #     A[i,:] = B.T @ Ad
+    # # print(A)
+
     # Create halfspace inequalities, Ax - b ≥ 0.
     n_pts = points.shape[1]
     A = np.zeros((n_pts, 6))
     for i in range(n_pts):
         A[i,0:3] = normals[:,i].flatten()
-        A[i,3:6] = np.dot(normals[:,i].T, hat(points[:,i])).flatten()
+        A[i,3:6] = np.dot(normals[:,i].T, -hat(points[:,i])).flatten()
     A *= -1
     b = np.zeros((n_pts, 1))
+    # print(A)
+
     return A, b
 
 def sample_twist_contact_separating(points, normals, modestr):
     A, b = contacts_to_half(points, normals)
-
-    # print('mode', modestr)
     c = np.where(modestr == 'c')[0]
-    # print(c)
 
     n_pts = points.shape[1]
-
     mask = np.zeros(n_pts, dtype=bool)
     mask[c] = 1
-    if DEBUG:
-        print('mask', mask)
+    # if DEBUG:
+    #     print('mask', mask)
     C = A[mask, :]
     H = A[~mask, :]
 
@@ -45,13 +71,14 @@ def sample_twist_contact_separating(points, normals, modestr):
     if np.sum(mask) > 0:
         null = sp.linalg.null_space(C)
         H = np.dot(H, null)
-        # print(H.shape)
-        x = null @ int_pt_cone(H)
-        # return null @ int_pt_cone(H)
-        # print(A @ x)
-        return x
+        xi = null @ int_pt_cone(H)
     else:
-        return int_pt_cone(H)
+        xi = int_pt_cone(H)
+
+    if DEBUG:
+        print(A @ xi)
+    
+    return xi
 
 def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
     # Create halfspace inequalities, Ax - b ≥ 0.

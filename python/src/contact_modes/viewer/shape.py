@@ -1,5 +1,5 @@
 import numpy as np
-from itbl.math.lie import SE3, sqrt_epsilon
+from contact_modes import SE3
 
 class Shape(object):
     def __init__(self, o2w=None, w2o=None):
@@ -31,9 +31,6 @@ class Shape(object):
 
     def is_convex(self):
         return False
-
-    def margin(self):
-        return sqrt_epsilon()
 
     def supmap(self, v, use_margin=False):
         return None, None

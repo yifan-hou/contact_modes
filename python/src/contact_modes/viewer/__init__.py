@@ -5,8 +5,6 @@ from .backend import *
 from .shader import *
 from .halfedgemesh import *
 from .box import *
-from .se3 import *
-from .so3 import *
 from .polytope import *
 from .oit import *
 from .grid import *
@@ -16,3 +14,4 @@ from .cylinder import *
 from .arrow import *
 from .icosphere import *
 from .basic_lighting import *
+from .box_with_hole import *

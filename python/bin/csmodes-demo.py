@@ -4,20 +4,19 @@ import os
 import sys
 from time import time
 
+import glm
 import imgui
 import numpy as np
 from numpy.linalg import norm
 
-import glm
-from contact_modes import (FaceLattice, enumerate_all_modes_3d,
+from contact_modes import (SE3, FaceLattice, enumerate_all_modes_3d,
                            enumerate_contact_separating_3d, get_color,
                            get_data, sample_twist_contact_separating,
                            sample_twist_sliding_sticking)
 from contact_modes.modes_cases import *
-from contact_modes.viewer import (SE3, Application, Arrow,
-                                  BasicLightingRenderer, Box, Cylinder,
-                                  Icosphere, OITRenderer, Shader, Viewer,
-                                  Window)
+from contact_modes.viewer import (Application, Arrow, BasicLightingRenderer,
+                                  Box, Cylinder, Icosphere, OITRenderer,
+                                  Shader, Viewer, Window)
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
@@ -140,17 +139,24 @@ class CSModesDemo(Application):
     
     def update(self):
         t = time()
-        if t - self.time > self.loop_time:
+        delta = t - self.time
+        if delta > self.loop_time:
             # self.update_twist(self.index, self.cs_lattice)
             self.index = self.next_index(self.index, self.cs_lattice)
         else:
-            h = 0.005
-            g = self.target.get_tf_world()
-            g_new = SE3.exp(h * self.twist) * g
-            self.target.set_tf_world(g_new)
-            #g_hat = SE3.log(SE3.exp(h * self.twist) * g)
-            #self.target.set_tf_world(SE3.exp(g_hat))
-            # print(self.target.get_tf_world().matrix())
+
+            # h = 0.005
+            # g = self.target.get_tf_world()
+            # g_new = SE3.exp(h * self.twist) * g
+            # self.target.set_tf_world(g_new)
+
+            h = 0.25
+            g_0 = SE3.identity()
+            g_0.set_matrix(self.target_start)
+            xi = SE3.Ad(g_0) @ self.twist
+            g_t = SE3.exp(h * delta * xi) * g_0
+            self.target.set_tf_world(g_t)
+
 
     def next_index(self, index, lattice):
         L = lattice.L
@@ -425,7 +431,13 @@ class CSModesDemo(Application):
         self.solver_index = 1
         self.solver_list = ['all-modes', 'cs-modes', 'csss-modes', 'exp']
         self.case_index = 0
-        self.case_list = ['box-ground', 'box-wall', 'box-corner']
+        self.case_list = [
+            'box-ground', 
+            'box-wall', 
+            'box-corner', 
+            'peg-in-hole-4', 
+            'peg-in-hole-8'
+            ]
         self.peel_depth = 16
         self.alpha = 0.7
         self.object_color = get_color('clay')
@@ -456,6 +468,10 @@ class CSModesDemo(Application):
                 self.build_mode_case(box_wall)
             if new_scene == 'box-corner':
                 self.build_mode_case(box_corner)
+            if new_scene == 'peg-in-hole-4':
+                self.build_mode_case(lambda: peg_in_hole(4))
+            if new_scene == 'peg-in-hole-8':
+                self.build_mode_case(lambda: peg_in_hole(8))
 
         imgui.text('render:')
         changed, self.alpha = imgui.slider_float('alpha', self.alpha, 0.0, 1.0)

@@ -1,7 +1,7 @@
 import numpy as np
 
 from .shape import Shape
-from .exp import gamma
+from contact_modes.exp import gamma
 from .backend import *
 
 

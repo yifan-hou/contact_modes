@@ -2,8 +2,7 @@ from __future__ import division
 import numpy as np
 
 from .polytope import Polytope
-from .se3 import SE3
-from .so3 import SO3
+from contact_modes import SE3, SO3
 
 
 class Box(Polytope):
