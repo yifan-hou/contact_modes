@@ -7,6 +7,7 @@ from .cone import Cone
 
 
 def make_frame(z):
+    z = z.reshape((3,1))
     z = z / np.linalg.norm(z)
     n = null(z.T)
     x = n[:,0,None]

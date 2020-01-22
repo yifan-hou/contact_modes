@@ -4,20 +4,19 @@ import os
 import sys
 from time import time
 
+import glm
 import imgui
 import numpy as np
 from numpy.linalg import norm
 
-import glm
-from contact_modes import (FaceLattice, enumerate_all_modes_3d,
+from contact_modes import (SE3, FaceLattice, enumerate_all_modes_3d,
                            enumerate_contact_separating_3d, get_color,
                            get_data, sample_twist_contact_separating,
                            sample_twist_sliding_sticking)
 from contact_modes.modes_cases import *
-from contact_modes.viewer import (SE3, Application, Arrow,
-                                  BasicLightingRenderer, Box, Cylinder,
-                                  Icosphere, OITRenderer, Shader, Viewer,
-                                  Window)
+from contact_modes.viewer import (Application, Arrow, BasicLightingRenderer,
+                                  Box, Cylinder, Icosphere, OITRenderer,
+                                  Shader, Viewer, Window)
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
@@ -143,7 +142,7 @@ class CSModesDemo(Application):
             self.index = self.next_index(self.index, self.cs_lattice)
         else:
             h = 0.25
-            g_0 = SE3()
+            g_0 = SE3.identity()
             g_0.set_matrix(self.target_start)
             xi = SE3.Ad(g_0) @ self.twist
             g_t = SE3.exp(h * delta * xi) * g_0

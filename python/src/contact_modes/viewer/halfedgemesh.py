@@ -8,9 +8,9 @@ from scipy.spatial import ConvexHull
 
 from .backend import *
 from .bounds import Bounds3, Point, union_bb, union_bp
-from .se3 import SE3
 from .shape import Shape
-from .so3 import SO3
+
+from contact_modes import SE3, SO3
 
 
 def area_triangle_3d(p0, p1, p2):

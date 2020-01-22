@@ -6,3 +6,6 @@ from .affine import *
 from .polytope import *
 from .util import *
 from .modes_cases import *
+from .se3 import *
+from .so3 import *
+from .exp import *

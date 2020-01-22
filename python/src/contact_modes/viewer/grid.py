@@ -2,8 +2,7 @@ from __future__ import division
 import numpy as np
 
 from .shape import Shape
-from .se3 import SE3
-from .so3 import SO3
+from contact_modes import SE3, SO3
 from .backend import *
 
 
