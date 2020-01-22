@@ -420,7 +420,13 @@ class CSModesDemo(Application):
         self.solver_index = 1
         self.solver_list = ['all-modes', 'cs-modes', 'csss-modes', 'exp']
         self.case_index = 0
-        self.case_list = ['box-ground', 'box-wall', 'box-corner']
+        self.case_list = [
+            'box-ground', 
+            'box-wall', 
+            'box-corner', 
+            'peg-in-hole-4', 
+            'peg-in-hole-8'
+            ]
         self.peel_depth = 16
         self.alpha = 0.7
         self.object_color = get_color('clay')
@@ -451,6 +457,10 @@ class CSModesDemo(Application):
                 self.build_mode_case(box_wall)
             if new_scene == 'box-corner':
                 self.build_mode_case(box_corner)
+            if new_scene == 'peg-in-hole-4':
+                self.build_mode_case(lambda: peg_in_hole(4))
+            if new_scene == 'peg-in-hole-8':
+                self.build_mode_case(lambda: peg_in_hole(8))
 
         imgui.text('render:')
         changed, self.alpha = imgui.slider_float('alpha', self.alpha, 0.0, 1.0)

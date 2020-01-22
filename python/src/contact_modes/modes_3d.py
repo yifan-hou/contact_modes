@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 from time import time
@@ -11,8 +10,7 @@ from .helpers import hat, lexographic_combinations, exp_comb, zenotope_vertex, f
 from .interior_point import int_pt_cone, interior_point_halfspace
 from .polytope import FaceLattice
 
-DEBUG = False
-
+DEBUG = True
 
 def contacts_to_half(points, normals):
     # Create halfspace inequalities, Ax - b ≥ 0.

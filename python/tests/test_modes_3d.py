@@ -247,4 +247,4 @@ def test_enum_contact_all_3d():
     # print(modes.shape)
     '''
 
-test_enum_contact_all_3d()
+# test_enum_contact_all_3d()

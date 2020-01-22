@@ -16,3 +16,4 @@ from .cylinder import *
 from .arrow import *
 from .icosphere import *
 from .basic_lighting import *
+from .box_with_hole import *
