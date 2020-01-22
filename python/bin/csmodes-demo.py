@@ -137,15 +137,17 @@ class CSModesDemo(Application):
     
     def update(self):
         t = time()
-        if t - self.time > self.loop_time:
+        delta = t - self.time
+        if delta > self.loop_time:
             # self.update_twist(self.index, self.cs_lattice)
             self.index = self.next_index(self.index, self.cs_lattice)
         else:
-            h = 0.005
-            g = self.target.get_tf_world()
-            g_hat = SE3.log(SE3.exp(h * self.twist) * g)
-            self.target.set_tf_world(SE3.exp(g_hat))
-            # print(self.target.get_tf_world().matrix())
+            h = 0.25
+            g_0 = SE3()
+            g_0.set_matrix(self.target_start)
+            xi = SE3.Ad(g_0) @ self.twist
+            g_t = SE3.exp(h * delta * xi) * g_0
+            self.target.set_tf_world(g_t)
 
     def next_index(self, index, lattice):
         L = lattice.L
