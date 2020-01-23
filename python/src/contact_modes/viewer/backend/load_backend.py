@@ -15,4 +15,4 @@ if _BACKEND == 'pyglet':
     from .pyglet_backend import *
 elif _BACKEND == 'pyopengl':
     from .pyopengl_backend import *
-    # sys.stderr.write('Using PyOpenGL backend: %s\n' % OpenGL.__version__)
+    sys.stderr.write('Using PyOpenGL backend: %s\n' % OpenGL.__version__)

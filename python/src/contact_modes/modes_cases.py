@@ -1,11 +1,18 @@
 import numpy as np
 from numpy.linalg import norm
 
-from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
-                           get_color, get_data,
-                           sample_twist_contact_separating)
-from contact_modes.viewer import (SE3, Application, Box, OITRenderer, Shader,
-                                  Viewer, Window, Arrow, Cylinder, BoxWithHole)
+from .util import get_color
+from .polytope import FaceLattice
+from .collisions import CollisionManager
+from contact_modes.viewer import Box, Cylinder
+from contact_modes.viewer.box_with_hole import BoxWithHole
+
+# from contact_modes import (CollisionManager, FaceLattice,
+#                            enumerate_contact_separating_3d, get_color,
+#                            get_data, sample_twist_contact_separating)
+# from contact_modes.viewer import (SE3, Application, Arrow, Box, BoxWithHole,
+#                                   Cylinder, OITRenderer, Shader, Viewer,
+#                                   Window)
 
 
 def box_ground():
@@ -14,10 +21,10 @@ def box_ground():
     # --------------------------------------------------------------------------
     points = np.zeros((3,4))
     normals = np.zeros((3,4))
-    points[:,0] = np.array([ 0.5, 0.5, 0])
-    points[:,1] = np.array([-0.5, 0.5, 0])
-    points[:,2] = np.array([-0.5,-0.5, 0])
-    points[:,3] = np.array([ 0.5,-0.5, 0])
+    points[:,0] = np.array([ 0.5, 0.5, -0.5])
+    points[:,1] = np.array([-0.5, 0.5, -0.5])
+    points[:,2] = np.array([-0.5,-0.5, -0.5])
+    points[:,3] = np.array([ 0.5,-0.5, -0.5])
     normals[2,:] = 1.0
     tangents = np.zeros((3, 4, 2))
     tangents[0, :, 0] = 1
@@ -35,7 +42,14 @@ def box_ground():
     ground = Box(10, 10, 1.0)
     ground.get_tf_world().set_translation(np.array([0, 0, -0.5]))
 
-    return points, normals, tangents, target, [ground]
+    # --------------------------------------------------------------------------
+    # Collision manager
+    # --------------------------------------------------------------------------
+    manager = CollisionManager()
+    for i in range(4):
+        manager.add_pair(points[:,i], ground)
+
+    return points, normals, tangents, target, [ground], manager
 
 def box_wall():
     # --------------------------------------------------------------------------
@@ -45,18 +59,18 @@ def box_wall():
     normals = np.zeros((3,8))
     tangents = np.zeros((3, 8, 2))
     # box on x-y plane
-    points[:,0] = np.array([ 0.5, 0.5, 0])
-    points[:,1] = np.array([-0.5, 0.5, 0])
-    points[:,2] = np.array([-0.5,-0.5, 0])
-    points[:,3] = np.array([ 0.5,-0.5, 0])
+    points[:,0] = np.array([ 0.5, 0.5, -0.5])
+    points[:,1] = np.array([-0.5, 0.5, -0.5])
+    points[:,2] = np.array([-0.5,-0.5, -0.5])
+    points[:,3] = np.array([ 0.5,-0.5, -0.5])
     normals[2,0:4] = 1.0
     tangents[0, 0:4, 0] = 1
     tangents[1, 0:4, 1] = 1
     # box against x-z wall
-    points[:,4] = np.array([ 0.5, 0.5, 1])
-    points[:,5] = np.array([-0.5, 0.5, 1])
-    points[:,6] = np.array([-0.5, 0.5, 0])
-    points[:,7] = np.array([ 0.5, 0.5, 0])
+    points[:,4] = np.array([ 0.5, 0.5,  0.5])
+    points[:,5] = np.array([-0.5, 0.5,  0.5])
+    points[:,6] = np.array([-0.5, 0.5, -0.5])
+    points[:,7] = np.array([ 0.5, 0.5, -0.5])
     normals[1,4:8] =-1.0
     tangents[0, 4:8, 0] = 1
     tangents[2, 4:8, 1] = 1

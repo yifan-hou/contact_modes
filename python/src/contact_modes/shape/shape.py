@@ -34,3 +34,6 @@ class Shape(object):
 
     def supmap(self, v, use_margin=False):
         return None, None
+    
+    def margin(self):
+        return 0.04

@@ -2,6 +2,7 @@ import numpy as np
 
 from .halfedgemesh import HalfedgeMesh
 
+from .backend import *
 
 class Icosphere(HalfedgeMesh):
     def __init__(self, radius=1.0, refine=2):
@@ -28,7 +29,7 @@ class Icosphere(HalfedgeMesh):
         vertexPositions.append(np.array([-t, 0, 1]).reshape((3,1)))
 
         for i in range(len(vertexPositions)):
-            vertexPositions[i] *= radius/np.linalg.norm(vertexPositions[i])
+            vertexPositions[i] *= 1.0/np.linalg.norm(vertexPositions[i])
 
         polygons = []
 
@@ -73,3 +74,18 @@ class Icosphere(HalfedgeMesh):
 
         for v in self.vertices:
             v.position *= self.radius/np.linalg.norm(v.position)
+
+    def set_radius(self, radius):
+        self.radius = radius
+
+    def draw(self, shader):
+        shader.use()
+
+        # Compute scaled transforms for the arrow.
+        g = self.get_tf_world().matrix()
+        s = np.diag([self.radius, self.radius, self.radius, 1.0])
+        shader.set_mat4('model', (g @ s).T)
+
+        glBindVertexArray(self.vao)
+        glDrawArrays(GL_TRIANGLES, 0, self.num_elems_draw)
+        glBindVertexArray(0)
