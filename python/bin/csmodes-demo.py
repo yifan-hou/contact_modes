@@ -15,9 +15,9 @@ from contact_modes import (SE3, FaceLattice, enumerate_all_modes_3d,
                            get_data, sample_twist_contact_separating,
                            sample_twist_sliding_sticking)
 from contact_modes.modes_cases import *
-from contact_modes.viewer import (Application, Arrow, BasicLightingRenderer,
-                                  Box, Cylinder, Icosphere, OITRenderer,
-                                  Shader, Viewer, Window)
+from contact_modes.shape import Arrow, Box, Cylinder, Icosphere
+from contact_modes.viewer import (Application, BasicLightingRenderer,
+                                  OITRenderer, Shader, Viewer, Window)
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')

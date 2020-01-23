@@ -2,7 +2,7 @@ import numpy as np
 
 from .halfedgemesh import HalfedgeMesh
 
-from .backend import *
+from contact_modes.viewer.backend import *
 
 class Icosphere(HalfedgeMesh):
     def __init__(self, radius=1.0, refine=2):
@@ -89,3 +89,9 @@ class Icosphere(HalfedgeMesh):
         glBindVertexArray(self.vao)
         glDrawArrays(GL_TRIANGLES, 0, self.num_elems_draw)
         glBindVertexArray(0)
+
+    def supmap(self, v):
+        return self.get_tf_world().t
+
+    def margin(self):
+        return self.radius

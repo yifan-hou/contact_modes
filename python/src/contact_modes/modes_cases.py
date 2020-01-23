@@ -1,11 +1,11 @@
 import numpy as np
 from numpy.linalg import norm
 
-from .util import get_color
+from contact_modes.collision import CollisionManager
+from contact_modes.shape import Box, BoxWithHole, Cylinder
+
 from .polytope import FaceLattice
-from .collisions import CollisionManager
-from contact_modes.viewer import Box, Cylinder
-from contact_modes.viewer.box_with_hole import BoxWithHole
+from .util import get_color
 
 # from contact_modes import (CollisionManager, FaceLattice,
 #                            enumerate_contact_separating_3d, get_color,

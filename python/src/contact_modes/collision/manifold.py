@@ -1,6 +1,6 @@
 import numpy as np
 
-from itbl.viewer.backend import *
+from contact_modes.viewer.backend import *
 
 
 class CollisionManifold(object):

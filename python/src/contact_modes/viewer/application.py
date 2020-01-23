@@ -1,13 +1,13 @@
 from __future__ import division
 
+import imgui
 import numpy as np
+from imgui.integrations.glfw import GlfwRenderer
+
+from contact_modes.shape.grid import Grid
 
 from .backend import *
 from .camera import *
-from .grid import Grid
-
-import imgui
-from imgui.integrations.glfw import GlfwRenderer
 
 
 class Application(object):

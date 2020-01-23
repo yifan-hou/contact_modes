@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from itbl.math import cross, vsimp
-from itbl.math.lie.exp import epsilon, sqrt_epsilon
+from contact_modes.exp import epsilon, sqrt_epsilon
 
 from .jda import jda, zbitl
 from .manifold import CollisionManifold
 
+
+def cross(x, y):
+    return np.cross(x.reshape((3,1)), y.reshape((3,1)), axis=0)
 
 def create_manifold_gjk(d, p_A, p_B, obj_A, obj_B):
     manifold = CollisionManifold()
@@ -22,6 +24,8 @@ def create_manifold_gjk(d, p_A, p_B, obj_A, obj_B):
 def gjk(obj_A, obj_B, v=None):
     if v is None or np.linalg.norm(v) < sqrt_epsilon():
         v = np.ones((3,1))
+    obj_A.supmap(-v)
+    obj_B.supmap(v)
     v = obj_A.supmap(-v)-obj_B.supmap(v) # arbitrary point in A-B
     Y = np.zeros((3,4))
     A = np.zeros((3,4))

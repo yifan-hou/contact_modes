@@ -1,11 +1,11 @@
 import numpy as np
 
 from contact_modes import SE3, SO3
-from contact_modes.shape import Sphere
+from contact_modes.shape import Icosphere
 
 from .gjk import gjk
 
-DEBUG = True
+DEBUG = False
 
 class CollisionManager(object):
     def __init__(self):
@@ -36,10 +36,18 @@ class CollisionManager(object):
         for i in range(n_pairs):
             p = self.pairs[i]
             sphere   = p[0]
+            sphere.get_tf_world().set_translation(points[:,i,None])
             obstacle = p[1]
-            manifold = gjk(sphere, obstacle)
+            manifold = gjk(obstacle, sphere)
+
+            if DEBUG:
+                print(manifold.pts_A)
+                print(manifold.pts_B)
+                print(manifold.normal)
+                print(manifold.dist)
             
-            points[:,i,None] = pt_frame
-            normals[:,i,None] = n_A
+            points[:,i,None]  = manifold.pts_A
+            normals[:,i,None] = manifold.normal
+            dists[i] = manifold.dist + sphere.margin()
         
-        return frame_centers, normals, tangents, dists
+        return points, normals, tangents, dists

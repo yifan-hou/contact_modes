@@ -2,7 +2,6 @@ from contact_modes import get_data
 
 from .backend import *
 from .shader import *
-from .quad import Quad
 
 DEBUG = True
 

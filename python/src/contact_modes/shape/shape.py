@@ -33,7 +33,7 @@ class Shape(object):
         return False
 
     def supmap(self, v, use_margin=False):
-        return None, None
+        return None
     
     def margin(self):
-        return 0.04
+        return 0.02
