@@ -102,7 +102,7 @@ cross/.default={2pt}}
 \begin{document}
 
 % paper title
-\title{\huge Efficient Contact Mode Enumeration in 2D and 3D}
+\title{\huge Efficient Contact Mode Enumeration in 3D}
 
 % You will get a Paper-ID when submitting a pdf file to the conference system
 \author{Author Names Omitted for Anonymous Review. Paper-ID [?]}
@@ -127,9 +127,44 @@ for use within contact mechanics.
 \section{Introduction}
 
 \begin{inparaenum}
-    \item Detecting sliding slipping modes
-    \item Contact modes dictate the contact dynamics 
-    \item Reasons why this is useful
+    \item Contact modes and connection to dynamics
+    \begin{inparaenum}
+        \item When a moving robot contacts its environment, the points of the
+        resulting contact manifold may be sliding, sticking, or separating.
+        \item Under the Coulomb model of friction, the frictional force is
+        opposite to the velocity of a sliding contact point, oriented in any
+        direction for a sticking contact point, and zero for a separating
+        contact point.
+        \item As each individual contact mode imparts complementary dynamic
+        equations, the set of all (valid) contact mode assignments enumerates
+        the set of all possible flows for the system. \TODO{Cite Aaron's paper}
+        \item (Here, by valid we mean kinematically feasible, i.e. there exists a
+        generalized velocity $\dot{q}$ that generates the correct mode at
+        each contact point.)
+        \item Naturally, we advocate that efficient contact mode enumeration
+        will be a useful tool for the simulation, analysis, and control of
+        robotic systems that make and break contact with the environment.
+    \end{inparaenum}
+    \item Contact mode enumeration has many applications within the field of
+    robotics.
+    \begin{inparaenum}
+        \item 
+        \item Simulation
+        \item Control for contact-rich tasks like legged locomotion
+        \item Grasping analysis
+    \end{inparaenum}
+    \item Our main contribution is the first polynomial-time algorithm for
+    contact mode enumeration in 3D.
+    \begin{inparaenum}
+        % \item By comparison, contact mode enumeration in 2D was solved almost
+        % three decades ago.
+        \item Moreover, our algorithm works for both linearized and non-linear
+        Coulomb models of friction.
+        \item As a consequence, we show that number of contact modes in 3D is
+        polynomial.
+    \end{inparaenum}
+    \item Summary of methods
+    \item Summary of results
 \end{inparaenum}
 
 \section{Related Work}
