@@ -97,6 +97,12 @@ class SE3(object):
         return SO3.transform_point_by_inverse(g.R, y)
 
     @staticmethod
+    def velocity_at_point(x, pt):
+        u = x[0:3].reshape((3,1))
+        w = x[3:6].reshape((3,1))
+        return np.cross(w, pt, axis=0) + u
+
+    @staticmethod
     def exp(x):
         x = x.reshape((6,1))
 

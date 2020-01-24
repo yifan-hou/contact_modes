@@ -54,10 +54,8 @@ def contacts_to_half(points, normals):
 
     return A, b
 
-def sample_twist_contact_separating(points, normals, dists, modestr):
+def sample_twist_contact_separating(points, normals, modestr):
     A, b = contacts_to_half(points, normals)
-    b = dists.reshape((-1,1))
-
     c = np.where(modestr == 'c')[0]
 
     n_pts = points.shape[1]
@@ -68,34 +66,18 @@ def sample_twist_contact_separating(points, normals, dists, modestr):
     C = A[mask, :]
     H = A[~mask, :]
 
-    # Project H into the solution space of C.
-    if np.sum(mask) == n_pts:
-        print(points)
-        print(normals)
-        print(C)
-        print(b)
-        x_hat = np.linalg.lstsq(C, b)[0]
-    elif np.sum(mask) > 0:
-        #  BᵀAd(g⁻¹)x + d ≥ 0
-        #          Ax - d ≤ 0
-        #  A(x₀ + Nx̂) - d ≤ 0
-        # ANx̂ - (d - Ax₀) ≤ 0
-        x0 = np.linalg.lstsq(C, b[mask,:])[0]
-        N = sp.linalg.null_space(C)
-        b = b[~mask,:] - H @ x0
-        H = H @ N
-        x_hat = x0 + N @ interior_point_halfspace(H, b)
-        if DEBUG:
-            print('x0')
-            print(x0)
+    # Project into null space.
+    if np.sum(mask) > 0:
+        null = sp.linalg.null_space(C)
+        H = np.dot(H, null)
+        xi = null @ int_pt_cone(H)
     else:
-        x_hat = interior_point_halfspace(H, b)
+        xi = int_pt_cone(H)
 
     if DEBUG:
-        print(A @ x_hat)
-    print(x_hat)
+        print(A @ xi)
     
-    return x_hat
+    return xi
 
 def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
     # Create halfspace inequalities, Ax - b ≥ 0.
