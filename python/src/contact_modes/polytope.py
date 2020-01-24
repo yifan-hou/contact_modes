@@ -95,7 +95,13 @@ class FaceLattice(object):
 
         # Store face lattice.
         self.L = L
-    
+
+    def append_empty(self):
+        # Create empty face.
+        E = Face([], 0)
+        E.parents = None
+        self.L.append([E])
+
     def num_proper_faces(self):
         cnt = 0
         L = self.L
