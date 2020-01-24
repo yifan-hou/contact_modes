@@ -79,17 +79,26 @@ def box_wall():
     # Object and obstacle meshes
     # --------------------------------------------------------------------------
     target = Box()
-    target.get_tf_world().set_translation(np.array([0, 0, 0.5+1e-4]))
-    target_wireframe = Box(1.0 + 1e-4, 1.0 + 1e-4, 1.0 + 1e-4)
+    target.get_tf_world().set_translation(np.array([0, 0, 0.5]))
+    target_wireframe = Box(1.0, 1.0, 1.0)
     target_wireframe.set_color(get_color('black'))
     target.set_wireframe(target_wireframe)
 
     ground = Box(10, 10, 1.0)
     ground.get_tf_world().set_translation(np.array([0, 0, -0.5]))
     wall = Box(10, 1, 10)
-    wall.get_tf_world().set_translation(np.array([0, 1.0+1e-4, 5+1e-4]))
+    wall.get_tf_world().set_translation(np.array([0, 1.0, 5]))
 
-    return points, normals, tangents, target, [ground, wall]
+    # --------------------------------------------------------------------------
+    # Collision manager
+    # --------------------------------------------------------------------------
+    manager = CollisionManager()
+    for i in range(4):
+        manager.add_pair(points[:,i], ground)
+    for i in range(4, 8):
+        manager.add_pair(points[:,i], wall)
+
+    return points, normals, tangents, target, [ground, wall], manager
 
 def box_corner():
     pass
