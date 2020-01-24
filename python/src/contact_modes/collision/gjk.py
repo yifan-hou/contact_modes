@@ -34,8 +34,10 @@ def gjk(obj_A, obj_B, v=None):
     d = np.zeros((4,4,3))
     d2 = np.zeros((4,4))
     dX = np.zeros((16,4))
-    eps_abs = 10*epsilon()
-    eps_rel = 100*sqrt_epsilon()
+    # eps_abs = 10*epsilon(np.float64)
+    # eps_rel = 100*sqrt_epsilon(np.float64)
+    eps_abs = 10*epsilon(np.float32)
+    eps_rel = 100*sqrt_epsilon(np.float32)
     lamb = np.array([[1.0],[0.0],[0.0],[0.0]])
     while True:
         A[:,zbitl(b),None] = obj_A.supmap(-v)
