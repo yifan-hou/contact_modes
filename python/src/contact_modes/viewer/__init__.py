@@ -3,15 +3,5 @@ from .camera import *
 from .application import *
 from .backend import *
 from .shader import *
-from .halfedgemesh import *
-from .box import *
-from .polytope import *
 from .oit import *
-from .grid import *
-from .quad import *
-from .cone import *
-from .cylinder import *
-from .arrow import *
-from .icosphere import *
 from .basic_lighting import *
-from .box_with_hole import *

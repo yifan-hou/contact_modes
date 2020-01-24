@@ -1,9 +1,10 @@
 import numpy as np
+
 from contact_modes import get_data
+from contact_modes.shape.quad import Quad
 
 from .backend import *
 from .shader import *
-from .quad import Quad
 
 DEBUG = False
 

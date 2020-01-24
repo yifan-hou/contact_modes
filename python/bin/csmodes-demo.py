@@ -7,16 +7,19 @@ from time import time
 import glm
 import imgui
 import numpy as np
+import pybullet as bullet
+import quadprog
 from numpy.linalg import norm
 
-from contact_modes import (SE3, FaceLattice, enumerate_all_modes_3d,
+from contact_modes import (SE3, SO3, FaceLattice, enumerate_all_modes_3d,
                            enumerate_contact_separating_3d, get_color,
-                           get_data, sample_twist_contact_separating,
+                           get_data, make_frame,
+                           sample_twist_contact_separating,
                            sample_twist_sliding_sticking)
 from contact_modes.modes_cases import *
-from contact_modes.viewer import (Application, Arrow, BasicLightingRenderer,
-                                  Box, Cylinder, Icosphere, OITRenderer,
-                                  Shader, Viewer, Window)
+from contact_modes.shape import Arrow, Box, Cylinder, Icosphere
+from contact_modes.viewer import (Application, BasicLightingRenderer,
+                                  OITRenderer, Shader, Viewer, Window)
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
@@ -26,6 +29,96 @@ np.random.seed(0)
 parser = argparse.ArgumentParser(description='Contact Modes Demo')
 parser.add_argument('-t', '--oit', action='store_true')
 ARGS = parser.parse_args()
+
+DEBUG = True
+
+def track_velocity(prev_twist, prev_tf, curr_tf, points, normals, dists, csmode):
+    """
+    Finds a twist v such that the contact point velocities are as close to the
+    previous ones as possible while maintain contact constraints.
+
+    Arguments:
+        prev_twist {np.ndarray} -- 6x1 previous twist
+        prev_tf {SE3}           -- previous transform
+        curr_tf {SE3}           -- current transform
+        points {np.ndarray}     -- 3xn contact points in body frame
+        normals {np.ndarray}    -- 3xn contact normals in world frame
+        dists {np.ndarray}      -- nx1 contact distances
+        csmode {[str]}          -- contacting/separating modes
+    
+    Returns:
+        np.ndarray -- 6x1 current twist
+    """
+    # Get number of points.
+    n_pts = points.shape[1]
+
+    # Get spatial velocities at each contact point.
+    v_b = SE3.velocity_at_point(prev_twist, points)
+    v_s = SO3.transform_point(prev_tf.R, v_b)
+    v_s = v_s.reshape((-1,1), order='F')
+
+    # Create spatial velocity matrix at current transform.
+    # vₛ = Rŵp + u = -Rp̂w + u = [I -Rp̂]⋅[u w]ᵀ
+    IRp = np.zeros((3 * n_pts, 6))
+    for i in range(n_pts):
+        IRp[3*i:(3*i+3), 0:3] = np.eye(3)
+        IRp[3*i:(3*i+3), 3:6] = -curr_tf.R.matrix() @ SO3.ad(points[:,i]).reshape((3,3))
+    
+    # Create cost function which minimizes distance between spatial velocities.
+    # min ‖[I -Rp̂]ξ - vₛ‖² = ξᵀ[I -Rp̂]ᵀ[I -Rp̂]ξ - vₛᵀ[I -Rp̂]ξ
+    # lamb = 0.01
+    # G = IRp.T @ IRp + lamb * np.eye(6)
+    # a = v_s.T @ IRp
+
+    # Create a cost function which minimizes distance with previous twist.
+    G = np.eye(6)
+    a = prev_twist
+
+    # Create normal velocity constraints for contact points.
+    normals = SO3.transform_point_by_inverse(curr_tf.R, normals)
+    C0 = np.zeros((n_pts, 6))
+    for i in range(n_pts):
+        g_oc = SE3()
+        g_oc.set_rotation(make_frame(normals[:,i,None]))
+        g_oc.set_translation(points[:,i,None])
+        Ad = SE3.Ad(SE3.inverse(g_oc))
+        B = np.array([0, 0, 1., 0, 0, 0]).reshape((6,1))
+        C0[i,:] = B.T @ Ad
+    b0 = -dists
+
+    # Reorder constraints for points maintaining contact.
+    c = np.where(csmode == 'c')[0]
+    mask = np.zeros((n_pts,), dtype=bool)
+    mask[c] = 1
+    n_contact = np.sum(mask)
+    k = 0
+    C = np.zeros((n_pts, 6))
+    b = np.zeros((n_pts, 1))
+    for i in range(n_pts):
+        if mask[i]:
+            C[k,:] = C0[i,:]
+            b[k] = b0[i]
+            k += 1
+    for i in range(n_pts):
+        if not mask[i]:
+            C[k,:] = C0[i,:]
+            b[k] = b0[i]
+            k += 1
+    
+    # Solve QP.
+    a = a.reshape((-1,))
+    C = C.T
+    b = b.reshape((-1,))
+    sol = quadprog.solve_qp(G, a, C, b, n_contact)
+    x = sol[0].reshape((6,1))
+
+    if DEBUG:
+        print(x)
+        print(C.T @ x)
+        print(C.T @ x - b.reshape((-1,1)))
+        print(b.reshape((-1,1)))
+
+    return x
 
 class CSModesDemo(Application):
     def __init__(self):
@@ -68,6 +161,8 @@ class CSModesDemo(Application):
         window.set_on_draw(self.draw)
         window.set_on_key_press(self.on_key_press_0)
 
+        self.physics = bullet.connect(bullet.DIRECT)
+
     def init_win_0(self):
         super().init_win()
 
@@ -97,90 +192,133 @@ class CSModesDemo(Application):
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
     def build_mode_case(self, mode_case_func):
-        self.points, self.normals, self.tangents, self.target, self.obs = mode_case_func()
-
-        self.target_start = self.target.get_tf_world().matrix()
+        points, normals, tangents, target, obs, dist = mode_case_func()
+        self.points = points
+        self.normals = normals
+        self.tangents = tangents
+        self.target = target
+        self.obs = obs
+        self.dist = dist
+        self.target_start = self.target.get_tf_world()
 
         # Build mode lattices.
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
             modes, lattice = enumerate_contact_separating_3d(self.points, self.normals)
-            self.cs_lattice = lattice
+            self.lattice0 = lattice
+            self.lattice1 = None
         if solver == 'all-modes':
-            modes, lattice = enumerate_all_modes_3d(self.points, self.normals, self.tangents, 4)
-            self.cs_lattice = lattice
+            modes, lattice = enumerate_all_modes_3d(self.points, -self.normals, self.tangents, 4)
+            self.lattice0 = lattice
+            self.lattice1 = None
 
-        self.reset_state()        
+        self.index0 = (0,0)
+        self.index1 = (0,0)
+        self.reset_state()
 
-    def reset_state(self):
-        # GUI state.
-        self.play = False
-        self.time = time()
-        self.loop_time = 2.0 # seconds
-        self.twist = np.zeros((6,1))
-        self.index = (0,0)
-        self.lattice_height = 265
-
-    def update_twist(self, index, lattice):
-        y, x = index
-        F = lattice.L[y][x]
-
+    def next(self):
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
-            self.twist = sample_twist_contact_separating(self.points, self.normals, F.m)
+            self.index0 = self.next_node(self.index0, self.lattice0)
+        if solver == 'csss-modes':
+            pass
         if solver == 'all-modes':
-            #print(F.m)
-            self.twist = sample_twist_sliding_sticking(self.points, self.normals, self.tangents, F.m)
-            #print(F.m)
-            #print(self.twist)
-
-        self.time = time()
-        self.target.get_tf_world().set_matrix(self.target_start)
+            self.index0 = self.next_node(self.index0, self.lattice0)
+        self.reset_state()
     
-    def update(self):
-        t = time()
-        delta = t - self.time
-        if delta > self.loop_time:
-            # self.update_twist(self.index, self.cs_lattice)
-            self.index = self.next_index(self.index, self.cs_lattice)
-        else:
+    def prev(self):
+        solver = self.solver_list[self.solver_index]
+        if solver == 'cs-modes':
+            self.index0 = self.prev_node(self.index0, self.lattice0)
+        if solver == 'csss-modes':
+            pass
+        if solver == 'all-modes':
+            self.index0 = self.prev_node(self.index0, self.lattice0)
+        self.reset_state()
 
-            # h = 0.005
-            # g = self.target.get_tf_world()
-            # g_new = SE3.exp(h * self.twist) * g
-            # self.target.set_tf_world(g_new)
-
-            h = 0.25
-            g_0 = SE3.identity()
-            g_0.set_matrix(self.target_start)
-            xi = SE3.Ad(g_0) @ self.twist
-            g_t = SE3.exp(h * delta * xi) * g_0
-            self.target.set_tf_world(g_t)
-
-
-    def next_index(self, index, lattice):
+    def next_node(self, idx, lattice):
         L = lattice.L
-        y, x = index
+        y, x = idx
         x += 1
         if x >= len(L[y]):
             x = 0
             y += 1
             if y >= len(L):
                 y = 0
-        self.update_twist((y, x), lattice)
         return (y, x)
 
-    def prev_index(self, index, lattice):
+    def prev_node(self, idx, lattice):
         L = lattice.L
-        y, x = index
+        y, x = idx
         x -= 1
         if x < 0:
             y -= 1
             if y < 0:
                 y = len(L)-1
             x = len(L[y])-1
-        self.update_twist((y, x), lattice)
         return (y, x)
+
+    def play(self):
+        t = time()
+        dt = t - self.curr_time
+        d0 = t - self.start_time
+
+        self.step(dt)
+
+        if d0 > self.loop_time:
+            if self.play_mode == 1:
+                self.next()
+            if self.play_mode == 2:
+                self.reset_state()
+
+    def reset_state(self):
+        self.target.set_tf_world(self.target_start)
+        self.prev_tf = self.target_start
+        self.prev_twist = self.sample_twist(self.index0, self.lattice0)
+        self.start_time = time()
+        self.curr_time = time()
+
+    def step(self, dt):
+        # Get state.
+        prev_tf = self.prev_tf
+        curr_tf = self.target.get_tf_world()
+        prev_twist = self.prev_twist
+
+        # Update normal orientations in world frame.
+        points = self.points
+        normals = self.normals
+        tangents = self.tangents
+        dists = np.zeros((points.shape[1],1))
+        if self.dist is not None:
+            _, normals, tangents, dists = self.dist.closest_points(points, 
+                normals, tangents, curr_tf)
+
+        # Get csmode string from lattice 0
+        csmode = self.lattice0.L[self.index0[0]][self.index0[1]].m
+
+        # Compute tracking twist subject to contact constraints.
+        curr_twist = track_velocity(
+            prev_twist, prev_tf, curr_tf, points, normals, dists, csmode)
+
+        # Apply twist.
+        h = 0.005
+        v_s = SE3.Ad(curr_tf) @ curr_twist
+        next_tf = SE3.exp(h * dt * v_s) * curr_tf
+        self.target.set_tf_world(next_tf)
+
+        # Record state.
+        self.prev_tf = curr_tf
+        # self.prev_twist = curr_twist
+
+    def sample_twist(self, index, lattice):
+        # Get mode string.
+        mode_str = lattice.L[index[0]][index[1]].m
+
+        solver = self.solver_list[self.solver_index]
+        if solver == 'cs-modes':
+            return sample_twist_contact_separating(self.points, self.normals, mode_str)
+        if solver == 'all-modes':
+            return sample_twist_sliding_sticking(self.points, -self.normals, self.tangents, mode_str)
 
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
@@ -197,8 +335,8 @@ class CSModesDemo(Application):
         glEnable(GL_MULTISAMPLE)
 
         # Step.
-        if self.play:
-            self.update()
+        if self.play_mode > 0:
+            self.play()
 
         # Render scene.
         # self.draw_scene(self.basic_lighting_shader)
@@ -256,17 +394,25 @@ class CSModesDemo(Application):
         if self.show_grid:
             self.grid.draw(shader)
 
-        index = self.index
-        points = self.points
-        normals = self.normals
-        csmode = self.cs_lattice.L[index[0]][index[1]].m
-        for i in range(len(csmode)):
-            pass
+        if self.show_contact_frames:
+            self.draw_contact_frames(shader)
 
-        # self.arrow.draw(shader)
-        # self.contact_sphere.draw(shader)
+    def draw_contact_frames(self, shader):
+        p, n, t, d = self.dist.closest_points(self.points, 
+                                              self.normals, 
+                                              self.tangents, 
+                                              self.target.get_tf_world())
+        n_pts = p.shape[1]
+        for i in range(n_pts):
+            self.normal_arrow.set_origin(p[:,i])
+            self.normal_arrow.set_z_axis(n[:,i])
+            self.normal_arrow.draw(shader)
+            if np.abs(d[i]) < 1e-4:
+                self.contact_sphere.get_tf_world().set_translation(p[:,i])
+                self.contact_sphere.draw(shader)
 
     def init_gui(self):
+        self.init_lattice_gui()
         self.init_scene_gui()
 
     def draw_menu(self):
@@ -280,30 +426,37 @@ class CSModesDemo(Application):
                 imgui.end_menu()
             imgui.end_main_menu_bar()
 
+    def init_lattice_gui(self):
+        self.play_mode = 0
+
     def draw_lattice_gui(self):
         imgui.begin("Contact Modes", True)
         imgui.begin_group()
         if imgui.button("prev"):
-            self.index = self.prev_index(self.index, self.cs_lattice)
+            self.prev()
         imgui.same_line()
-        if not self.play:
+        if self.play_mode == 0:
             if imgui.button("play"):
-                self.play = not self.play
-        else:
+                self.play_mode += 1
+        if self.play_mode == 1:
+            if imgui.button("loop"):
+                self.play_mode += 1
+        if self.play_mode == 2:
             if imgui.button("stop"):
-                self.play = not self.play
+                self.play_mode = 0
         imgui.same_line()
         if imgui.button("next"):
-            self.index = self.next_index(self.index, self.cs_lattice)
+            self.next()
         imgui.end_group()
         changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
         imgui.text('contacting/separating modes:')
         if self.big_lattice:
-            self.draw_big_lattice(self.cs_lattice, 'cs-lattice', self.index)
+            self.draw_big_lattice(self.lattice0, 'cs-lattice', self.index0)
         else:
-            self.draw_lattice(self.cs_lattice, 'cs-lattice', self.index)
+            self.draw_lattice(self.lattice0, 'cs-lattice', self.index0)
         imgui.text('sliding/sticking modes:')
-        self.draw_lattice(self.ss_lattice, 'ss-lattice')
+        if self.lattice1 is not None:
+            self.draw_lattice(self.lattice1, 'ss-lattice')
         imgui.end()
 
     def draw_lattice(self, L, name='lattice', index=None):
@@ -442,11 +595,17 @@ class CSModesDemo(Application):
         self.alpha = 0.7
         self.object_color = get_color('clay')
         self.normal_color = get_color('green')
+        self.normal_scale = [0.2, 0.02, 0.05, 0.035]
         self.velocity_color = get_color('yellow')
-        self.contact_color = get_color('red')
+        self.velocity_scale = [0.2, 0.02, 0.05, 0.035]
+        self.contact_color = get_color('yellow')
+        self.contact_scale = 0.04
         self.obstacle_color = get_color('teal')
         self.show_grid = True
-        self.big_lattice = True
+        self.show_contact_frames = False
+        self.big_lattice = False
+        self.lattice_height = 265
+        self.loop_time = 2.0
 
     def draw_scene_gui(self):
         imgui.begin("Scene", True)
@@ -493,10 +652,42 @@ class CSModesDemo(Application):
             self.normal_arrow.set_color(np.array(new_color))
             self.normal_color = new_color
         
+        changed, new_scale = imgui.drag_float4('normal', 
+                                               *self.normal_scale,
+                                               0.005, 0.0, 1.0)
+        if changed or self.load_scene:
+            self.normal_arrow.set_shaft_length(new_scale[0])
+            self.normal_arrow.set_shaft_radius(new_scale[1])
+            self.normal_arrow.set_head_length(new_scale[2])
+            self.normal_arrow.set_head_radius(new_scale[3])
+            self.normal_scale = new_scale
+
+        changed, new_color = imgui.color_edit3('contact', *self.contact_color)
+        if changed or self.load_scene:
+            self.contact_sphere.set_color(np.array(new_color))
+            self.contact_color = new_color
+
+        changed, new_scale = imgui.drag_float('contact', 
+                                              self.contact_scale,
+                                              0.005, 0.0, 1.0)
+        if changed or self.load_scene:
+            self.contact_sphere.set_radius(self.contact_scale)
+            self.contact_scale = new_scale
+        
         changed, new_color = imgui.color_edit3('vel', *self.velocity_color)
         if changed or self.load_scene:
             self.velocity_arrow.set_color(np.array(new_color))
             self.velocity_color = new_color
+
+        changed, new_scale = imgui.drag_float4('vel', 
+                                               *self.velocity_scale,
+                                               0.005, 0.0, 1.0)
+        if changed or self.load_scene:
+            self.velocity_arrow.set_shaft_length(new_scale[0])
+            self.velocity_arrow.set_shaft_radius(new_scale[1])
+            self.velocity_arrow.set_head_length(new_scale[2])
+            self.velocity_arrow.set_head_radius(new_scale[3])
+            self.velocity_scale = new_scale
 
         changed, new_color = imgui.color_edit3('obs', *self.obstacle_color)
         if changed or self.load_scene:
@@ -507,17 +698,28 @@ class CSModesDemo(Application):
         changed, self.show_grid = imgui.checkbox('grid', self.show_grid)
 
         changed, self.big_lattice = imgui.checkbox('big lattice', self.big_lattice)
+
+        changed, self.show_contact_frames = imgui.checkbox('frames', self.show_contact_frames)
         
         self.load_scene = False
         imgui.end()
 
     def on_key_press_0(self, win, key, scancode, action, mods):
         if key == glfw.KEY_SPACE and action == glfw.PRESS:
-            self.play = not self.play
+            self.play_mode = (self.play_mode + 1) % 3
         if key == glfw.KEY_N and action == glfw.PRESS:
-            self.index = self.next_index(self.index, self.cs_lattice)
+            self.next()
         if key == glfw.KEY_P and action == glfw.PRESS:
-            self.index = self.prev_index(self.index, self.cs_lattice)
+            self.prev()
+        if key  == glfw.KEY_UP and action == glfw.PRESS:
+            t = self.target.get_tf_world().t
+            t[2,0] += 0.05
+            self.target.get_tf_world().set_translation(t)
+        if key  == glfw.KEY_DOWN and action == glfw.PRESS:
+            t = self.target.get_tf_world().t
+            t[2,0] -= 0.05
+            self.target.get_tf_world().set_translation(t)
+            
 
 viewer = Viewer()
 viewer.add_application(CSModesDemo())

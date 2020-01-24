@@ -6,7 +6,7 @@ import numpy as np
 from numpy.linalg import norm
 from scipy.spatial import ConvexHull
 
-from .backend import *
+from contact_modes.viewer.backend import *
 from .bounds import Bounds3, Point, union_bb, union_bp
 from .shape import Shape
 
@@ -307,7 +307,7 @@ class Face(Shape):
                 x_max = np.dot(v.T, w.position)
                 x = w.position
                 vert = w
-        return x, vert
+        return x
 
     def degree(self):
         n = 0
@@ -690,7 +690,7 @@ class HalfedgeMesh(Shape):
                     adj_closer = True
                     vert = v_adj
             if not adj_closer:
-                return x_max, vert
+                return x_max
 
     def object_bound(self):
         b = Bounds3()

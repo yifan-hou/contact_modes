@@ -3,7 +3,8 @@ import numpy as np
 
 from .shape import Shape
 from contact_modes import SE3, SO3
-from .backend import *
+
+from contact_modes.viewer.backend import *
 
 
 class Grid(Shape):

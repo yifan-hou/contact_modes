@@ -1,7 +1,7 @@
 import glm
 import numpy as np
 
-from .backend import *
+from contact_modes.viewer.backend import *
 from .shape import Shape
 
 

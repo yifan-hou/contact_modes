@@ -55,7 +55,6 @@ void main(void)
 {
     objectColor = inColor;
     Normal = mat3(model) * inNormal;
-    FragPos = FragPos = vec3(model * vec4(inVertexPosition, 1.0));
-
-    gl_Position = projection * view * model * vec4(inVertexPosition, 1.0);
+    FragPos = vec3(model * vec4(inVertexPosition - 0.0001 * inNormal, 1.0));
+    gl_Position = projection * view * vec4(FragPos, 1.0);
 }

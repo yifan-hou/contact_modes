@@ -1,8 +1,9 @@
 import numpy as np
 
-from .shape import Shape
 from contact_modes.exp import gamma
-from .backend import *
+from contact_modes.viewer.backend import *
+
+from .shape import Shape
 
 
 def union_bp(b, p):
