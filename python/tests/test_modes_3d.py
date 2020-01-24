@@ -180,7 +180,7 @@ def test_enum_contact_separate_3d():
     
 
 def test_enum_contact_all_3d():
-    '''
+
     # Create four planar contact points.
     points = np.zeros((3, 4))
     normals = np.zeros((3, 4))
@@ -196,7 +196,7 @@ def test_enum_contact_all_3d():
     # modes_1 = contact_modes.enumerate_contact_separating_3d(points, normals)
     # modes_2 = contact_modes.enumerate_all_modes_3d_exponential(points, normals,tangentials,2)
     time_start = time()
-    modes,lattice = contact_modes.enumerate_all_modes_3d(points, normals,tangentials,4)
+    #modes,lattice = contact_modes.enumerate_all_modes_3d(points, normals,tangentials,4)
     time1 = time() - time_start
 
     time_start = time()
@@ -204,10 +204,11 @@ def test_enum_contact_all_3d():
     time2 = time() - time_start
     print(time1)
     print(time2)
+
     #print('contact mode: ')
     #print(modes)
     #print(len(modes))
-
+    '''
     # Create contact manifold in the shape of an octagon.
     n = 6
     points = np.zeros((3,n))
@@ -220,7 +221,7 @@ def test_enum_contact_all_3d():
     tangentials[0,:,0] = 1
     tangentials[1,:,1] = 1
     time_start = time()
-    modes, lattice = contact_modes.enumerate_all_modes_3d(points, normals, tangentials, 4)
+    modes, lattice = contact_modes.enum_sliding_sticking_3d_incremental(points, normals, tangentials, 2)
     time1 = time() - time_start
 
     time_start = time()
@@ -228,7 +229,7 @@ def test_enum_contact_all_3d():
     time2 = time() - time_start
     print(time1)
     print(time2)
-    '''
+    
     # Create box-against-wall contact manifold.
     points = np.zeros((3, 8))
     normals = np.zeros((3, 8))
@@ -253,7 +254,7 @@ def test_enum_contact_all_3d():
     tangentials[2, 4:8, 1] = -1
 
     time_start = time()
-    modes,lattice = contact_modes.enumerate_all_modes_3d(points, normals,tangentials,4)
+    #modes,lattice = contact_modes.enumerate_all_modes_3d(points, normals,tangentials,4)
 
     time1 = time() - time_start
 
@@ -263,6 +264,6 @@ def test_enum_contact_all_3d():
     print(time1)
     print(time2)
     print(len(modes))
+    '''
 
-
-# test_enum_contact_all_3d()
+test_enum_contact_all_3d()

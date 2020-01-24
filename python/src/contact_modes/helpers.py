@@ -5,6 +5,7 @@ from scipy.optimize import linprog
 import scipy as sp
 from time import time
 from .polytope import FaceLattice
+from scipy.spatial import ConvexHull
 def hat_2d():
     pass
 
@@ -103,38 +104,56 @@ def zenotope_vertex(normals):
     for i in range(1,num_normals):
 
         normal = normals[i]
-        V_ = np.empty((0,dim))
-        Sign_ = np.empty((0,i+1))
 
-        orth = sp.linalg.orth((V - V[1, :]).T)
-        if orth.shape[1] == dim:
-            null = np.zeros((6,0))
-        else:
-            null = sp.linalg.null_space((V - V[1, :]))
+        V_ = np.vstack((V+normal, V-normal))
+        Sign_ = np.ones((2*Sign.shape[0],Sign.shape[1]+1),dtype=int)
+        Sign_[:,0:Sign.shape[1]] = np.vstack((Sign,Sign))
+        Sign_[Sign.shape[0]:,-1] = -1
+
+        # take the convex hull of V_
+        orth =  sp.linalg.orth((V_ - V_[1, :]).T)
         if orth.shape[1] != V.shape[1]:
-            orth = sp.linalg.orth((V - V[1, :]).T)
-            V_reduced = np.dot((V - V[1, :]), orth)
+            Vr = np.dot((V_ - V_[1, :]), orth)
         else:
-            orth = np.identity(V.shape[1])
-            V_reduced = V - V[1, :]
-        if V_reduced.shape[1] > 1:
-            ret = pyhull.qconvex('n', V_reduced)
-            Face = np.array([np.fromstring(ret[i], dtype=float, sep=' ') for i in range(2, len(ret))])
-            A = Face[:, 0:-1]
-            b = Face[:, -1]
+            Vr = V_ - V_[1, :]
+        vertices = [list(Vr[i]) for i in range(Vr.shape[0])]
 
+        ret = pyhull.qconvex('Fv', vertices)
+        #ind_vertices = [int(ret[j]) for j in range(1, len(ret))]
+        ind_vertices = []
+        for i in range(1, len(ret)):
+            ind_vertices = ind_vertices + [int(x) for x in ret[i].split(' ')][1:]
+        ind_vertices = np.unique(ind_vertices)
+
+        V = V_[ind_vertices]
+        Sign = Sign_[ind_vertices]
+
+    #
+    # facets = np.zeros((int(ret[0]),len([int(x) for x in ret[1].split(' ')][1:])),dtype=int)
+    # for i in range(1, len(ret)):
+    #     facets[i-1] = [int(x) for x in ret[i].split(' ')][1:]
+    # ret_facets = np.array(facets)
+    #
+    # for i in range(len(ind_vertices)):
+    #     ret_facets[ret_facets == ind_vertices[i]] = i
+
+    return V, Sign#, ret_facets
+
+def zenotope_add(V, Sign, normals):
+    # N: normals of the hyperplanes
+    num_normals = normals.shape[0]
+    dim = normals.shape[1]
+
+    for i in range(num_normals):
+
+        normal = normals[i]
+        V_ = np.empty((0,dim))
+        Sign_ = np.empty((0,i+Sign.shape[1]))
 
         for k in range(V.shape[0]):
             v = V[k]
             v_pm = np.vstack((v + normal,v - normal))
             v_sign = np.hstack((np.array([Sign[k],Sign[k]]),[[1],[-1]]))
-            '''
-            if V_reduced.shape[1]>1:
-                ind_v = np.logical_not(np.all(np.dot(A, np.dot(v_pm - V[1,:],orth).T) + np.vstack((b,b)).T <=0 ,axis=0)
-                                         & np.all(np.abs(np.dot(v_pm - V[1,:],null))<1e-5,axis=1))
-            else:
-                ind_v = np.logical_not(in_convex_hull(v_pm, V))
-            '''
             ind_v = [True,True]
             Sign_ = np.vstack((Sign_,v_sign[ind_v]))
             V_ = np.vstack((V_,v_pm[ind_v]))
@@ -193,20 +212,20 @@ def get_lattice_mode(Lattice, Sign):
 
 def vertex2lattice(V):
 
-    dim_V = V.shape[1]
+    orth = sp.linalg.orth((V - np.mean(V, 0)).T)
+    dim_V = orth.shape[1]
     n_vert = V.shape[0]
     if n_vert == 2:
-        M = np.array([[0,1,1],[1,0,1]])
+        M = np.array([[1],[1]])
         L = FaceLattice(M, dim_V)
         return L
 
     # project V into affine space
-    orth = sp.linalg.orth((V - np.mean(V,0)).T)
-    if orth.shape[1] != V.shape[1]:
+    if dim_V != V.shape[1]:
         V = np.dot((V - np.mean(V,0)), orth)
 
     vertices = [list(V[i]) for i in range(n_vert)]
-    ret = pyhull.qconvex('s Fv', vertices)
+    ret = pyhull.qconvex('Fv', vertices)
     #print(np.array(ret))
 
     # get the convex hull of V
@@ -224,3 +243,14 @@ def vertex2lattice(V):
     L = FaceLattice(M, dim_V)
     return L
 
+def to_lattice(V,facets):
+    n_vert = V.shape[0]
+    n_facets = facets.shape[0]
+    dim_V = facets.shape[1] - 1
+    M = np.zeros((n_vert,n_facets),int)
+    for i in range(n_facets):
+        vert_set = facets[i]
+        for v in vert_set:
+            M[v, i] = 1
+    L = FaceLattice(M, dim_V)
+    return L
