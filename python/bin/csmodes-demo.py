@@ -7,7 +7,6 @@ from time import time
 import glm
 import imgui
 import numpy as np
-import pybullet as bullet
 import quadprog
 from numpy.linalg import norm
 
@@ -86,19 +85,35 @@ def track_velocity(prev_twist, prev_tf, curr_tf, points, normals, dists, csmode)
         C0[i,:] = B.T @ Ad
     b0 = -dists
 
+    # Add soft equality constraints to cost function.
+    c = np.where(csmode == 'c')[0]
+    mask = np.zeros((n_pts,), dtype=bool)
+    mask[c] = 1
+    n_contact = np.sum(mask)
+    k = 0
+    C1 = np.zeros((n_contact, 6))
+    for i in range(n_pts):
+        if mask[i]:
+            C1[k,:] = C0[i,:]
+            k += 1
+    lamb1 = 1000
+    G += lamb1 * C1.T @ C1
+
     # Reorder constraints for points maintaining contact.
     c = np.where(csmode == 'c')[0]
     mask = np.zeros((n_pts,), dtype=bool)
     mask[c] = 1
     n_contact = np.sum(mask)
     k = 0
-    C = np.zeros((n_pts, 6))
-    b = np.zeros((n_pts, 1))
-    for i in range(n_pts):
-        if mask[i]:
-            C[k,:] = C0[i,:]
-            b[k] = b0[i]
-            k += 1
+    C =  np.zeros((n_pts, 6))
+    b = -np.ones((n_pts, 1))
+    # for i in range(n_pts):
+    #     if mask[i]:
+    #         C[k,:] = C0[i,:]
+    #         b[k] = b0[i]
+    #         k += 1
+    # HACK
+    n_contact = 0
     for i in range(n_pts):
         if not mask[i]:
             C[k,:] = C0[i,:]
@@ -124,35 +139,6 @@ class CSModesDemo(Application):
     def __init__(self):
         super().__init__()
 
-        # Create contact modes lattice
-        points = np.zeros((3,4))
-        normals = np.zeros((3,4))
-        points[:,0] = np.array([ 0.5, 0.5, -0.5])
-        points[:,1] = np.array([-0.5, 0.5, -0.5])
-        points[:,2] = np.array([-0.5,-0.5, -0.5])
-        points[:,3] = np.array([ 0.5,-0.5, -0.5])
-        normals[2,:] = 1.0
-        self.points = points
-        self.normals = normals
-
-        # Create contact modes lattice
-        tangentials = np.zeros((3, 4, 2))
-        tangentials[0, :, 0] = 1
-        tangentials[1, :, 1] = 1
-        # modes, ss_lattice = enumerate_all_modes_3d(points, normals, tangentials, 4)
-        # self.ss_lattice = ss_lattice#FaceLattice(M, d)
-
-        M = np.array([[1, 1, 0, 0, 1, 0],
-                  [1, 1, 1, 0, 0, 0],
-                  [1, 0, 1, 1, 0, 0],
-                  [1, 0, 0, 1, 1, 0],
-                  [0, 1, 0, 0, 1, 1],
-                  [0, 1, 1, 0, 0, 1],
-                  [0, 0, 1, 1, 0, 1],
-                  [0, 0, 0, 1, 1, 1]])
-        d = 3
-        self.ss_lattice = FaceLattice(M, d)
-
     def init(self, viewer):
         super().init(viewer)
 
@@ -160,8 +146,6 @@ class CSModesDemo(Application):
         window.set_on_init(self.init_win_0)
         window.set_on_draw(self.draw)
         window.set_on_key_press(self.on_key_press_0)
-
-        self.physics = bullet.connect(bullet.DIRECT)
 
     def init_win_0(self):
         super().init_win()
@@ -398,18 +382,27 @@ class CSModesDemo(Application):
             self.draw_contact_frames(shader)
 
     def draw_contact_frames(self, shader):
-        p, n, t, d = self.dist.closest_points(self.points, 
-                                              self.normals, 
-                                              self.tangents, 
-                                              self.target.get_tf_world())
-        n_pts = p.shape[1]
+        # p, n, t, d = self.dist.closest_points(self.points, 
+        #                                       self.normals, 
+        #                                       self.tangents, 
+        #                                       self.target.get_tf_world())
+        n_pts = self.points.shape[1]
+
+        csmode = self.lattice0.L[self.index0[0]][self.index0[1]].m
+        c = np.where(csmode == 'c')[0]
+        mask = np.zeros((n_pts,), dtype=bool)
+        mask[c] = 1
         for i in range(n_pts):
-            self.normal_arrow.set_origin(p[:,i])
-            self.normal_arrow.set_z_axis(n[:,i])
-            self.normal_arrow.draw(shader)
-            if np.abs(d[i]) < 1e-4:
-                self.contact_sphere.get_tf_world().set_translation(p[:,i])
+            # self.normal_arrow.set_origin(p[:,i])
+            # self.normal_arrow.set_z_axis(n[:,i])
+            # self.normal_arrow.draw(shader)
+            if mask[i]:
+                p = SE3.transform_point(self.target.get_tf_world(), self.points[:,i,None])
+                self.contact_sphere.get_tf_world().set_translation(p)
                 self.contact_sphere.draw(shader)
+            # if np.abs(d[i]) < 1e-4:
+            #     self.contact_sphere.get_tf_world().set_translation(p[:,i])
+            #     self.contact_sphere.draw(shader)
 
     def init_gui(self):
         self.init_lattice_gui()

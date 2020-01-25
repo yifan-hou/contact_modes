@@ -86,7 +86,7 @@ def box_wall():
 
     ground = Box(10, 10, 1.0)
     ground.get_tf_world().set_translation(np.array([0, 0, -0.5]))
-    wall = Box(10, 1, 10)
+    wall = Box(10, 1, 12)
     wall.get_tf_world().set_translation(np.array([0, 1.0, 5]))
 
     # --------------------------------------------------------------------------
