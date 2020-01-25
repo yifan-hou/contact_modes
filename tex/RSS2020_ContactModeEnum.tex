@@ -175,17 +175,18 @@ for use within contact mechanics.
     \item Our main contribution is to report the first \TODO{optimal}
     algorithm for contact mode enumeration in 3D which is exponential in the
     number of bodies and polynomial in the number of contact points.
-    
-    the first polynomial-time algorithm for
-    contact mode enumeration in 3D.
-    \begin{inparaenum}
-        % \item By comparison, contact mode enumeration in 2D was solved almost
-        % three decades ago.
+    \begin{itemize}
+        \item Decomposition of problem
+        \item Reduced order of polynomial time algorithm
         \item Moreover, our algorithm works for both linearized and non-linear
         Coulomb models of friction.
         \item As a consequence, we show that number of contact modes in 3D is
         polynomial.
-    \end{inparaenum}
+    \end{itemize}
+    % \begin{inparaenum}
+    %     % \item By comparison, contact mode enumeration in 2D was solved almost
+    %     % three decades ago.
+    % \end{inparaenum}
     \item Summary of methods
     \item Summary of results
 \end{inparaenum}
@@ -222,17 +223,17 @@ for use within contact mechanics.
 
 \section{Kinematics of Contact}
 
-\TODO
-{
-\begin{inparaenum}
-    \item twists: spatial, body twist
-    \item frames SE3
-    \item contact frame, w/r/t object frame
-    \item normal velocity equations
-    \item tangential velocity equations
-    \item multiple objects
-\end{inparaenum}
-}
+% \TODO
+% {
+% \begin{inparaenum}
+%     \item twists: spatial, body twist
+%     \item frames SE3
+%     \item contact frame, w/r/t object frame
+%     \item normal velocity equations
+%     \item tangential velocity equations
+%     \item multiple objects
+% \end{inparaenum}
+% }
 
 % Let $so(3) = \{(v,\omega): v \in \mathbb{R}^3, \omega \in so(3)\}$ 
 
@@ -292,7 +293,8 @@ velocity is
 \begin{equation}
 \dot{\phi} = \begin{bmatrix} n & -n\hat{p}_{oc} \end{bmatrix}V_o.
 \end{equation}
-Note that when $\phi$ is negative, the objects are penetrating.
+Note that when $\phi$ is negative, the objects are penetrating. \TODO{TODO:
+Multiple objects.}
 
 \section{Convex Polytopes}
 
