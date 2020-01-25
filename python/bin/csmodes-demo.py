@@ -4,13 +4,14 @@ import os
 import sys
 from time import time
 
-import glm
 import imgui
 import numpy as np
-import quadprog
 from numpy.linalg import norm
 
-from contact_modes import (SE3, SO3, FaceLattice, enumerate_all_modes_3d,
+import glm
+import quadprog
+from contact_modes import (SE3, SO3, FaceLattice, enum_sliding_sticking_3d,
+                           enumerate_all_modes_3d,
                            enumerate_contact_separating_3d, get_color,
                            get_data, make_frame,
                            sample_twist_contact_separating,
@@ -191,6 +192,10 @@ class CSModesDemo(Application):
             modes, lattice = enumerate_contact_separating_3d(self.points, self.normals)
             self.lattice0 = lattice
             self.lattice1 = None
+        if solver == 'csss-modes':
+            modes, lattice = enum_sliding_sticking_3d(self.points, self.normals, self.tangents, 2)
+            self.lattice0 = lattice.L[0][0].ss_lattice
+            self.lattice1 = lattice
         if solver == 'all-modes':
             modes, lattice = enumerate_all_modes_3d(self.points, -self.normals, self.tangents, 4)
             self.lattice0 = lattice
@@ -205,7 +210,10 @@ class CSModesDemo(Application):
         if solver == 'cs-modes':
             self.index0 = self.next_node(self.index0, self.lattice0)
         if solver == 'csss-modes':
-            pass
+            self.index1 = self.next_node(self.index1, self.lattice1)
+            if self.index1 == (0,0):
+                self.index0 = self.next_node(self.index0, self.lattice0)
+                self.lattice1 = self.lattice0.L[self.index0[0]][self.index0[1]].ss_lattice
         if solver == 'all-modes':
             self.index0 = self.next_node(self.index0, self.lattice0)
         self.reset_state()
@@ -215,7 +223,12 @@ class CSModesDemo(Application):
         if solver == 'cs-modes':
             self.index0 = self.prev_node(self.index0, self.lattice0)
         if solver == 'csss-modes':
-            pass
+            self.index1 = self.prev_node(self.index1, self.lattice1)
+            last = (len(self.lattice1.L)-1, 0)
+            if self.index1 == last:
+                self.index0 = self.prev_node(self.index0, self.lattice0)
+                self.lattice1 = self.lattice0.L[self.index0[0]][self.index0[1]].ss_lattice
+                self.index1 = (len(self.lattice1.L)-1, 0)
         if solver == 'all-modes':
             self.index0 = self.prev_node(self.index0, self.lattice0)
         self.reset_state()
@@ -258,7 +271,7 @@ class CSModesDemo(Application):
     def reset_state(self):
         self.target.set_tf_world(self.target_start)
         self.prev_tf = self.target_start
-        self.prev_twist = self.sample_twist(self.index0, self.lattice0)
+        self.prev_twist = self.sample_twist()
         self.start_time = time()
         self.curr_time = time()
 
@@ -294,15 +307,17 @@ class CSModesDemo(Application):
         self.prev_tf = curr_tf
         # self.prev_twist = curr_twist
 
-    def sample_twist(self, index, lattice):
-        # Get mode string.
-        mode_str = lattice.L[index[0]][index[1]].m
-
+    def sample_twist(self):
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
-            return sample_twist_contact_separating(self.points, self.normals, mode_str)
+            mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
+            return sample_twist_contact_separating(self.points, self.normals, mode)
+        if solver == 'csss-modes':
+            mode = self.lattice1.L[self.index1[0]][self.index1[1]].m
+            return sample_twist_sliding_sticking(self.points, -self.normals, self.tangents, mode)
         if solver == 'all-modes':
-            return sample_twist_sliding_sticking(self.points, -self.normals, self.tangents, mode_str)
+            mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
+            return sample_twist_sliding_sticking(self.points, -self.normals, self.tangents, mode)
 
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
