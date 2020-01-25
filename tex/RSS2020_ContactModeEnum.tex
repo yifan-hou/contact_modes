@@ -89,7 +89,7 @@ cross/.default={2pt}}
 \DeclareMathOperator{\relint}{relint}
 \DeclareMathOperator{\aff}{aff}
 
-\newcommand{\TODO}[1]{{\color{red} {{#1}}  }}
+\newcommand{\TODO}[1]{{\color{red} {{#1}}}}
 
 \pdfinfo{
    /Author (Eric Huang; Xianyi Chang; Matthew T. Mason)
@@ -129,31 +129,54 @@ for use within contact mechanics.
 \begin{inparaenum}
     \item Contact modes and connection to dynamics
     \begin{inparaenum}
-        \item When a moving robot contacts its environment, the points of the
+        \item 
+        When a moving robot contacts its environment, the points of the
         resulting contact manifold may be sliding, sticking, or separating.
-        \item Under the Coulomb model of friction, the frictional force is
+        % \item 
+        Under the Coulomb model of friction, the frictional force is either
         opposite to the velocity of a sliding contact point, oriented in any
-        direction for a sticking contact point, and zero for a separating
+        direction for a sticking contact point, or zero for a separating
         contact point.
-        \item As each individual contact mode imparts complementary dynamic
-        equations, the set of all (valid) contact mode assignments enumerates
-        the set of all possible flows for the system. \TODO{Cite Aaron's paper}
-        \item (Here, by valid we mean kinematically feasible, i.e. there exists a
+        % \item 
+        As each individual contact mode imparts complementary dynamic equations,
+        the set of all (valid) contact mode assignments enumerates the set of
+        all possible flows for the system \cite{johnson_hybrid_2016}.
+        % \item 
+        (Here, by valid we mean kinematically feasible, i.e. there exists a
         generalized velocity $\dot{q}$ that generates the correct mode at
         each contact point.)
-        \item Naturally, we advocate that efficient contact mode enumeration
-        will be a useful tool for the simulation, analysis, and control of
-        robotic systems that make and break contact with the environment.
+        % \item 
+        Given the one-to-one mapping between contact modes and dynamics, we
+        advocate that efficient contact mode enumeration will be a useful tool
+        for the simulation, analysis, and control of robotic systems that make
+        and break contact with the environment.
     \end{inparaenum}
-    \item Contact mode enumeration has many applications within the field of
-    robotics.
+    \item We provide vignettes of possible application areas below.
+    \item Simulation
     \begin{inparaenum}
-        \item 
-        \item Simulation
-        \item Control for contact-rich tasks like legged locomotion
-        \item Grasping analysis
+        \item All physic engines solve complementarity problems 
+        \item all algorithms return one solution
+        \item Multiple solutions exist
+        \item Some algorithms have worst-case exponential runtime 
+        \item Contact mode enumeration would allow the simulation user to
+        visualize the multiple solutions
+        \item Currently, physics simulators cannot quantify the impact of
+        solution non-uniqueness on simulated trajectories.
+        \item Currently, this phenomenom isn't well measured 
     \end{inparaenum}
-    \item Our main contribution is the first polynomial-time algorithm for
+    \item Grasping analysis
+    \item Control for contact-rich tasks like legged locomotion
+    \begin{inparaenum}
+        \item Vocabulary of legged locomotion paper 
+        \item Enable new approaches, such as simultaneously optimizing controls
+        to be robust over multiple contact modes.
+    \end{inparaenum}
+
+    \item Our main contribution is to report the first \TODO{optimal}
+    algorithm for contact mode enumeration in 3D which is exponential in the
+    number of bodies and polynomial in the number of contact points.
+    
+    the first polynomial-time algorithm for
     contact mode enumeration in 3D.
     \begin{inparaenum}
         % \item By comparison, contact mode enumeration in 2D was solved almost
@@ -175,13 +198,13 @@ for use within contact mechanics.
     enumeration in 2D which intersects the positive (negative) rotation centers
     on the positive (negative) oriented plane and intersects the rotation
     centers at infinity on the equator. Though \citet{mason_mechanics_2001}
-    upper-bounded the number of modes at $O(n^2)$, the algorithm's runtime is
-    actually $O(n\log n)$ and the correct number of modes is $\Theta(n)$.
-    Unfortunately, the oriented plane technique does not generalize to 3D
-    contact mode enumeration.
-    \item \citet{haas-heger_passive_2018} independently published an algorithm
-    for partial contact mode enumeration in 2D. There, they interpret the
-    feasible modes as the regions of an arrangement of hyperplanes in 3D.
+    upper-bounded the number of modes at $O(n^2)$, by our analysis, the
+    algorithm's runtime is actually $O(n\log n)$ and the correct number of modes
+    is $\Theta(n)$. Unfortunately, the oriented plane technique does not
+    generalize to 3D contact mode enumeration.
+    \item Later, \citet{haas-heger_passive_2018} independently published an
+    algorithm for partial contact mode enumeration in 2D. There, they interpret
+    the feasible modes as the regions of an arrangement of hyperplanes in 3D.
     However, \citet{haas-heger_passive_2018}'s algorithm is at least
     $\Omega(n^4)$ and does not enumerate separating modes. Regardless of these
     issues, their work inspired us to investigate hyperplane arrangements in
@@ -194,21 +217,82 @@ for use within contact mechanics.
     \item LCP and related solvers
     \item Variational inequalities
     \item arrangement of hyperplanes
+    \item mixed integer quadratic programming
 \end{inparaenum}
 
-\section{Mechanics of Contact}
+\section{Kinematics of Contact}
 
-\TODO{}
+\TODO
+{
+\begin{inparaenum}
+    \item twists: spatial, body twist
+    \item frames SE3
+    \item contact frame, w/r/t object frame
+    \item normal velocity equations
+    \item tangential velocity equations
+    \item multiple objects
+\end{inparaenum}
+}
 
-The normal velocity equation
+% Let $so(3) = \{(v,\omega): v \in \mathbb{R}^3, \omega \in so(3)\}$ 
+
+Let $se(3) = \{(v,\omega): v \in \mathbb{R}^3, \omega \in \mathbb{R}^3\}$ be the
+\textit{twist} coordinates of the Euclidean group $SE(3)$. There is a bijective
+mapping from $\xi \in se(3)$ to $g \in SE(3)$ given by the exponential map
+$ g = \exp\hat{\xi}$, where the hat operator takes 
+\begin{align}
+\hat{\xi} \in se(3) &\rightarrow \begin{bmatrix}\hat{\omega} & v \\ 0 & 0 \end{bmatrix}\\
+\hat{\omega} \in \mathbb{R}^3 &\rightarrow 
+\begin{bmatrix}
+    0 & -\omega_3 & \omega_2\\
+    \omega_3 & 0 & -\omega_1\\
+    -\omega_2 & \omega_1 & 0
+\end{bmatrix}.
+\end{align}
+Note, the vee operator takes $\hat{\xi}^\vee \rightarrow \xi$,
+$\hat{\omega}^\vee \rightarrow \omega$. Let 
+% $g_{ab} = [R_{ab} p_{ab}] \in SE(3)$ 
 \begin{equation}
-B^T\adjoint_{g_{oc}}^{-1}\xi = 
-B^T \begin{bmatrix}
-        R_{oc}^T & -R_{oc}^T\widehat{p}\\
-        0 & R^T
-    \end{bmatrix}\xi = 
-\begin{bmatrix} n & -n\widehat{p} \end{bmatrix}\xi
+    g_{ab} = \begin{bmatrix} R_{ab} & p_{ab} \\ 0 & 1 \end{bmatrix} \in SE(3)
 \end{equation}
+be a transformation from frame $b$ to frame $a$. We define the instantaneous
+\textit{spatial velocity} and \textit{body velocity} of $g_{ab}$ as 
+\begin{align}
+    V^s_{ab} &= \left[\dot{g}_{ab}g_{ab}^{-1}\right]^\vee\\
+    V^b_{ab} &= \left[g_{ab}^{-1}\dot{g}_{ab}\right]^\vee,
+\end{align}
+respectively, both of which are in $se(3)$. The adjoint of $g_{ab}$
+\begin{equation}
+\adjoint_{g_{ab}} = \begin{bmatrix}R_{ab} & \hat{p}_{ab}R_{ab} \\ 0 & R \end{bmatrix} \in \mathbb{R}^{6\times 6}
+\end{equation}
+relates body and spatial velocities linearly
+\begin{equation}
+    V^s_{ab} = \adjoint_{g_{ab}}V^b_{ab}.
+\end{equation}
+
+Let $g_{oc} \in SE(3)$ be the transformation from the contact frame to the
+object frame. By convention, we fix the contact normal $n \in \mathbb{R}^3$,
+also known as the $z$-axis of $g_{oc}$, to point in the direction opposite the
+object's surface normal at the contact point $p_{oc}$. 
+
+Let $g_{wo} \in SE(3)$ and $g_{oc} \in SE(3)$ be the transformations from the
+object frame to the world frame and the contact frame to the object frame,
+respectively. Given an object body velocity $V_o \in se(3)$, we can compute the
+body velocity $V_c \in se(3)$ of the contact frame using 
+\begin{equation}
+    V_c = \adjoint_{g_{oc}}^{-1}V_o = 
+    \begin{bmatrix}
+        R_{oc}^T & -R_{oc}^T\hat{p}_{oc}\\
+        0 & R_{oc}^T
+    \end{bmatrix}V_o. \label{eq:contact-frame-body-velocity}
+\end{equation}
+Let $\phi \in \mathbb{R}$ be the contact distance as measured along the
+contact normal, then from (\ref{eq:contact-frame-body-velocity}) the separating
+velocity is 
+\begin{equation}
+\dot{\phi} = \begin{bmatrix} n & -n\hat{p}_{oc} \end{bmatrix}V_o.
+\end{equation}
+Note that when $\phi$ is negative, the objects are penetrating.
 
 \section{Convex Polytopes}
 
@@ -432,19 +516,11 @@ available at \url{http://www.github.com/<omitted>/contact_modes}.
 
 \section{Results}
 
-\subsection{Runtimes for 2D Problems}
-
 \subsection{Runtimes for 3D Problems}
 
 \section{Experiments}
 
 \subsection{Visualizing \& Benchmarking}
-
-\subsection{Simulation (?)}
-
-\subsection{Optimization (?)}
-
-\subsection{Planning (?)}
 
 \section{Conclusion}
 
