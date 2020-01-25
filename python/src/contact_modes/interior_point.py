@@ -7,8 +7,9 @@ from scipy.optimize import linprog
 
 DEBUG = False
 
-def int_pt_cone(H):
+def int_pt_cone(H, Aeq=None, beq=None):
     # Find dimension of halfspaces.
+    m = H.shape[0]
     dim = H.shape[1]
 
     # Add a box around the origin to ensure that the resulting linear program is
@@ -25,7 +26,8 @@ def int_pt_cone(H):
 
     # Solve linear program for strictly interior point.
     n = H.shape[0]
-    H = np.concatenate((H, np.ones((n,1))), axis=1)
+    z = np.concatenate((np.ones((m,1)), np.zeros((n-m,1))), axis=0)
+    H = np.concatenate((H, z), axis=1)
     bounds = []
     for i in range(dim):
         bounds.append((None,None))

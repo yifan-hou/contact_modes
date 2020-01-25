@@ -194,10 +194,10 @@ class CSModesDemo(Application):
             self.lattice1 = None
         if solver == 'csss-modes':
             modes, lattice = enum_sliding_sticking_3d(self.points, self.normals, self.tangents, 2)
-            self.lattice0 = lattice.L[0][0].ss_lattice
-            self.lattice1 = lattice
+            self.lattice0 = lattice
+            self.lattice1 = lattice.L[0][0].ss_lattice
         if solver == 'all-modes':
-            modes, lattice = enumerate_all_modes_3d(self.points, -self.normals, self.tangents, 4)
+            modes, lattice = enumerate_all_modes_3d(self.points, self.normals, self.tangents, 4)
             self.lattice0 = lattice
             self.lattice1 = None
 
@@ -313,11 +313,15 @@ class CSModesDemo(Application):
             mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
             return sample_twist_contact_separating(self.points, self.normals, mode)
         if solver == 'csss-modes':
+            last = (len(self.lattice1.L)-1,0)
+            # Skip empty face.
+            if self.index1 == last:
+                return np.zeros((6,1))
             mode = self.lattice1.L[self.index1[0]][self.index1[1]].m
-            return sample_twist_sliding_sticking(self.points, -self.normals, self.tangents, mode)
+            return sample_twist_sliding_sticking(self.points, self.normals, self.tangents, mode)
         if solver == 'all-modes':
             mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
-            return sample_twist_sliding_sticking(self.points, -self.normals, self.tangents, mode)
+            return sample_twist_sliding_sticking(self.points, self.normals, self.tangents, mode)
 
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
@@ -464,7 +468,7 @@ class CSModesDemo(Application):
             self.draw_lattice(self.lattice0, 'cs-lattice', self.index0)
         imgui.text('sliding/sticking modes:')
         if self.lattice1 is not None:
-            self.draw_lattice(self.lattice1, 'ss-lattice')
+            self.draw_lattice(self.lattice1, 'ss-lattice', self.index1)
         imgui.end()
 
     def draw_lattice(self, L, name='lattice', index=None):
