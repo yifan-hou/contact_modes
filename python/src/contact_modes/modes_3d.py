@@ -72,10 +72,10 @@ def sample_twist_contact_separating(points, normals, modestr):
         xi = int_pt_cone(H, C, np.zeros((n_contacts, 1)))
     else:
         xi = int_pt_cone(H)
-    
+
     if DEBUG:
         print(A @ xi)
-    
+
     return xi
 
 def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
@@ -112,9 +112,10 @@ def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
     H = np.vstack((N[mode==1], -N[mode==-1]))
 
     if all(C.shape):
-        null = sp.linalg.null_space(C)
-        H = np.dot(H, null)
-        x = null @ int_pt_cone(H)
+        # null = sp.linalg.null_space(C)
+        # H = np.dot(H, null)
+        # x = null @ int_pt_cone(H)
+        xi = int_pt_cone(H, C, np.zeros((C.shape[0], 1)))
     else:
         x = int_pt_cone(H)
     #print(np.dot(N,x))
