@@ -64,19 +64,15 @@ def sample_twist_contact_separating(points, normals, modestr):
     n_pts = points.shape[1]
     mask = np.zeros(n_pts, dtype=bool)
     mask[c] = 1
-    # if DEBUG:
-    #     print('mask', mask)
+    n_contacts = np.sum(mask)
     C = A[mask, :]
     H = A[~mask, :]
 
-    # Project into null space.
-    if np.sum(mask) > 0:
-        null = sp.linalg.null_space(C)
-        H = np.dot(H, null)
-        xi = null @ int_pt_cone(H)
+    if n_contacts > 0:
+        xi = int_pt_cone(H, C, np.zeros((n_contacts, 1)))
     else:
         xi = int_pt_cone(H)
-
+    
     if DEBUG:
         print(A @ xi)
     
@@ -119,7 +115,6 @@ def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
         null = sp.linalg.null_space(C)
         H = np.dot(H, null)
         x = null @ int_pt_cone(H)
-
     else:
         x = int_pt_cone(H)
     #print(np.dot(N,x))

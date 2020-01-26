@@ -5,7 +5,7 @@ from scipy.linalg import orth as orth
 from scipy.optimize import linprog
 
 
-DEBUG = False
+# DEBUG = True
 
 def int_pt_cone(H, Aeq=None, beq=None):
     # Find dimension of halfspaces.
@@ -34,9 +34,20 @@ def int_pt_cone(H, Aeq=None, beq=None):
     bounds.append((0,None))
     c = np.zeros((dim+1,))
     c[-1] = -1.0
-    x = linprog(c, H, b, bounds=bounds, method='interior-point')
+    if Aeq is not None:
+        Aeq = np.concatenate((Aeq, np.zeros((Aeq.shape[0],1))), axis=1)
+    x = linprog(c, H, b, A_eq=Aeq, b_eq=beq, bounds=bounds, method='interior-point')
 
-    return x.x[0:dim,None]
+    x = x.x[0:dim,None]
+
+    if DEBUG:
+        print('H @ x')
+        print(H[0:m,0:dim] @ x)
+        if Aeq is not None:
+            print('A_eq @ x')
+            print(Aeq[:,0:dim] @ x)
+
+    return x
 
 def interior_point_halfspace(A, b):
     """Find a strictly interior point within the intersection of halfspaces.
