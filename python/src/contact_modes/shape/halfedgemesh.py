@@ -6,11 +6,11 @@ import numpy as np
 from numpy.linalg import norm
 from scipy.spatial import ConvexHull
 
+from contact_modes import SE3, SO3, get_color
 from contact_modes.viewer.backend import *
+
 from .bounds import Bounds3, Point, union_bb, union_bp
 from .shape import Shape
-
-from contact_modes import SE3, SO3
 
 
 def area_triangle_3d(p0, p1, p2):
@@ -335,9 +335,9 @@ class Face(Shape):
         color = color.astype('float32')
         glBindVertexArray(self.mesh.vao)
         glBindBuffer(GL_ARRAY_BUFFER, self.mesh.color_vbo)
-        glBufferSubData(GL_ARRAY_BUFFER, (3*self.index+0)*3*4, 3*4, color)
-        glBufferSubData(GL_ARRAY_BUFFER, (3*self.index+1)*3*4, 3*4, color)
-        glBufferSubData(GL_ARRAY_BUFFER, (3*self.index+2)*3*4, 3*4, color)
+        glBufferSubData(GL_ARRAY_BUFFER, (3*self.index+0)*4*4, 4*4, color)
+        glBufferSubData(GL_ARRAY_BUFFER, (3*self.index+1)*4*4, 4*4, color)
+        glBufferSubData(GL_ARRAY_BUFFER, (3*self.index+2)*4*4, 4*4, color)
         glBindVertexArray(0)
 
     def intersect_ray_p(self, ray):
@@ -722,7 +722,7 @@ class HalfedgeMesh(Shape):
         # Get per face vertex positions, normals, and colors.
         vertices = np.zeros((3, 3*len(self.faces)), dtype='float32')
         normals = np.zeros((3, 3*len(self.faces)), dtype='float32')
-        colors = np.zeros((3, 3*len(self.faces)), dtype='float32')
+        colors = np.zeros((4, 3*len(self.faces)), dtype='float32')
         k = 0
         for i in range(len(self.faces)):
             f = self.faces[i]
@@ -734,7 +734,7 @@ class HalfedgeMesh(Shape):
                 vertices[:,k,None] = v.position
                 normals[:,k,None]  = f.normal
                 # normals[:,k,None]  = v.normal
-                colors[:,k] = np.array([1.0, 0.5, 0.31], dtype='float32')
+                colors[:,k] = get_color('clay')
                 # colors[:,k] = np.random.rand(3)
                 h = h.next
                 k += 1
@@ -764,7 +764,7 @@ class HalfedgeMesh(Shape):
 
         glBindBuffer(GL_ARRAY_BUFFER, self.color_vbo)
         glBufferData(GL_ARRAY_BUFFER, len(colors)*4, colors, GL_STATIC_DRAW)
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3*4, ctypes.c_void_p(0))
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 4*4, ctypes.c_void_p(0))
         glEnableVertexAttribArray(2)
 
         glBindVertexArray(0)

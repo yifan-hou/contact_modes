@@ -5,7 +5,7 @@ from scipy.linalg import orth as orth
 from scipy.optimize import linprog
 
 
-# DEBUG = True
+DEBUG = False
 
 def int_pt_cone(H, Aeq=None, beq=None):
     # Find dimension of halfspaces.

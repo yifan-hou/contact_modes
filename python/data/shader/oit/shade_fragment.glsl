@@ -32,7 +32,7 @@
 //
 //----------------------------------------------------------------------------------
 #version 410 core
-layout(location=0) in vec3 objectColor;
+layout(location=0) in vec4 objectColor;
 layout(location=1) in vec3 Normal;
 layout(location=2) in vec3 FragPos;
 
@@ -44,6 +44,8 @@ uniform vec3 lightColor;
 vec4 ShadeFragment()
 {
     vec4 FragColor;
+
+    vec3 color = objectColor.xyz;
 
     // ambient
     float ambientStrength = 0.2;
@@ -62,11 +64,11 @@ vec4 ShadeFragment()
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = specularStrength * spec * lightColor;  
 
-    vec3 result = (ambient + diffuse + specular) * objectColor;
+    vec3 result = (ambient + diffuse + specular) * color;
 
     // apply gamma correction
     float gamma = 2.2;
-    FragColor = vec4(pow(result, vec3(1.0/gamma)), uAlpha);
+    FragColor = vec4(pow(result, vec3(1.0/gamma)), objectColor.a);
 
     return FragColor;
 }

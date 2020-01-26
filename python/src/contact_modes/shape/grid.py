@@ -20,7 +20,7 @@ class Grid(Shape):
         n_pts = 4*2*len(steps) + 4
         vertices = np.zeros((3, n_pts), dtype='float32')
         normals = np.zeros((3, n_pts), dtype='float32')
-        colors = np.ones((3, n_pts), dtype='float32')
+        colors = np.ones((4, n_pts), dtype='float32')
         k = 0
         for i in steps:
             # lines parallel to x-axis
@@ -43,17 +43,17 @@ class Grid(Shape):
             k += 1
         # x-axis
         vertices[:,k] = np.array([-size, 0, 0])
-        colors[:,k] = np.array([1, 0, 0])
+        colors[:,k] = np.array([1, 0, 0, 1], dtype='float32')
         k += 1
         vertices[:,k] = np.array([ size, 0, 0])
-        colors[:,k] = np.array([1, 0, 0])
+        colors[:,k] = np.array([1, 0, 0, 1], dtype='float32')
         k += 1
         # y-axis
         vertices[:,k] = np.array([0, -size, 0])
-        colors[:,k] = np.array([0, 0, 1])
+        colors[:,k] = np.array([0, 0, 1, 1], dtype='float32')
         k += 1
         vertices[:,k] = np.array([0,  size, 0])
-        colors[:,k] = np.array([0, 0, 1])
+        colors[:,k] = np.array([0, 0, 1, 1], dtype='float32')
         k += 1
         # normals point upwards
         normals[2,:] = 1.0
@@ -83,7 +83,7 @@ class Grid(Shape):
 
         glBindBuffer(GL_ARRAY_BUFFER, self.color_vbo)
         glBufferData(GL_ARRAY_BUFFER, len(colors)*4, colors, GL_STATIC_DRAW)
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3*4, ctypes.c_void_p(0))
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 4*4, ctypes.c_void_p(0))
         glEnableVertexAttribArray(2)
 
         glBindVertexArray(0)

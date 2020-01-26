@@ -378,8 +378,8 @@ class CSModesDemo(Application):
         shader.set_mat4('projection', np.asarray(projection))
 
         # lighting
-        lightPos = np.array([1.0, 1.2, 2.0])
-        shader.set_vec3('lightPos', np.asarray(lightPos))
+        lightPos = np.array(self.light_pos)
+        shader.set_vec3('lightPos', lightPos)
         shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
 
         cameraPos = glm.vec3(glm.column(glm.inverse(view), 3))
@@ -389,7 +389,7 @@ class CSModesDemo(Application):
         # 2. Draw scene
         # ----------------------------------------------------------------------
         self.target.draw(shader)
-        self.target.draw_wireframe(shader)
+        # self.target.draw_wireframe(shader)
 
         for o in self.obs:
             o.draw(shader)
@@ -606,6 +606,7 @@ class CSModesDemo(Application):
         self.peel_depth = 16
         self.alpha = 0.7
         self.object_color = get_color('clay')
+        self.object_color[3] = 0.5
         self.normal_color = get_color('green')
         self.normal_scale = [0.2, 0.02, 0.05, 0.035]
         self.velocity_color = get_color('yellow')
@@ -618,6 +619,8 @@ class CSModesDemo(Application):
         self.big_lattice = False
         self.lattice_height = 265
         self.loop_time = 2.0
+        self.light_pos = [1.0, -5.0, 10.0]
+        self.cam_focus = [0.0, 0.0, 0.5]
 
     def draw_scene_gui(self):
         imgui.begin("Scene", True)
@@ -654,12 +657,12 @@ class CSModesDemo(Application):
         if changed or self.load_scene:
             self.renderer.peel_depth = self.peel_depth
 
-        changed, new_color = imgui.color_edit3('object', *self.object_color)
+        changed, new_color = imgui.color_edit4('object', *self.object_color)
         if changed or self.load_scene:
             self.target.set_color(np.array(new_color))
             self.object_color = new_color
         
-        changed, new_color = imgui.color_edit3('normal', *self.normal_color)
+        changed, new_color = imgui.color_edit4('normal', *self.normal_color)
         if changed or self.load_scene:
             self.normal_arrow.set_color(np.array(new_color))
             self.normal_color = new_color
@@ -674,7 +677,7 @@ class CSModesDemo(Application):
             self.normal_arrow.set_head_radius(new_scale[3])
             self.normal_scale = new_scale
 
-        changed, new_color = imgui.color_edit3('contact', *self.contact_color)
+        changed, new_color = imgui.color_edit4('contact', *self.contact_color)
         if changed or self.load_scene:
             self.contact_sphere.set_color(np.array(new_color))
             self.contact_color = new_color
@@ -686,7 +689,7 @@ class CSModesDemo(Application):
             self.contact_sphere.set_radius(self.contact_scale)
             self.contact_scale = new_scale
         
-        changed, new_color = imgui.color_edit3('vel', *self.velocity_color)
+        changed, new_color = imgui.color_edit4('vel', *self.velocity_color)
         if changed or self.load_scene:
             self.velocity_arrow.set_color(np.array(new_color))
             self.velocity_color = new_color
@@ -701,11 +704,19 @@ class CSModesDemo(Application):
             self.velocity_arrow.set_head_radius(new_scale[3])
             self.velocity_scale = new_scale
 
-        changed, new_color = imgui.color_edit3('obs', *self.obstacle_color)
+        changed, new_color = imgui.color_edit4('obs', *self.obstacle_color)
         if changed or self.load_scene:
             for o in self.obs:
                 o.set_color(np.array(new_color))
             self.obstacle_color = new_color
+
+        changed, new_pos = imgui.slider_float3('light', *self.light_pos, -10.0, 10.0)
+        if changed or self.load_scene:
+            self.light_pos = new_pos
+        
+        # changed, new_pos = imgui.slider_float3('cam', *self.cam_focus, -10.0, 10.0)
+        # if changed or self.load_scene:
+        #     self.cam_focus = new_pos
 
         changed, self.show_grid = imgui.checkbox('grid', self.show_grid)
 
