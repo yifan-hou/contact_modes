@@ -45,6 +45,7 @@ class Application(object):
 
         # 
         self.grid = Grid(0.25, 5)
+        self.grid.get_tf_world().set_translation(np.array([0, 0, -0.5]))
 
     def render(self):
         # Clear frame.

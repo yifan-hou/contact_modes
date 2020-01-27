@@ -7,147 +7,56 @@ from contact_modes.shape import Box, BoxWithHole, Cylinder
 from .polytope import FaceLattice
 from .util import get_color
 
-# from contact_modes import (CollisionManager, FaceLattice,
-#                            enumerate_contact_separating_3d, get_color,
-#                            get_data, sample_twist_contact_separating)
-# from contact_modes.viewer import (SE3, Application, Arrow, Box, BoxWithHole,
-#                                   Cylinder, OITRenderer, Shader, Viewer,
-#                                   Window)
 
+def box_case(walls=1):
+    # --------------------------------------------------------------------------
+    # Object and obstacle meshes
+    # --------------------------------------------------------------------------
+    target = Box()
+    target.get_tf_world().set_translation(np.array([0, 0, 0.0]))
+    target_wireframe = Box(1.0, 1.0, 1.0)
+    target_wireframe.set_color(get_color('black'))
+    target.set_wireframe(target_wireframe)
 
-def box_ground():
+    x = np.array([1., 0, 0])
+    y = np.array([0, 1., 0])
+    z = np.array([0, 0, 1.])
+    N = [z, y, x, -x, -y, -z]
+    T = [(x,y), (z,x), (y,z), (z,y), (x,z), (y,x)]
+    obstacles = []
+    for i in range(walls):
+        n = N[i]
+        box_dims = np.array([10., 10., 10.])
+        box_dims[np.where(np.abs(n) > 0)] = 1.0
+        box = Box(*box_dims)
+        box.get_tf_world().set_translation(-n)
+        obstacles.append(box)
+
+    # --------------------------------------------------------------------------
+    # Collision manager
+    # --------------------------------------------------------------------------
+    manager = CollisionManager()
+    for i in range(walls):
+        for j in range(4):
+            manager.add_pair(None, obstacles[i])
+    
     # --------------------------------------------------------------------------
     # Contact points, normals, and tangents
     # --------------------------------------------------------------------------
-    points = np.zeros((3,4))
-    normals = np.zeros((3,4))
-    points[:,0] = np.array([ 0.5, 0.5, -0.5])
-    points[:,1] = np.array([-0.5, 0.5, -0.5])
-    points[:,2] = np.array([-0.5,-0.5, -0.5])
-    points[:,3] = np.array([ 0.5,-0.5, -0.5])
-    normals[2,:] = 1.0
-    tangents = np.zeros((3, 4, 2))
-    tangents[0, :, 0] = 1
-    tangents[1, :, 1] = 1
-
-    # --------------------------------------------------------------------------
-    # Object and obstacle meshes
-    # --------------------------------------------------------------------------
-    target = Box()
-    target.get_tf_world().set_translation(np.array([0, 0, 0.5]))
-    target_wireframe = Box(1.0 + 1e-4, 1.0 + 1e-4, 1.0 + 1e-4)
-    target_wireframe.set_color(get_color('black'))
-    target.set_wireframe(target_wireframe)
-
-    ground = Box(10, 10, 1.0)
-    ground.get_tf_world().set_translation(np.array([0, 0, -0.5]))
-
-    # --------------------------------------------------------------------------
-    # Collision manager
-    # --------------------------------------------------------------------------
-    manager = CollisionManager()
-    for i in range(4):
-        manager.add_pair(points[:,i], ground)
-
-    return points, normals, tangents, target, [ground], manager
-
-def box_wall():
-    # --------------------------------------------------------------------------
-    # Contact points and normals
-    # --------------------------------------------------------------------------
-    points = np.zeros((3,8))
-    normals = np.zeros((3,8))
-    tangents = np.zeros((3, 8, 2))
-    # box on x-y plane
-    points[:,0] = np.array([ 0.5, 0.5, -0.5])
-    points[:,1] = np.array([-0.5, 0.5, -0.5])
-    points[:,2] = np.array([-0.5,-0.5, -0.5])
-    points[:,3] = np.array([ 0.5,-0.5, -0.5])
-    normals[2,0:4] = 1.0
-    tangents[0, 0:4, 0] = 1
-    tangents[1, 0:4, 1] = 1
-    # box against x-z wall
-    points[:,4] = np.array([ 0.5, 0.5,  0.5])
-    points[:,5] = np.array([-0.5, 0.5,  0.5])
-    points[:,6] = np.array([-0.5, 0.5, -0.5])
-    points[:,7] = np.array([ 0.5, 0.5, -0.5])
-    normals[1,4:8] =-1.0
-    tangents[0, 4:8, 0] = 1
-    tangents[2, 4:8, 1] = 1
-
-    # --------------------------------------------------------------------------
-    # Object and obstacle meshes
-    # --------------------------------------------------------------------------
-    target = Box()
-    target.get_tf_world().set_translation(np.array([0, 0, 0.5]))
-    target_wireframe = Box(1.0, 1.0, 1.0)
-    target_wireframe.set_color(get_color('black'))
-    target.set_wireframe(target_wireframe)
-
-    ground = Box(10, 10, 1.0)
-    ground.get_tf_world().set_translation(np.array([0, 0, -0.5]))
-    wall = Box(10, 1, 12)
-    wall.get_tf_world().set_translation(np.array([0, 1.0, 5]))
-
-    # --------------------------------------------------------------------------
-    # Collision manager
-    # --------------------------------------------------------------------------
-    manager = CollisionManager()
-    for i in range(4):
-        manager.add_pair(points[:,i], ground)
-    for i in range(4, 8):
-        manager.add_pair(points[:,i], wall)
-
-    return points, normals, tangents, target, [ground, wall], manager
-
-def box_corner():
-    # --------------------------------------------------------------------------
-    # Contact points and normals
-    # --------------------------------------------------------------------------
-    points = np.zeros((3,8))
-    normals = np.zeros((3,8))
-    tangents = np.zeros((3, 8, 2))
-    # box on x-y plane
-    points[:,0] = np.array([ 0.5, 0.5, -0.5])
-    points[:,1] = np.array([-0.5, 0.5, -0.5])
-    points[:,2] = np.array([-0.5,-0.5, -0.5])
-    points[:,3] = np.array([ 0.5,-0.5, -0.5])
-    normals[2,0:4] = 1.0
-    tangents[0, 0:4, 0] = 1
-    tangents[1, 0:4, 1] = 1
-    # box against x-z wall
-    points[:,4] = np.array([ 0.5, 0.5,  0.5])
-    points[:,5] = np.array([-0.5, 0.5,  0.5])
-    points[:,6] = np.array([-0.5, 0.5, -0.5])
-    points[:,7] = np.array([ 0.5, 0.5, -0.5])
-    normals[1,4:8] =-1.0
-    tangents[0, 4:8, 0] = 1
-    tangents[2, 4:8, 1] = 1
-
-    # --------------------------------------------------------------------------
-    # Object and obstacle meshes
-    # --------------------------------------------------------------------------
-    target = Box()
-    target.get_tf_world().set_translation(np.array([0, 0, 0.5]))
-    target_wireframe = Box(1.0, 1.0, 1.0)
-    target_wireframe.set_color(get_color('black'))
-    target.set_wireframe(target_wireframe)
-
-    ground = Box(10, 10, 1.0)
-    ground.get_tf_world().set_translation(np.array([0, 0, -0.5]))
-    wall = Box(10, 1, 12)
-    wall.get_tf_world().set_translation(np.array([0, 1.0, 5]))
-
-    # --------------------------------------------------------------------------
-    # Collision manager
-    # --------------------------------------------------------------------------
-    manager = CollisionManager()
-    for i in range(4):
-        manager.add_pair(points[:,i], ground)
-    for i in range(4, 8):
-        manager.add_pair(points[:,i], wall)
-
-    return points, normals, tangents, target, [ground, wall], manager
+    points = np.zeros((3, 4 * walls))
+    normals = np.zeros((3, 4 * walls))
+    tangents = np.zeros((3, 4 * walls, 2))
+    k = 0
+    for i in range(walls):
+        for t_x in [1, -1]:
+            for t_y in [1, -1]:
+                points[:,k] = -0.5 * (N[i] + t_x * T[i][0] + t_y * T[i][1])
+                normals[:,k] = N[i]
+                tangents[:,k,0] = T[i][0]
+                tangents[:,k,1] = T[i][1]
+                k += 1
+    
+    return points, normals, tangents, target, obstacles, manager
 
 def peg_in_hole(n=8):
     # --------------------------------------------------------------------------

@@ -14,7 +14,6 @@ class CollisionManager(object):
     def add_pair(self, point, obs):
         # Create contact point shape.
         sphere = Icosphere(radius=0.1, refine=0)
-        sphere.get_tf_world().set_translation(point)
         # Add pair.
         self.pairs.append((sphere, obs))
 

@@ -155,7 +155,7 @@ class CSModesDemo(Application):
         self.init_gui()
 
         # Create basic test case.
-        self.build_mode_case(box_ground)
+        self.build_mode_case(lambda: box_case(1))
 
         self.normal_arrow = Arrow()
         self.velocity_arrow = Arrow()
@@ -401,10 +401,6 @@ class CSModesDemo(Application):
             self.draw_contact_frames(shader)
 
     def draw_contact_frames(self, shader):
-        # p, n, t, d = self.dist.closest_points(self.points, 
-        #                                       self.normals, 
-        #                                       self.tangents, 
-        #                                       self.target.get_tf_world())
         n_pts = self.points.shape[1]
 
         csmode = self.lattice0.L[self.index0[0]][self.index0[1]].m
@@ -412,16 +408,15 @@ class CSModesDemo(Application):
         mask = np.zeros((n_pts,), dtype=bool)
         mask[c] = 1
         for i in range(n_pts):
-            # self.normal_arrow.set_origin(p[:,i])
-            # self.normal_arrow.set_z_axis(n[:,i])
-            # self.normal_arrow.draw(shader)
             if mask[i]:
                 p = SE3.transform_point(self.target.get_tf_world(), self.points[:,i,None])
                 self.contact_sphere.get_tf_world().set_translation(p)
                 self.contact_sphere.draw(shader)
-            # if np.abs(d[i]) < 1e-4:
-            #     self.contact_sphere.get_tf_world().set_translation(p[:,i])
-            #     self.contact_sphere.draw(shader)
+
+                n = SO3.transform_point(self.target.get_tf_world().R, self.normals[:,i,None])
+                self.normal_arrow.set_origin(p)
+                self.normal_arrow.set_z_axis(n)
+                self.normal_arrow.draw(shader)
 
     def init_gui(self):
         self.init_lattice_gui()
@@ -597,13 +592,15 @@ class CSModesDemo(Application):
         self.solver_list = ['all-modes', 'cs-modes', 'csss-modes', 'exp']
         self.case_index = 0
         self.case_list = [
-            'box-ground', 
-            'box-wall', 
-            'box-corner', 
+            'box-case-1',
+            'box-case-2',
+            'box-case-3',
+            'box-case-4',
+            'box-case-5',
             'peg-in-hole-4', 
             'peg-in-hole-8'
             ]
-        self.peel_depth = 16
+        self.peel_depth = 4
         self.alpha = 0.7
         self.object_color = get_color('clay')
         self.object_color[3] = 0.5
@@ -619,7 +616,7 @@ class CSModesDemo(Application):
         self.big_lattice = False
         self.lattice_height = 265
         self.loop_time = 2.0
-        self.light_pos = [1.0, -5.0, 10.0]
+        self.light_pos = [0, 2.0, 10.0]
         self.cam_focus = [0.0, 0.0, 0.5]
 
     def draw_scene_gui(self):
@@ -636,12 +633,8 @@ class CSModesDemo(Application):
         if changed0 or changed1:
             self.load_scene = True
             new_scene = self.case_list[self.case_index]
-            if new_scene == 'box-ground':
-                self.build_mode_case(box_ground)
-            if new_scene == 'box-wall':
-                self.build_mode_case(box_wall)
-            if new_scene == 'box-corner':
-                self.build_mode_case(box_corner)
+            if 'box-case' in new_scene:
+                self.build_mode_case(lambda: box_case(int(new_scene[-1])))
             if new_scene == 'peg-in-hole-4':
                 self.build_mode_case(lambda: peg_in_hole(4))
             if new_scene == 'peg-in-hole-8':
