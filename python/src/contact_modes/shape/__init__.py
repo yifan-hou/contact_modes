@@ -8,3 +8,5 @@ from .cylinder import *
 from .arrow import *
 from .icosphere import *
 from .box_with_hole import *
+from .collada import *
+from .torus import *

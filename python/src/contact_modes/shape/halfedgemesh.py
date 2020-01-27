@@ -718,7 +718,7 @@ class HalfedgeMesh(Shape):
                 v.normal += f.normal * f.area
             v.normal /= norm(v.normal)
 
-    def init_opengl(self):
+    def init_opengl(self, smooth=False):
         # Get per face vertex positions, normals, and colors.
         vertices = np.zeros((3, 3*len(self.faces)), dtype='float32')
         normals = np.zeros((3, 3*len(self.faces)), dtype='float32')
@@ -732,8 +732,10 @@ class HalfedgeMesh(Shape):
             while True:
                 v = h.vertex
                 vertices[:,k,None] = v.position
-                normals[:,k,None]  = f.normal
-                # normals[:,k,None]  = v.normal
+                if not smooth:
+                    normals[:,k,None]  = f.normal
+                else:
+                    normals[:,k,None]  = v.normal
                 colors[:,k] = get_color('clay')
                 # colors[:,k] = np.random.rand(3)
                 h = h.next

@@ -105,3 +105,53 @@ def peg_in_hole(n=8):
     hole = BoxWithHole(radius, side_length, height)
 
     return points, normals, tangents, target, [hole]
+
+def torus_puzzle():
+    # --------------------------------------------------------------------------
+    # Object and obstacle meshes
+    # --------------------------------------------------------------------------
+    target = Box()
+    target.get_tf_world().set_translation(np.array([0, 0, 0.0]))
+    target_wireframe = Box(1.0, 1.0, 1.0)
+    target_wireframe.set_color(get_color('black'))
+    target.set_wireframe(target_wireframe)
+
+    x = np.array([1., 0, 0])
+    y = np.array([0, 1., 0])
+    z = np.array([0, 0, 1.])
+    N = [z, y, x, -x, -y, -z]
+    T = [(x,y), (z,x), (y,z), (z,y), (x,z), (y,x)]
+    obstacles = []
+    for i in range(walls):
+        n = N[i]
+        box_dims = np.array([10., 10., 10.])
+        box_dims[np.where(np.abs(n) > 0)] = 1.0
+        box = Box(*box_dims)
+        box.get_tf_world().set_translation(-n)
+        obstacles.append(box)
+
+    # --------------------------------------------------------------------------
+    # Collision manager
+    # --------------------------------------------------------------------------
+    manager = CollisionManager()
+    for i in range(walls):
+        for j in range(4):
+            manager.add_pair(None, obstacles[i])
+    
+    # --------------------------------------------------------------------------
+    # Contact points, normals, and tangents
+    # --------------------------------------------------------------------------
+    points = np.zeros((3, 4 * walls))
+    normals = np.zeros((3, 4 * walls))
+    tangents = np.zeros((3, 4 * walls, 2))
+    k = 0
+    for i in range(walls):
+        for t_x in [1, -1]:
+            for t_y in [1, -1]:
+                points[:,k] = -0.5 * (N[i] + t_x * T[i][0] + t_y * T[i][1])
+                normals[:,k] = N[i]
+                tangents[:,k,0] = T[i][0]
+                tangents[:,k,1] = T[i][1]
+                k += 1
+    
+    return points, normals, tangents, target, obstacles, manager
