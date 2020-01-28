@@ -115,7 +115,7 @@ def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
         # null = sp.linalg.null_space(C)
         # H = np.dot(H, null)
         # x = null @ int_pt_cone(H)
-        xi = int_pt_cone(H, C, np.zeros((C.shape[0], 1)))
+        x = int_pt_cone(H, C, np.zeros((C.shape[0], 1)))
     else:
         x = int_pt_cone(H)
     #print(np.dot(N,x))
