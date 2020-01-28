@@ -2,7 +2,7 @@ from time import time
 
 import numpy as np
 
-DEBUG = True
+DEBUG = False
 
 def intersect(F, G):
     H = Face(tuple(set(F.verts) & set(G.verts)), F.dim()-1)
@@ -72,11 +72,17 @@ def closure(S, V, F):
     return intersect_preimages(intersect_preimages(S, F), V)
 
 class Face(object):
-    def __init__(self, verts, d):
+    def __init__(self, verts, d, v=None, f=None):
         self.verts = verts
         self.d = d
         self.parents = []
         self.children = []
+        self.v = v
+        self.f = f
+        if v is None:
+            self.v = []
+        if f is None:
+            self.f = ()
 
     def dim(self):
         # Return dim(aff(F))
@@ -85,12 +91,13 @@ class Face(object):
 class FaceLattice(object):
     def __init__(self, M=None, d=None):
         if M is not None:
-            t_start = time()
+            # t_start = time()
             self.build(M, d)
-            print('build', time()-t_start)
-            t_start = time()
-            self.build_fast(M, d)
-            print('build fast', time()-t_start)
+            # print('build', time()-t_start)
+
+            # t_start = time()
+            # self.build_fast(M, d)
+            # print('build fast', time()-t_start)
 
     def euler_characteristic(self):
         pass
@@ -117,7 +124,10 @@ class FaceLattice(object):
 
         # Create lattice.
         L = [dict() for i in range(d+2)]
-        L[0][()] = Face((), 0)
+        L[0][()] = Face((), 
+                        0, 
+                        v=[len(F[i]) for i in range(n_verts)], 
+                        f=(range(n_facets)))
 
         # Main loop.
         verts = tuple(range(n_verts))
@@ -127,8 +137,26 @@ class FaceLattice(object):
                 V_H = difference_sorted(verts, H.verts)
                 color = [0] * n_verts
                 for v in V_H:
-                    
-                    G = closure(H.verts + (v,), V, F)
+                    # Closure of H + v in O(n) time, hopefully.
+                    if False:
+                        G_f = intersect_sorted(H.f, F[v])
+                        G_v = H.v.copy()
+                        for w in difference_sorted(H.f, G_f):
+                            for u in V[w]:
+                                G_v[u] -= 1
+                        G_v_max = np.amax(G_v)
+                        if G_v_max == 0:
+                            continue
+                        G = tuple(np.argwhere(G_v == G_v_max).flatten().tolist())
+                    else:
+                        G_v = []
+                        G_f = ()
+                        G = closure(H.verts + (v,), V, F)
+                    if DEBUG:
+                        G0 = closure(H.verts + (v,), V, F)
+                        print('G', G)
+                        print('G0', G0)
+                        assert(G0 == G)
                     if len(G) == 0:
                         continue
                     color[v] = 1
@@ -141,7 +169,7 @@ class FaceLattice(object):
                             break
                     if color[v] == 1:
                         if not L[i+1].get(G):
-                            L[i+1][G] = Face(G, H.d + 1)
+                            L[i+1][G] = Face(G, H.d + 1, G_v, G_f)
                         H.parents.append(L[i+1][G])
                         L[i+1][G].children.append(H)
         
