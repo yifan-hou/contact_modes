@@ -3,7 +3,7 @@ from .interior_point import *
 from .modes_2d import *
 from .modes_3d import *
 from .affine import *
-from .polytope import *
+from .lattice import *
 from .util import *
 from .modes_cases import *
 from .se3 import *

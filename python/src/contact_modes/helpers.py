@@ -4,7 +4,7 @@ import pyhull
 from scipy.optimize import linprog
 import scipy as sp
 from time import time
-from .polytope import FaceLattice
+from .lattice import FaceLattice
 from scipy.spatial import ConvexHull
 def hat_2d():
     pass

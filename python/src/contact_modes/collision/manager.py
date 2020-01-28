@@ -7,6 +7,29 @@ from .gjk import gjk
 
 DEBUG = False
 
+
+class TransformManager(object):
+    def __init__(self):
+        self.pairs = []
+
+    def add_pair(self, point, obs):
+        pass
+
+    def closest_points(self, points, normals, tangents, tf):
+        # Transform object points.
+        points = SE3.transform_point(tf, points)
+        # Transform object normals.
+        normals = SO3.transform_point(tf.R, normals)
+        # Transform object tangents.
+        n_pts = points.shape[1]
+        for i in range(n_pts):
+            tangents[:,i,0] = SO3.transform_point(tf.R, tangents[:,i,0]).flatten()
+            tangents[:,i,1] = SO3.transform_point(tf.R, tangents[:,i,1]).flatten()
+        # Get distances.
+        dists = np.zeros((n_pts,))
+
+        return points, normals, tangents, dists
+
 class CollisionManager(object):
     def __init__(self):
         self.pairs = []
