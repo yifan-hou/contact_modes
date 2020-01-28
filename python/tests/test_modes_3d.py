@@ -6,7 +6,6 @@ import contact_modes
 from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            enumerate_contact_separating_3d_exponential)
 
-
 np.set_printoptions(precision=8, suppress=None)
 
 def gen_box_ground():
@@ -264,6 +263,38 @@ def test_enum_contact_all_3d():
     print(time1)
     print(time2)
     print(len(modes))
-    '''
+        '''
 
-test_enum_contact_all_3d()
+
+def box_case_func(walls=1):
+
+
+    x = np.array([1., 0, 0])
+    y = np.array([0, 1., 0])
+    z = np.array([0, 0, 1.])
+    N = [z, y, x, -x, -y, -z]
+    T = [(x, y), (z, x), (y, z), (z, y), (x, z), (y, x)]
+
+
+    # --------------------------------------------------------------------------
+    # Contact points, normals, and tangents
+    # --------------------------------------------------------------------------
+    points = np.zeros((3, 4 * walls))
+    normals = np.zeros((3, 4 * walls))
+    tangents = np.zeros((3, 4 * walls, 2))
+    k = 0
+    for i in range(walls):
+        for t_x in [1, -1]:
+            for t_y in [1, -1]:
+                points[:, k] = -0.5 * (N[i] + t_x * T[i][0] + t_y * T[i][1])
+                normals[:, k] = N[i]
+                tangents[:, k, 0] = T[i][0]
+                tangents[:, k, 1] = T[i][1]
+                k += 1
+
+    return points, normals, tangents
+def test_box_case():
+    points, normals, tangents = box_case_func(3)
+    contact_modes.enum_sliding_sticking_3d(points, normals,tangents,2)
+
+test_box_case()

@@ -215,8 +215,8 @@ def vertex2lattice(V):
     orth = sp.linalg.orth((V - np.mean(V, 0)).T)
     dim_V = orth.shape[1]
     n_vert = V.shape[0]
-    if n_vert == 2:
-        M = np.array([[1],[1]])
+    if n_vert == 2 or n_vert == 1:
+        M = np.ones((n_vert,1),int)
         L = FaceLattice(M, dim_V)
         return L
 
@@ -225,7 +225,7 @@ def vertex2lattice(V):
         V = np.dot((V - np.mean(V,0)), orth)
 
     vertices = [list(V[i]) for i in range(n_vert)]
-    ret = pyhull.qconvex('Fv', vertices)
+    ret = pyhull.qconvex('s Fv', vertices)
     #print(np.array(ret))
 
     # get the convex hull of V
