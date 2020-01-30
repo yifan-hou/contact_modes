@@ -204,6 +204,10 @@ def enumerate_contact_separating_3d(points, normals):
 
     n_pts = points.shape[1]
 
+    # Create solve info.
+    info = dict()
+    info['n'] = n_pts
+
     # Create halfspace inequalities, Ax - b <= 0.
     A, b = contacts_to_half(points, normals)
     if DEBUG:
@@ -216,7 +220,9 @@ def enumerate_contact_separating_3d(points, normals):
     # print(int_pt, '\n' , A @ int_pt)
 
     # Get interior point using SVD.
+    t_lp = time()
     int_pt = int_pt_cone(A)
+    info['time lp'] = time() - t_lp
     if DEBUG:
         print('int_pt2')
         print(int_pt, '\n', A @ int_pt)
@@ -243,10 +249,15 @@ def enumerate_contact_separating_3d(points, normals):
         print(null)
         print('orth')
         print(orth)
+    info['d'] = dual.shape[1]
 
     # Compute dual convex hull.
     dual = [list(dual[i,:]) for i in range(n_pts)]
+
+    t_start = time()
     ret = pyhull.qconvex('Fv', dual)
+    info['time conv'] = time() - t_start
+
     if DEBUG:
         print('dual')
         print(np.array(dual))
@@ -264,10 +275,16 @@ def enumerate_contact_separating_3d(points, normals):
         print(M)
 
     # Build face lattice.
+    t_start = time()
     L = FaceLattice(M, len(dual[0]))
+    info['time lattice'] = time() - t_start
+
+    # info['# 0 faces'] = len(L.L[-2])
+    # info['# d-1 faces'] = len(L.L[1])
+    # info['# faces'] = len(L.L[1])
 
     # Return mode strings.
-    return L.mode_strings(), L
+    return L.mode_strings(), L, info
 
 def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 

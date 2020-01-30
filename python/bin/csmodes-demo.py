@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description='Contact Modes Demo')
 parser.add_argument('-t', '--oit', action='store_true')
 ARGS = parser.parse_args()
 
-DEBUG = True
+DEBUG = False
 
 def track_velocity(prev_twist, prev_tf, curr_tf, points, normals, dists, csmode):
     """
@@ -232,6 +232,18 @@ class CSModesDemo(Application):
         if solver == 'all-modes':
             self.index0 = self.prev_node(self.index0, self.lattice0)
         self.reset_state()
+    
+    def skip(self):
+        solver = self.solver_list[self.solver_index]
+        if solver == 'cs-modes':
+            pass
+        if solver == 'csss-modes':
+            self.index1 = (0,0)
+            self.index0 = self.next_node(self.index0, self.lattice0)
+            self.lattice1 = self.lattice0.L[self.index0[0]][self.index0[1]].ss_lattice
+        if solver == 'all-modes':
+            pass
+        self.reset_state()
 
     def next_node(self, idx, lattice):
         L = lattice.L
@@ -342,18 +354,15 @@ class CSModesDemo(Application):
             self.play()
 
         # Render scene.
-        # self.draw_scene(self.basic_lighting_shader)
         self.renderer.render()
 
         # Create GUI.
         self.imgui_impl.process_inputs()
         imgui.new_frame()
-
         self.draw_menu()
-
         self.draw_lattice_gui()
-
         self.draw_scene_gui()
+        self.draw_plot_gui()
 
         # Render GUI
         imgui.render()
@@ -421,6 +430,7 @@ class CSModesDemo(Application):
     def init_gui(self):
         self.init_lattice_gui()
         self.init_scene_gui()
+        self.init_plot_gui()
 
     def draw_menu(self):
         if imgui.begin_main_menu_bar():
@@ -454,8 +464,11 @@ class CSModesDemo(Application):
         imgui.same_line()
         if imgui.button("next"):
             self.next()
+        imgui.same_line()
+        if imgui.button("skip"):
+            self.skip()
         imgui.end_group()
-        changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
+        
         imgui.text('contacting/separating modes:')
         if self.big_lattice:
             self.draw_big_lattice(self.lattice0, 'cs-lattice', self.index0)
@@ -618,6 +631,7 @@ class CSModesDemo(Application):
         self.loop_time = 2.0
         self.light_pos = [0, 2.0, 10.0]
         self.cam_focus = [0.0, 0.0, 0.5]
+        self.plot_gui = True
 
     def draw_scene_gui(self):
         imgui.begin("Scene", True)
@@ -639,6 +653,10 @@ class CSModesDemo(Application):
                 self.build_mode_case(lambda: peg_in_hole(4))
             if new_scene == 'peg-in-hole-8':
                 self.build_mode_case(lambda: peg_in_hole(8))
+
+        imgui.text('control:')
+        changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
+        changed, self.plot_gui = imgui.checkbox('plot', self.plot_gui)
 
         imgui.text('render:')
         changed, self.alpha = imgui.slider_float('alpha', self.alpha, 0.0, 1.0)
@@ -719,6 +737,45 @@ class CSModesDemo(Application):
         
         self.load_scene = False
         imgui.end()
+
+    def init_plot_gui(self):
+        self.x_axis = [
+            'n',
+            '# 0 faces',
+            '# d-1 faces',
+            'iter',
+            'id'
+        ]
+        self.x_axis_on = [False] * len(self.x_axis)
+        self.y_axis = [
+            '# 0 faces',
+            '# d-1 faces',
+            '# faces',
+            'n choose d',
+            'time',
+            'time lattice',
+            'time Z(n)',
+            'time conv',
+            'time lp',
+        ]
+        self.y_axis_on = [False] * len(self.y_axis)
+
+    def draw_plot_gui(self):
+        if self.plot_gui:
+            imgui.begin("Plot", False)
+            imgui.columns(3, 'plot settings', border=True)
+            imgui.text('x-axis:')
+            for i in range(len(self.x_axis)):
+                changed, self.x_axis_on[i] = imgui.checkbox(self.x_axis[i] + '##x', self.x_axis_on[i])
+            imgui.next_column()
+            imgui.text('y-axis:')
+            for i in range(len(self.y_axis)):
+                changed, self.y_axis_on[i] = imgui.checkbox(self.y_axis[i] + '##y', self.y_axis_on[i])
+            imgui.next_column()
+            imgui.text('plot:')
+            if imgui.button('add'):
+                pass
+            imgui.end()
 
     def on_key_press_0(self, win, key, scancode, action, mods):
         if key == glfw.KEY_SPACE and action == glfw.PRESS:
