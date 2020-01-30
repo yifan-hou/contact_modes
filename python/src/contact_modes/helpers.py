@@ -6,6 +6,8 @@ import scipy as sp
 from time import time
 from .polytope import FaceLattice
 from scipy.spatial import ConvexHull
+from itertools import combinations
+from scipy.linalg import null_space as null
 def hat_2d():
     pass
 
@@ -93,8 +95,7 @@ def in_convex_hull(p, hull):
         res[i] = x.success
     return res
 
-
-def zenotope_vertex(normals):
+def zonotope_vertex(normals):
     # N: normals of the hyperplanes
     num_normals = normals.shape[0]
     dim = normals.shape[1]
@@ -111,9 +112,9 @@ def zenotope_vertex(normals):
         Sign_[Sign.shape[0]:,-1] = -1
 
         # take the convex hull of V_
-        orth =  sp.linalg.orth((V_ - V_[1, :]).T)
+        orth =  sp.linalg.orth((V_ - np.mean(V_,axis=0)).T)
         if orth.shape[1] != V.shape[1]:
-            Vr = np.dot((V_ - V_[1, :]), orth)
+            Vr = np.dot((V_ - np.mean(V_,axis=0)), orth)
         else:
             Vr = V_ - V_[1, :]
         vertices = [list(Vr[i]) for i in range(Vr.shape[0])]
@@ -139,7 +140,7 @@ def zenotope_vertex(normals):
 
     return V, Sign#, ret_facets
 
-def zenotope_add(V, Sign, normals):
+def zonotope_add(V, Sign, normals):
     # N: normals of the hyperplanes
     num_normals = normals.shape[0]
     dim = normals.shape[1]
@@ -254,3 +255,92 @@ def to_lattice(V,facets):
             M[v, i] = 1
     L = FaceLattice(M, dim_V)
     return L
+
+def unique_row(p):
+    pr = np.matlib.repmat(p,p.shape[0],1).reshape((p.shape[0],p.shape[0],p.shape[1]))
+    d = pr - p.reshape(p.shape[0],1,p.shape[1])
+    dist = np.linalg.norm(d,axis=2)
+    ind = dist<1e-6
+    r = np.zeros(p.shape[0],int)
+    p_ = []
+    counter = 0
+    for i in range(p.shape[0]):
+        if sum(ind[i]) == 1:
+            p_.append(p[i])
+            r[ind[i]] = counter
+            counter += 1
+        elif np.all(np.where(ind[i])[0] >= i):
+            p_.append(p[i])
+            r[ind[i]] = counter
+            counter += 1
+
+    return np.array(p_), r
+
+
+def signed_covectors(Vecs):
+    #V_, signs = zonotope_vertex(Vecs)
+    V, ind_V = unique_row(Vecs)
+    n = V.shape[0]
+    orth = sp.linalg.orth(V.T)
+    d = orth.shape[1]
+    if d != V.shape[1]:
+        V = np.dot(V, orth)
+    cocir= []
+    for k in [d-1]:
+        combs = combinations(V,k)
+        for comb in list(combs):
+            c = np.array(comb)
+            if np.linalg.matrix_rank(c) == d-1:
+                ns = null(c)
+                vdot = np.dot(V,ns).reshape(-1)
+                sign = np.sign(vdot)
+                sign[abs(vdot)<1e-6] = 0
+                cocir.append(sign)
+    cocir = np.unique(cocir, axis=0)
+    #cocir = np.vstack((cocir,-cocir))
+    covec = np.zeros((0,n))
+    lower = cocir
+    upper = np.zeros((0,n))
+    while np.any(lower == 0):
+        for c_i in lower:
+            for c_j in lower:
+                if np.all(c_i == c_j):
+                    continue
+                ind = np.all(np.array([c_i, c_j]) != 0, axis=0)
+                if not np.all(c_i[ind]==c_j[ind]):
+                    continue
+                ni = np.all([c_i==0, c_j!=0],axis=0)
+                nj = np.all([c_j==0, c_i!=0],axis=0)
+                cv_i = np.matlib.repmat(c_i,sum(ni),1)
+                cv_j = np.matlib.repmat(c_j, sum(nj), 1)
+                id_i = np.zeros(cv_i.shape,bool)
+                id_j = np.zeros(cv_j.shape, bool)
+                row_i=0
+                for id in np.where(ni)[0]:
+                    id_i[row_i,id] = True
+                    row_i += 1
+                row_i=0
+                for id in np.where(nj)[0]:
+                    id_j[row_i,id] = True
+                    row_i += 1
+                cv_i[id_i] = c_j[ni]
+
+                cv_j[id_j] = c_i[nj]
+                # TODO: constrain the change??
+                upper = np.vstack((upper,cv_i,cv_j))
+        #upper = np.array(upper).reshape(-1,n)
+        #upper = np.unique(np.vstack((upper,-upper)),axis=0)
+        upper = np.unique(upper, axis=0)
+        covec = np.vstack((covec,upper))
+        lower = upper
+        upper = np.zeros((0,n))
+
+    cc = np.vstack((covec,cocir, -covec,-cocir,np.zeros(n,int)))
+    cc = cc[:,ind_V]
+    #cc = np.unique(np.vstack((cc,-cc)),axis=0)
+    return cc
+
+
+
+
+
