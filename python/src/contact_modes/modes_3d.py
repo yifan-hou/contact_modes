@@ -7,8 +7,8 @@ import pyhull
 import scipy as sp
 from pyhull.halfspace import Halfspace
 
-from .helpers import hat, lexographic_combinations, exp_comb, zenotope_vertex,\
-    feasible_faces, vertex2lattice, get_lattice_mode, zenotope_add, to_lattice
+from .helpers import hat, lexographic_combinations, exp_comb, zonotope_vertex,\
+    feasible_faces, vertex2lattice, get_lattice_mode, zonotope_add, to_lattice, signed_covectors
 
 
 from scipy.linalg import null_space as null
@@ -329,7 +329,7 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 
                 t_start = time()
 
-                V_all, Sign_all = zenotope_vertex(H[mask])
+                V_all, Sign_all = zonotope_vertex(H[mask])
                 feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                 V = V_all[feasible_ind]
                 Sign = Sign_all[feasible_ind]
@@ -389,21 +389,21 @@ def enum_sliding_sticking_3d_incremental(points, normals, tangentials, num_slidi
                 # Tc = T[mask_c].reshape(-1,T.shape[2])
                 # N = np.vstack((As,Tc))
                 if len(masks) == 0:
-                    V_all, Sign_all = zenotope_vertex(H[mask])
+                    V_all, Sign_all = zonotope_vertex(H[mask])
                 else:
                     mask_ = []
                     for m in masks:
                         if np.all(np.isin(np.where(m)[0],np.where(mask)[0])) and sum(m) > sum(mask_):
                             mask_ = m
                     if len(mask_) == 0:
-                        V_all, Sign_all = zenotope_vertex(H[mask])
+                        V_all, Sign_all = zonotope_vertex(H[mask])
                     else:
                         add_normals = H[mask_!=mask]
-                        V_all, Sign_all = zenotope_add(Vertices[str(mask_)],Signs[str(mask_)], add_normals)
+                        V_all, Sign_all = zonotope_add(Vertices[str(mask_)],Signs[str(mask_)], add_normals)
                 masks.append(mask)
                 Vertices[str(mask)] = V_all
                 Signs[str(mask)] = Sign_all
-                # V_all, Sign_all = zenotope_vertex(N)
+                # V_all, Sign_all = zonotope_vertex(N)
                 V = V_all[np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1)]
                 Sign = Sign_all[np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1)]
 
@@ -420,6 +420,52 @@ def enum_sliding_sticking_3d_incremental(points, normals, tangentials, num_slidi
 
     return all_modes, cs_lattice
 
+def enum_sliding_sticking_3d_cocircuit(points, normals, tangentials, num_sliding_planes):
+
+    cs_modes, cs_lattice = enumerate_contact_separating_3d(points, normals)
+    all_modes = []
+    n_pts = points.shape[1]
+    A, b = contacts_to_half(points, normals)
+    # Get linearized sliding sections from number of sliding modes
+    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
+    T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
+    for i in range(n_pts):
+        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
+        for j in range(num_sliding_planes):
+            T_i = np.dot(R,D[j])
+            T[i,j,0:3] = T_i
+            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
+    T *= -1
+    H = np.vstack((A, T.reshape(-1, T.shape[2])))
+
+    num_modes = 0
+    for layer in cs_lattice.L:
+        for face in layer:
+            cs_mode = face.m
+            mask_c = cs_mode == 'c'
+            mask_s = ~mask_c
+            mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
+            if all(mask_s):
+
+                mode_sign = np.hstack((np.ones(n_pts,dtype=int),np.zeros(n_pts*num_sliding_planes,dtype=int)))
+                mode_sign = np.array([mode_sign])
+
+            else:
+
+                Sign_all = signed_covectors(H[mask])
+                feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
+                Sign = Sign_all[feasible_ind]
+
+                mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
+                mode_sign[:,mask] = Sign
+
+
+            num_modes+=mode_sign.shape[0]
+            all_modes.append(mode_sign)
+            face.ss_modes = mode_sign
+    print(num_modes)
+
+    return all_modes, cs_lattice
 
 def enumerate_all_modes_3d_exponential(points, normals, tangentials, num_sliding_plane):
     # Check inputs dimensions.
@@ -593,7 +639,7 @@ def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
     N = -np.vstack((A,T.reshape(-1,T.shape[2])))
     #N = A
 
-    V, Sign = zenotope_vertex(N)
+    V, Sign = zonotope_vertex(N)
 
     L = vertex2lattice(V)
     ind_feasible = np.where(np.all(Sign[:,0:A.shape[0]] == 1,axis=1))[0]
