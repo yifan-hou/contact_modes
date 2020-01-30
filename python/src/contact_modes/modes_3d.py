@@ -276,19 +276,23 @@ def enumerate_contact_separating_3d(points, normals):
 
     # Build face lattice.
     t_start = time()
-    L = FaceLattice(M, len(dual[0]))
+    lattice = FaceLattice(M, len(dual[0]))
     info['time lattice'] = time() - t_start
 
-    # info['# 0 faces'] = len(L.L[-2])
-    # info['# d-1 faces'] = len(L.L[1])
-    # info['# faces'] = len(L.L[1])
+    info['# 0 faces'] = lattice.num_k_faces(0)
+    info['# d-1 faces'] = lattice.num_k_faces(info['d']-1)
+    info['# faces'] = lattice.num_faces()
 
     # Return mode strings.
-    return L.mode_strings(), L, info
+    return lattice.mode_strings(), lattice, info
 
 def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 
-    cs_modes, cs_lattice = enumerate_contact_separating_3d(points, normals)
+    # Create solve info.
+    info = dict()
+    # info['n'] = n_pts
+
+    cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(points, normals)
     all_modes = []
     n_pts = points.shape[1]
     A, b = contacts_to_half(points, normals)
@@ -308,6 +312,7 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
     for layer in cs_lattice.L:
         for face in layer:
             cs_mode = face.m
+            print(cs_mode)
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
             mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
@@ -322,6 +327,8 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 
             else:
 
+                t_start = time()
+
                 V_all, Sign_all = zenotope_vertex(H[mask])
                 feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                 V = V_all[feasible_ind]
@@ -331,6 +338,8 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
                 mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                 mode_sign[:,mask] = Sign
                 modes = get_lattice_mode(L,mode_sign)
+
+                print(time() - t_start)
 
             num_modes+=len(modes)
             all_modes.append(modes)

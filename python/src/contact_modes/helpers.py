@@ -95,13 +95,22 @@ def in_convex_hull(p, hull):
 
 
 def zenotope_vertex(normals):
+    # solve info
+    info = dict()
+    info['iter'] = []
+    info['n'] = []
+    info['d'] = []
+
     # N: normals of the hyperplanes
     num_normals = normals.shape[0]
     dim = normals.shape[1]
     V = np.vstack((normals[0],-normals[0]))
     Sign = np.array([[1],[-1]])
 
+    info['iter'].append(0)
+
     for i in range(1,num_normals):
+        info['iter'].append(i)
 
         normal = normals[i]
 
@@ -225,7 +234,7 @@ def vertex2lattice(V):
         V = np.dot((V - np.mean(V,0)), orth)
 
     vertices = [list(V[i]) for i in range(n_vert)]
-    ret = pyhull.qconvex('s Fv', vertices)
+    ret = pyhull.qconvex('Fv', vertices)
     #print(np.array(ret))
 
     # get the convex hull of V

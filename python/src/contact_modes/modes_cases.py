@@ -101,7 +101,7 @@ def peg_in_hole(n=8):
     # --------------------------------------------------------------------------
     # Object and obstacle meshes
     # --------------------------------------------------------------------------
-    target = Cylinder(radius - 1e-4, height * cylinder_scale)
+    target = Cylinder(radius, height * cylinder_scale)
     hole = BoxWithHole(radius, side_length, height)
 
     return points, normals, tangents, target, [hole]

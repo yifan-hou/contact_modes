@@ -189,9 +189,10 @@ class CSModesDemo(Application):
         # Build mode lattices.
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
-            modes, lattice = enumerate_contact_separating_3d(self.points, self.normals)
+            modes, lattice, info = enumerate_contact_separating_3d(self.points, self.normals)
             self.lattice0 = lattice
             self.lattice1 = None
+            self.solve_info = info
         if solver == 'csss-modes':
             modes, lattice = enum_sliding_sticking_3d(self.points, self.normals, self.tangents, 2)
             self.lattice0 = lattice
@@ -741,24 +742,28 @@ class CSModesDemo(Application):
     def init_plot_gui(self):
         self.x_axis = [
             'n',
+            'd',
             '# 0 faces',
             '# d-1 faces',
             'iter',
             'id'
         ]
-        self.x_axis_on = [False] * len(self.x_axis)
+        self.x_axis_index = 0
         self.y_axis = [
             '# 0 faces',
             '# d-1 faces',
             '# faces',
             'n choose d',
-            'time',
+            # 'time',
+            'd',
             'time lattice',
             'time Z(n)',
             'time conv',
             'time lp',
         ]
         self.y_axis_on = [False] * len(self.y_axis)
+        self.solve_info = None
+        self.reset_data()
 
     def draw_plot_gui(self):
         if self.plot_gui:
@@ -766,16 +771,41 @@ class CSModesDemo(Application):
             imgui.columns(3, 'plot settings', border=True)
             imgui.text('x-axis:')
             for i in range(len(self.x_axis)):
-                changed, self.x_axis_on[i] = imgui.checkbox(self.x_axis[i] + '##x', self.x_axis_on[i])
+                changed = imgui.radio_button(self.x_axis[i] + '##x', 
+                                             i == self.x_axis_index)
+                if changed:
+                    if self.x_axis_index != i:
+                        self.reset_data()
+                    self.x_axis_index = i
             imgui.next_column()
             imgui.text('y-axis:')
             for i in range(len(self.y_axis)):
                 changed, self.y_axis_on[i] = imgui.checkbox(self.y_axis[i] + '##y', self.y_axis_on[i])
+                if changed:
+                    self.reset_data()
             imgui.next_column()
             imgui.text('plot:')
             if imgui.button('add'):
-                pass
+                self.add_data()
+            if imgui.button('reset'):
+                self.reset_data()
             imgui.end()
+    
+    def reset_data(self):
+        self.x_data = []
+        self.x_label = self.x_axis[self.x_axis_index]
+        self.y_labels = np.array(self.y_axis)[self.y_axis_on]
+        self.y_data = [[] for i in range(len(self.y_labels))]
+        
+    def add_data(self):
+        info = self.solve_info
+        # Add x data.
+        self.x_data.append(info[self.x_label])
+        # Add y data.
+        for i in range(len(self.y_labels)):
+            self.y_data[i].append(info[self.y_labels[i]])
+        print(self.x_data)
+        print(self.y_data)
 
     def on_key_press_0(self, win, key, scancode, action, mods):
         if key == glfw.KEY_SPACE and action == glfw.PRESS:
