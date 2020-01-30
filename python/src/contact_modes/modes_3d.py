@@ -14,7 +14,7 @@ from .helpers import hat, lexographic_combinations, exp_comb, zonotope_vertex,\
 from scipy.linalg import null_space as null
 
 from .interior_point import int_pt_cone, interior_point_halfspace
-from .polytope import FaceLattice
+from .lattice import FaceLattice
 from .se3 import *
 
 DEBUG = False
