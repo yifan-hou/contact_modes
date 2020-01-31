@@ -329,11 +329,16 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 
                 t_start = time()
 
-                V_all, Sign_all = zonotope_vertex(H[mask])
+                V_all, Sign_all, z_info = zonotope_vertex(H[mask])
                 feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                 V = V_all[feasible_ind]
                 Sign = Sign_all[feasible_ind]
+
+                t_start = time()
+
                 L = vertex2lattice(V)
+
+                # info['time lattice'] = 
 
                 mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                 mode_sign[:,mask] = Sign
