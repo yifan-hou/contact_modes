@@ -195,7 +195,6 @@ def enumerate_contact_separating_3d_exponential(points, normals):
     # return np.array(sorted(modes))
     return np.array(modes)
 
-
 def enumerate_contact_separating_3d(points, normals):
     # Check inputs dimensions.
     assert(points.shape[1] == normals.shape[1])

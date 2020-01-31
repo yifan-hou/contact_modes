@@ -17,7 +17,7 @@ from contact_modes import (SE3, SO3, FaceLattice, enum_sliding_sticking_3d,
                            sample_twist_contact_separating,
                            sample_twist_sliding_sticking)
 from contact_modes.modes_cases import *
-from contact_modes.shape import Arrow, Box, Cylinder, Icosphere, Torus
+from contact_modes.shape import Arrow, Box, Cylinder, Icosphere, Torus, Link
 from contact_modes.viewer import (Application, BasicLightingRenderer,
                                   OITRenderer, Shader, Viewer, Window)
 from contact_modes.viewer.backend import *
