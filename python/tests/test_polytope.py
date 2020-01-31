@@ -14,7 +14,7 @@ def test_face_lattice():
                   [0, 0, 1, 1]])
     d = 2
     L = FaceLattice(M, d)
-    # print(L.mode_strings())
+    # print(L.csmodes())
 
     # Cube.
     M = np.array([[1, 1, 0, 0, 1, 0],
@@ -69,7 +69,7 @@ def test_face_lattice():
 
     # print(L.num_proper_faces())
     # print(L.num_faces())
-    # print(L.mode_strings())
+    # print(L.csmodes())
 
     assert(False)
 

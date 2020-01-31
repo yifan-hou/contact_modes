@@ -147,9 +147,9 @@ def test_enum_contact_separate_3d():
 
     print(L.num_proper_faces())
     print(L.num_faces())
-    # print(L.mode_strings())
+    # print(L.csmodes())
     # print(modes)
-    modes1 = L.mode_strings()
+    modes1 = L.csmodes()
     # for i in range(modes.shape[0]):
     #     print(modes[i,:])
     #     print(modes1[i,:])

@@ -270,18 +270,27 @@ class FaceLattice(object):
         r = len(self.L)-2
         return len(self.L[r-k])
     
-    def mode_strings(self):
-        modes = []
+    def csmodes(self, mask=None):
+        cs_modes = []
         L = self.L
+        n_pts = len(L[0][0].verts)
+        if mask is not None:
+            n_pts = len(mask)
         n_verts = len(L[0][0].verts)
+        print(n_verts)
         for i in range(len(L)):
             for j in range(len(L[i])):
-                m = np.array(['s'] * n_verts)
-                # print(L[i][j].verts)
-                m[list(L[i][j].verts)] = 'c'
-                modes.append(m.tolist())
-                L[i][j].m = m
-        return np.array(modes)
+                F = list(L[i][j].verts)
+                cs_mode = np.array(['c']*n_pts)
+                sub_str = np.array(['s']*n_verts)
+                sub_str[F] = 'c'
+                if mask is not None:
+                    cs_mode[~mask] = sub_str
+                else:
+                    cs_mode = sub_str
+                cs_modes.append(cs_mode.tolist())
+                L[i][j].m = cs_mode
+        return np.array(cs_modes)
         
     def hesse_diagram(self, dot_file):
         with open(dot_file, 'w') as dot:

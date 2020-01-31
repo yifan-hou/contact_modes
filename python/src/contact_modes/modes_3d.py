@@ -219,17 +219,22 @@ def enumerate_contact_separating_3d(points, normals):
         print(A)
 
     # Get interior point using linear programming.
-    # int_pt = interior_point_halfspace(A, b) # Wow such math
-    # print('int_pt')
-    # print(int_pt, '\n' , A @ int_pt)
-
-    # Get interior point using SVD.
     t_lp = time()
     int_pt = int_pt_cone(A)
     info['time lp'] = time() - t_lp
     if DEBUG:
         print('int_pt2')
         print(int_pt, '\n', A @ int_pt)
+
+    # Filter contact points which are always in contact.
+    mask = np.zeros(n_pts, dtype=bool)
+    c = np.where(np.abs(A @ int_pt) < 1e-6)[0] # always contacting.
+    mask[c] = 1
+    A = A[~mask,:]
+    b = b[~mask,:]
+    if DEBUG:
+        print(c)
+        print(mask)
 
     # Compute dual points.
     b_off = b - np.dot(A, int_pt)
@@ -256,7 +261,7 @@ def enumerate_contact_separating_3d(points, normals):
     info['d'] = dual.shape[1]
 
     # Compute dual convex hull.
-    dual = [list(dual[i,:]) for i in range(n_pts)]
+    dual = [list(dual[i,:]) for i in range(dual.shape[0])]
 
     t_start = time()
     ret = pyhull.qconvex('Fv', dual)
@@ -269,7 +274,7 @@ def enumerate_contact_separating_3d(points, normals):
 
     # Build facet-vertex incidence matrix.
     n_facets = int(ret[0])
-    M = np.zeros((n_pts, n_facets), int)
+    M = np.zeros((len(dual), n_facets), int)
     for i in range(1, len(ret)):
         vert_set = [int(x) for x in ret[i].split(' ')][1:]
         for v in vert_set:
@@ -288,7 +293,7 @@ def enumerate_contact_separating_3d(points, normals):
     info['# faces'] = lattice.num_faces()
 
     # Return mode strings.
-    return lattice.mode_strings(), lattice, info
+    return lattice.csmodes(mask), lattice, info
 
 def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 
