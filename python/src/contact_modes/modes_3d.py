@@ -81,6 +81,10 @@ def sample_twist_contact_separating(points, normals, modestr):
 def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
     # Create halfspace inequalities, Ax - b ≥ 0.
     mode = modestr
+    if len(mode.shape)==2:
+        modestr = mode[0]
+        mode = mode[0]
+    print(mode)
     n_pts = points.shape[1]
     num_sliding_planes = int(len(modestr)/n_pts - 1)
     A = np.zeros((n_pts, 6))
@@ -119,6 +123,7 @@ def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
     else:
         x = int_pt_cone(H)
     #print(np.dot(N,x))
+    print(x.T)
     return x
 
 def enumerate_contact_separating_3d_exponential(points, normals):
@@ -306,6 +311,7 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
             T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
     T *= -1
     H = np.vstack((A, T.reshape(-1, T.shape[2])))
+    H = -H
 
     num_modes = 0
     for layer in cs_lattice.L:
@@ -344,78 +350,6 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
                 modes = get_lattice_mode(L,mode_sign)
 
                 print(time() - t_start)
-
-            num_modes+=len(modes)
-            all_modes.append(modes)
-            face.ss_lattice = L
-    print(num_modes)
-
-    return all_modes, cs_lattice
-
-def enum_sliding_sticking_3d_incremental(points, normals, tangentials, num_sliding_planes):
-
-    cs_modes, cs_lattice = enumerate_contact_separating_3d(points, normals)
-    all_modes = []
-    n_pts = points.shape[1]
-    A, b = contacts_to_half(points, normals)
-    # Get linearized sliding sections from number of sliding modes
-    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
-    T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
-    for i in range(n_pts):
-        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
-        for j in range(num_sliding_planes):
-            T_i = np.dot(R,D[j])
-            T[i,j,0:3] = T_i
-            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
-    T *= -1
-    H = np.vstack((A,T.reshape(-1,T.shape[2])))
-    Vertices = dict()
-    Signs = dict()
-    masks = []
-    num_modes = 0
-    for layer in cs_lattice.L:
-        for face in layer:
-            cs_mode = face.m
-            mask_c = cs_mode == 'c'
-            mask_s = ~mask_c
-            mask = np.hstack((mask_s,np.array([mask_c]*num_sliding_planes).T.flatten()))
-            if all(mask_s):
-
-                L = FaceLattice()
-                L.L=[]
-                L.append_empty()
-                mode_sign = np.hstack((np.ones(n_pts,dtype=int),np.zeros(n_pts*num_sliding_planes,dtype=int)))
-                modes = [mode_sign]
-                L.L[0][0].m = mode_sign
-
-            else:
-                # As = A[mask_s]
-                # Tc = T[mask_c].reshape(-1,T.shape[2])
-                # N = np.vstack((As,Tc))
-                if len(masks) == 0:
-                    V_all, Sign_all = zonotope_vertex(H[mask])
-                else:
-                    mask_ = []
-                    for m in masks:
-                        if np.all(np.isin(np.where(m)[0],np.where(mask)[0])) and sum(m) > sum(mask_):
-                            mask_ = m
-                    if len(mask_) == 0:
-                        V_all, Sign_all = zonotope_vertex(H[mask])
-                    else:
-                        add_normals = H[mask_!=mask]
-                        V_all, Sign_all = zonotope_add(Vertices[str(mask_)],Signs[str(mask_)], add_normals)
-                masks.append(mask)
-                Vertices[str(mask)] = V_all
-                Signs[str(mask)] = Sign_all
-                # V_all, Sign_all = zonotope_vertex(N)
-                V = V_all[np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1)]
-                Sign = Sign_all[np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1)]
-
-                L = vertex2lattice(V)
-
-                mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
-                mode_sign[:,mask] = Sign
-                modes = get_lattice_mode(L,mode_sign)
 
             num_modes+=len(modes)
             all_modes.append(modes)
@@ -609,7 +543,6 @@ def enumerate_all_modes_3d_exponential(points, normals, tangentials, num_sliding
 
     return np.array(sorted(modes))
 
-
 def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
     # Check inputs dimensions.
     assert (points.shape[1] == normals.shape[1])
@@ -678,3 +611,86 @@ def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
                 #layer.remove(face)
 
     return Modes_str, FilteredLattice
+
+def enum_sliding_sticking_3d_proj(points, normals, tangentials, num_sliding_planes):
+
+    cs_modes, cs_lattice = enumerate_contact_separating_3d(points, normals)
+    all_modes = []
+    n_pts = points.shape[1]
+    A, b = contacts_to_half(points, normals)
+    # Get linearized sliding sections from number of sliding modes
+    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
+    T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
+    for i in range(n_pts):
+        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
+        for j in range(num_sliding_planes):
+            T_i = np.dot(R,D[j])
+            T[i,j,0:3] = T_i
+            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
+    T *= -1
+    H = np.vstack((A, T.reshape(-1, T.shape[2])))
+
+    num_modes = 0
+    for layer in cs_lattice.L:
+        for face in layer:
+            cs_mode = face.m
+            mask_c = cs_mode == 'c'
+            mask_s = ~mask_c
+            mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
+            if all(mask_s):
+
+                L = FaceLattice()
+                L.L=[]
+                L.append_empty()
+                mode_sign = np.hstack((np.ones(n_pts,dtype=int),np.zeros(n_pts*num_sliding_planes,dtype=int)))
+                modes = [mode_sign]
+                L.L[0][0].m = mode_sign
+
+            else:
+                nc = null(A[mask_c])
+
+                if not np.all(nc.shape):
+                    mode_sign = np.zeros(H.shape[0])
+                    L = FaceLattice()
+                    L.L = []
+                    L.append_empty()
+                    L.L[0][0].m = [mode_sign]
+                    modes = [mode_sign]
+                elif nc.shape[1] == 1: # only able to move in 1 dim
+                    move_direc = np.array([nc,-nc,np.zeros(nc.shape)])
+                    vd = np.dot(H, move_direc)
+                    vd[abs(vd)<1e-6] = 0
+                    mode_sign = np.sign(vd).T.squeeze()
+                    feasible_ind = np.where(np.all(mode_sign[:, 0:sum(mask_s)] == 1, axis=1))[0]
+                    mode_sign = mode_sign[feasible_ind]
+                    L = FaceLattice()
+                    L.L = []
+                    L.append_empty()
+                    L.L[0][0].m = mode_sign
+                    modes = mode_sign
+                else:
+
+                    H_proj = np.dot(H[mask], nc)
+                    V_all, Sign_all = zonotope_vertex(H_proj)
+                    feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
+                    V = V_all[feasible_ind]
+                    Sign = Sign_all[feasible_ind]
+                    L = vertex2lattice(V)
+
+                    mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
+                    mode_sign[:,mask] = Sign
+                    modes = get_lattice_mode(L,mode_sign)
+
+            num_modes+=len(modes)
+            all_modes.append(modes)
+            face.ss_lattice = L
+    print(num_modes)
+
+    # np.set_printoptions(suppress=True)
+    # for cs_layer in cs_lattice.L:
+    #     for cs_face in cs_layer:
+    #         for ss_layer in cs_face.ss_lattice.L:
+    #             for ss_face in ss_layer:
+    #                 if hasattr(ss_face, 'm'):
+    #                     print(sample_twist_sliding_sticking(points, normals, tangentials, ss_face.m).T)
+    return all_modes, cs_lattice
