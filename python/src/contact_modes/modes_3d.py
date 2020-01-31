@@ -93,7 +93,9 @@ def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
     if len(mode.shape)==2:
         modestr = mode[0]
         mode = mode[0]
-    print(mode)
+    if DEBUG:
+        print(mode)
+    
     n_pts = points.shape[1]
     num_sliding_planes = int(len(modestr)/n_pts - 1)
     A = np.zeros((n_pts, 6))
@@ -117,23 +119,38 @@ def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
 
     # identify separation modes
     c_mode = mode[0:n_pts] == 0
-    active_mode = np.hstack((np.ones(n_pts,dtype=bool),np.vstack((c_mode, c_mode)).T.flatten()))
+    active_mode = np.hstack((np.ones(n_pts,dtype=bool),
+                             np.vstack((c_mode, c_mode)).T.flatten()))
+    print(active_mode)
     mode = modestr[active_mode]
+    print('mode')
+    print(mode)
 
     N = -np.vstack((A, T.reshape(-1, T.shape[2])))
     C = N[mode==0]
     H = np.vstack((N[mode==1], -N[mode==-1]))
+    print('H')
+    print(H)
 
     if all(C.shape):
         # null = sp.linalg.null_space(C)
         # H = np.dot(H, null)
         # x = null @ int_pt_cone(H)
+        if C.shape[0] > C.shape[1]:
+            C = orth(C.T @ C).T
+
         x = int_pt_cone(H, C, np.zeros((C.shape[0], 1)))
     else:
         x = int_pt_cone(H)
-    #print(np.dot(N,x))
-    print(x.T)
-    return x
+    
+    if DEBUG:
+        print('H @ x')
+        print(np.dot(H,x))
+        print('C @ x')
+        print(np.dot(C,x))
+        print('x')
+        print(x.T)
+    return -x
 
 def enumerate_contact_separating_3d_exponential(points, normals):
     # Check inputs dimensions.
@@ -301,7 +318,6 @@ def enumerate_contact_separating_3d(points, normals):
     info['d'] = dual.shape[1]
 
     # Filter duplicate points.
-    print(dual)
     idx = np.lexsort(np.rot90(dual))
     dual_map = []
     dual_unique = []
@@ -687,7 +703,7 @@ def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
 
 def enum_sliding_sticking_3d_proj(points, normals, tangentials, num_sliding_planes):
 
-    cs_modes, cs_lattice = enumerate_contact_separating_3d(points, normals)
+    cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(points, normals)
     all_modes = []
     n_pts = points.shape[1]
     A, b = contacts_to_half(points, normals)
