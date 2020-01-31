@@ -112,6 +112,56 @@ def zonotope_vertex(normals):
         Sign_[Sign.shape[0]:,-1] = -1
 
         # take the convex hull of V_
+        orth = sp.linalg.orth((V_ - np.mean(V_,axis=0)).T)
+
+        if orth.shape[1] != V.shape[1]:
+            Vr = np.dot((V_ - np.mean(V_,axis=0)), orth)
+        else:
+            Vr = V_ - np.mean(V_,axis=0)
+        if orth.shape[1] <= 1:
+            V = V_[[np.argmax(Vr),np.argmin(Vr)]]
+            Sign = Sign_[[np.argmax(Vr),np.argmin(Vr)]]
+            continue
+        vertices = [list(Vr[i]) for i in range(Vr.shape[0])]
+
+        ret = pyhull.qconvex('Fv', vertices)
+        #ind_vertices = [int(ret[j]) for j in range(1, len(ret))]
+        ind_vertices = []
+        for i in range(1, len(ret)):
+            ind_vertices = ind_vertices + [int(x) for x in ret[i].split(' ')][1:]
+        ind_vertices = np.unique(ind_vertices)
+
+        V = V_[ind_vertices]
+        Sign = Sign_[ind_vertices]
+
+    #
+    # facets = np.zeros((int(ret[0]),len([int(x) for x in ret[1].split(' ')][1:])),dtype=int)
+    # for i in range(1, len(ret)):
+    #     facets[i-1] = [int(x) for x in ret[i].split(' ')][1:]
+    # ret_facets = np.array(facets)
+    #
+    # for i in range(len(ind_vertices)):
+    #     ret_facets[ret_facets == ind_vertices[i]] = i
+
+    return V, Sign#, ret_facets
+
+def zonotope_projected_vertex(normals):
+    # N: normals of the hyperplanes
+    num_normals = normals.shape[0]
+    dim = normals.shape[1]
+    V = np.vstack((normals[0],-normals[0]))
+    Sign = np.array([[1],[-1]])
+
+    for i in range(1,num_normals):
+
+        normal = normals[i]
+
+        V_ = np.vstack((V+normal, V-normal))
+        Sign_ = np.ones((2*Sign.shape[0],Sign.shape[1]+1),dtype=int)
+        Sign_[:,0:Sign.shape[1]] = np.vstack((Sign,Sign))
+        Sign_[Sign.shape[0]:,-1] = -1
+
+        # take the convex hull of V_
         orth =  sp.linalg.orth((V_ - np.mean(V_,axis=0)).T)
         if orth.shape[1] != V.shape[1]:
             Vr = np.dot((V_ - np.mean(V_,axis=0)), orth)
@@ -226,7 +276,7 @@ def vertex2lattice(V):
         V = np.dot((V - np.mean(V,0)), orth)
 
     vertices = [list(V[i]) for i in range(n_vert)]
-    ret = pyhull.qconvex('s Fv', vertices)
+    ret = pyhull.qconvex('Fv', vertices)
     #print(np.array(ret))
 
     # get the convex hull of V

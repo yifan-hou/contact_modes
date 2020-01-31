@@ -5,7 +5,7 @@ import numpy as np
 import contact_modes
 from contact_modes import (FaceLattice, enumerate_contact_separating_3d,
                            enumerate_contact_separating_3d_exponential)
-
+from contact_modes.helpers import signed_covectors
 np.set_printoptions(precision=8, suppress=None)
 
 def gen_box_ground():
@@ -294,7 +294,15 @@ def box_case_func(walls=1):
 
     return points, normals, tangents
 def test_box_case():
-    points, normals, tangents = box_case_func(3)
-    contact_modes.enum_sliding_sticking_3d(points, normals,tangents,2)
+    points, normals, tangents = box_case_func(2)
+    t_start = time()
+    all_modes1, cs_lattice_1 = contact_modes.enum_sliding_sticking_3d_proj(points, normals, tangents, 2)
+    t1 = time() - t_start
+    t_start = time()
+    all_modes2, cs_lattice_2 = contact_modes.enum_sliding_sticking_3d(points, normals,tangents,2)
+    t2 = time() - t_start
+    print(t1)
+    print(t2)
+    #print(signed_covectors(np.array([[1,0],[0,1],[1,1]])))
 
 test_box_case()
