@@ -95,7 +95,17 @@ def in_convex_hull(p, hull):
         res[i] = x.success
     return res
 
+
 def zonotope_vertex(normals):
+    # solve info
+    info = dict()
+    info['iter'] = []
+    info['n'] = []
+    info['d'] = []
+    info['time conv'] = []
+    info['# 0 faces'] = []
+    info['# d-1 faces'] = []
+
     # N: normals of the hyperplanes
     num_normals = normals.shape[0]
     dim = normals.shape[1]
@@ -103,10 +113,12 @@ def zonotope_vertex(normals):
     Sign = np.array([[1],[-1]])
 
     for i in range(1,num_normals):
+        info['iter'].append(i)
 
         normal = normals[i]
 
         V_ = np.vstack((V+normal, V-normal))
+
         Sign_ = np.ones((2*Sign.shape[0],Sign.shape[1]+1),dtype=int)
         Sign_[:,0:Sign.shape[1]] = np.vstack((Sign,Sign))
         Sign_[Sign.shape[0]:,-1] = -1
@@ -169,12 +181,23 @@ def zonotope_projected_vertex(normals):
             Vr = V_ - V_[1, :]
         vertices = [list(Vr[i]) for i in range(Vr.shape[0])]
 
+        info['n'].append(len(vertices))
+        info['d'].append(len(vertices[0]))
+
+        t_start = time()
+
         ret = pyhull.qconvex('Fv', vertices)
+
+        info['time conv'].append(time() - t_start)
+
         #ind_vertices = [int(ret[j]) for j in range(1, len(ret))]
         ind_vertices = []
         for i in range(1, len(ret)):
             ind_vertices = ind_vertices + [int(x) for x in ret[i].split(' ')][1:]
         ind_vertices = np.unique(ind_vertices)
+
+        info['# d-1 faces'].append(len(ret)-1)
+        info['# 0 faces'].append(len(ind_vertices))
 
         V = V_[ind_vertices]
         Sign = Sign_[ind_vertices]
@@ -188,7 +211,7 @@ def zonotope_projected_vertex(normals):
     # for i in range(len(ind_vertices)):
     #     ret_facets[ret_facets == ind_vertices[i]] = i
 
-    return V, Sign#, ret_facets
+    return V, Sign, info #, ret_facets
 
 def zonotope_add(V, Sign, normals):
     # N: normals of the hyperplanes

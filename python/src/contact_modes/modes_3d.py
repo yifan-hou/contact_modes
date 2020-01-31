@@ -209,6 +209,10 @@ def enumerate_contact_separating_3d(points, normals):
 
     n_pts = points.shape[1]
 
+    # Create solve info.
+    info = dict()
+    info['n'] = n_pts
+
     # Create halfspace inequalities, Ax - b <= 0.
     A, b = contacts_to_half(points, normals)
     if DEBUG:
@@ -221,7 +225,9 @@ def enumerate_contact_separating_3d(points, normals):
     # print(int_pt, '\n' , A @ int_pt)
 
     # Get interior point using SVD.
+    t_lp = time()
     int_pt = int_pt_cone(A)
+    info['time lp'] = time() - t_lp
     if DEBUG:
         print('int_pt2')
         print(int_pt, '\n', A @ int_pt)
@@ -248,10 +254,15 @@ def enumerate_contact_separating_3d(points, normals):
         print(null)
         print('orth')
         print(orth)
+    info['d'] = dual.shape[1]
 
     # Compute dual convex hull.
     dual = [list(dual[i,:]) for i in range(n_pts)]
+
+    t_start = time()
     ret = pyhull.qconvex('Fv', dual)
+    info['time conv'] = time() - t_start
+
     if DEBUG:
         print('dual')
         print(np.array(dual))
@@ -269,14 +280,24 @@ def enumerate_contact_separating_3d(points, normals):
         print(M)
 
     # Build face lattice.
-    L = FaceLattice(M, len(dual[0]))
+    t_start = time()
+    lattice = FaceLattice(M, len(dual[0]))
+    info['time lattice'] = time() - t_start
+
+    info['# 0 faces'] = lattice.num_k_faces(0)
+    info['# d-1 faces'] = lattice.num_k_faces(info['d']-1)
+    info['# faces'] = lattice.num_faces()
 
     # Return mode strings.
-    return L.mode_strings(), L
+    return lattice.mode_strings(), lattice, info
 
 def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 
-    cs_modes, cs_lattice = enumerate_contact_separating_3d(points, normals)
+    # Create solve info.
+    info = dict()
+    # info['n'] = n_pts
+
+    cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(points, normals)
     all_modes = []
     n_pts = points.shape[1]
     A, b = contacts_to_half(points, normals)
@@ -297,6 +318,7 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
     for layer in cs_lattice.L:
         for face in layer:
             cs_mode = face.m
+            print(cs_mode)
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
             mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
@@ -311,15 +333,24 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 
             else:
 
-                V_all, Sign_all = zonotope_vertex(H[mask])
+                t_start = time()
+
+                V_all, Sign_all, z_info = zonotope_vertex(H[mask])
                 feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                 V = V_all[feasible_ind]
                 Sign = Sign_all[feasible_ind]
+
+                t_start = time()
+
                 L = vertex2lattice(V)
+
+                # info['time lattice'] = 
 
                 mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                 mode_sign[:,mask] = Sign
                 modes = get_lattice_mode(L,mode_sign)
+
+                print(time() - t_start)
 
             num_modes+=len(modes)
             all_modes.append(modes)

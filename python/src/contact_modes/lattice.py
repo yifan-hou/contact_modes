@@ -264,6 +264,12 @@ class FaceLattice(object):
             cnt += len(L[i])
         return cnt
 
+    def num_k_faces(self, k):
+        if k == -1 and len(self.L) == 1:
+            return 0
+        r = len(self.L)-2
+        return len(self.L[r-k])
+    
     def mode_strings(self):
         modes = []
         L = self.L
