@@ -23,7 +23,7 @@ from contact_modes.viewer import (Application, BasicLightingRenderer,
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
-np.set_printoptions(suppress=False, precision=8)
+np.set_printoptions(suppress=True, precision=8)
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='Contact Modes Demo')
@@ -804,8 +804,8 @@ class CSModesDemo(Application):
         # Add y data.
         for i in range(len(self.y_labels)):
             self.y_data[i].append(info[self.y_labels[i]])
-        print(self.x_data)
-        print(self.y_data)
+        # print(self.x_data)
+        # print(self.y_data)
 
     def on_key_press_0(self, win, key, scancode, action, mods):
         if key == glfw.KEY_SPACE and action == glfw.PRESS:

@@ -6,18 +6,17 @@ import numpy as np
 import pyhull
 import scipy as sp
 from pyhull.halfspace import Halfspace
-
-from .helpers import hat, lexographic_combinations, exp_comb, zonotope_vertex,\
-    feasible_faces, vertex2lattice, get_lattice_mode, zonotope_add, to_lattice, signed_covectors
-
-
 from scipy.linalg import null_space as null
+from scipy.linalg import orth
 
+from .helpers import (exp_comb, feasible_faces, get_lattice_mode, hat,
+                      lexographic_combinations, signed_covectors, to_lattice,
+                      vertex2lattice, zonotope_add, zonotope_vertex)
 from .interior_point import int_pt_cone, interior_point_halfspace
-from .lattice import FaceLattice
+from .lattice import FaceLattice, Face
 from .se3 import *
 
-DEBUG = False
+DEBUG = True
 
 def make_frame(z):
     z = z.reshape((3,1))
@@ -230,11 +229,28 @@ def enumerate_contact_separating_3d(points, normals):
     mask = np.zeros(n_pts, dtype=bool)
     c = np.where(np.abs(A @ int_pt) < 1e-6)[0] # always contacting.
     mask[c] = 1
+    A_c = A[mask,:]
+    b_c = b[mask,:]
     A = A[~mask,:]
     b = b[~mask,:]
     if DEBUG:
         print(c)
         print(mask)
+
+    # Project into null space of contacting points.
+    # [A'; A_c]x ≤ 0, A_c⋅x = 0 ⇒ x ∈ NULL(A_c)
+    # let NULL(A_c) = [x0, ... , xc]
+    # A'⋅NULL(A_c)x' ≤ 0
+    if np.sum(mask) > 0:
+        N = null(A_c)
+        A = A @ N
+        int_pt = np.linalg.lstsq(N, int_pt)[0]
+        if DEBUG:
+            print('Null A_c')
+            print(N)
+            print('new int pt')
+            print(int_pt)
+            print(A @ int_pt)
 
     # Compute dual points.
     b_off = b - np.dot(A, int_pt)
@@ -245,23 +261,62 @@ def enumerate_contact_separating_3d(points, normals):
         print('dual')
         print(dual)
 
+    # Handle degenerate cases when d = 0 or 1.
+    if np.sum(mask) == n_pts:
+        cs_modes = [np.array(['c']*n_pts)]
+        lattice = FaceLattice()
+        lattice.L = [[Face(range(n_pts), 0)]]
+        lattice.L[0][0].m = cs_modes[0]
+        return cs_modes, lattice, info
+    if dual.shape[1] == 1:
+        lattice = FaceLattice(M=np.ones((1,1), int), d=1)
+        dual_map = [list(np.where(~mask)[0])]
+        cs_modes = lattice.csmodes(mask, dual_map)
+        lattice.L = lattice.L[1:3]
+        return cs_modes[1:3], lattice, info
+
     # Project dual points into affine space.
-    null = sp.linalg.null_space((dual - dual[1,:]))
-    orth = sp.linalg.orth((dual - dual[1,:]).T)
-    if orth.shape[1] != 6:
-        dual = np.dot((dual-dual[1,:]), orth)
+    N = sp.linalg.null_space((dual - dual[1,:]))
+    O = sp.linalg.orth((dual - dual[1,:]).T)
+    if O.shape[1] != 6:
+        dual = np.dot((dual-dual[1,:]), O)
         if DEBUG:
             print('orth @ dual')
             print(dual)
     if DEBUG:
         print('null')
-        print(null)
+        print(N)
         print('orth')
-        print(orth)
+        print(O)
     info['d'] = dual.shape[1]
 
+    # Filter duplicate points.
+    print(dual)
+    idx = np.lexsort(np.rot90(dual))
+    dual_map = []
+    dual_unique = []
+    i = 0
+    while i < len(idx):
+        if i == 0:
+            dual_unique.append(dual[idx[i],:])
+            dual_map.append([idx[i]])
+        else:
+            curr = dual[idx[i], :]
+            last = dual_unique[-1]
+            if np.linalg.norm(last - curr) < 1e-6:
+                dual_map[-1].append(idx[i])
+            else:
+                dual_unique.append(dual[idx[i],:])
+                dual_map.append([idx[i]])
+        i += 1
+    if DEBUG:
+        print('dual map')
+        print(dual_map)
+        print('dual unique')
+        print(dual_unique)
+
     # Compute dual convex hull.
-    dual = [list(dual[i,:]) for i in range(dual.shape[0])]
+    dual = [list(dual_unique[i]) for i in range(len(dual_unique))]
 
     t_start = time()
     ret = pyhull.qconvex('Fv', dual)
@@ -292,8 +347,11 @@ def enumerate_contact_separating_3d(points, normals):
     info['# d-1 faces'] = lattice.num_k_faces(info['d']-1)
     info['# faces'] = lattice.num_faces()
 
+    # Build mode strings.
+    cs_modes = lattice.csmodes(mask, dual_map)
+
     # Return mode strings.
-    return lattice.csmodes(mask), lattice, info
+    return cs_modes, lattice, info
 
 def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
 

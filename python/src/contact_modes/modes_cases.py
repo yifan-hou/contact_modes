@@ -6,6 +6,8 @@ from contact_modes.shape import Box, BoxWithHole, Cylinder, Torus
 
 from .lattice import FaceLattice
 from .util import get_color
+from .se3 import SE3
+from .so3 import SO3
 
 
 def box_case(walls=1):
@@ -104,7 +106,7 @@ def peg_in_hole(n=8):
     target = Cylinder(radius, height * cylinder_scale)
     hole = BoxWithHole(radius, side_length, height)
 
-    return points, normals, tangents, target, [hole]
+    return points, normals, tangents, target, [hole], TorusPuzzleManager(0)
 
 class TorusPuzzleManager(object):
     def __init__(self, n):
