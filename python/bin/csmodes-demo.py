@@ -10,7 +10,7 @@ from numpy.linalg import norm
 
 import glm
 import quadprog
-from contact_modes import (SE3, SO3, FaceLattice, enum_sliding_sticking_3d,
+from contact_modes import (SE3, SO3, FaceLattice, enum_sliding_sticking_3d, enum_sliding_sticking_3d_proj,
                            enumerate_all_modes_3d,
                            enumerate_contact_separating_3d, get_color,
                            get_data, make_frame,
@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description='Contact Modes Demo')
 parser.add_argument('-t', '--oit', action='store_true')
 ARGS = parser.parse_args()
 
-DEBUG = True
+DEBUG = False
 
 def track_velocity(prev_twist, prev_tf, curr_tf, points, normals, dists, csmode):
     """
@@ -193,7 +193,7 @@ class CSModesDemo(Application):
             self.lattice0 = lattice
             self.lattice1 = None
         if solver == 'csss-modes':
-            modes, lattice = enum_sliding_sticking_3d(self.points, self.normals, self.tangents, 2)
+            modes, lattice = enum_sliding_sticking_3d_proj(self.points, self.normals, self.tangents, 2)
             self.lattice0 = lattice
             self.lattice1 = lattice.L[0][0].ss_lattice
         if solver == 'all-modes':
