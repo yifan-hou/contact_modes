@@ -60,15 +60,25 @@ def sample_twist_contact_separating(points, normals, modestr):
     A, b = contacts_to_half(points, normals)
     c = np.where(modestr == 'c')[0]
 
+    if DEBUG:
+        print('cs mode', modestr)
+        print('A')
+        print(A)
+
     n_pts = points.shape[1]
+    
     mask = np.zeros(n_pts, dtype=bool)
     mask[c] = 1
     n_contacts = np.sum(mask)
     C = A[mask, :]
     H = A[~mask, :]
 
+    n_dim = A.shape[1]
+    if n_contacts > n_dim:
+        C = orth(C.T @ C).T
+
     if n_contacts > 0:
-        xi = int_pt_cone(H, C, np.zeros((n_contacts, 1)))
+        xi = int_pt_cone(H, C, np.zeros((C.shape[0], 1)))
     else:
         xi = int_pt_cone(H)
 
