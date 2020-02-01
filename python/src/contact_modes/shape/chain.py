@@ -1,6 +1,8 @@
 import numpy as np
 import sympy as sym
 
+from .shape import Shape
+
 
 class Chain(Shape):
     def __init__(self, n):
@@ -8,7 +10,8 @@ class Chain(Shape):
     
     def generate(self):
         # 
-        sym.sym
+        q = sym.symbols('q_1')
+        
 
     def set_dofs(self, q):
         pass
