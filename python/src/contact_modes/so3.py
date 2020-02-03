@@ -78,7 +78,7 @@ class SO3(object):
     @staticmethod
     def ad(a):
         # algebraic adjoint
-        return skew3(a)
+        return skew3(a).reshape((3,3))
 
     @staticmethod
     def identity():

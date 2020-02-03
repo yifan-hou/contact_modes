@@ -4,20 +4,23 @@ import os
 import sys
 from time import time
 
+import glm
 import imgui
 import numpy as np
+import quadprog
 from numpy.linalg import norm
 
-import glm
-import quadprog
-from contact_modes import (SE3, SO3, FaceLattice, enum_sliding_sticking_3d, enum_sliding_sticking_3d_proj,
+from contact_modes import (SE3, SO3, FaceLattice, enum_sliding_sticking_3d,
+                           enum_sliding_sticking_3d_proj,
                            enumerate_all_modes_3d,
                            enumerate_contact_separating_3d, get_color,
                            get_data, make_frame,
                            sample_twist_contact_separating,
                            sample_twist_sliding_sticking)
 from contact_modes.modes_cases import *
-from contact_modes.shape import Arrow, Box, Cylinder, Icosphere, Torus, Link
+from contact_modes.shape import (Arrow, Box, Chain, Cylinder, Icosphere, Link,
+                                 Torus)
+from contact_modes.dynamics import AnthroHand
 from contact_modes.viewer import (Application, BasicLightingRenderer,
                                   OITRenderer, Shader, Viewer, Window)
 from contact_modes.viewer.backend import *
@@ -160,6 +163,11 @@ class CSModesDemo(Application):
         self.normal_arrow = Arrow()
         self.velocity_arrow = Arrow()
         self.contact_sphere = Icosphere()
+        # self.chain_link = Chain(3)
+        # self.chain_link.generate_forward_kinematics()
+        # self.chain_link.set_dofs([0,np.pi/2,0,0])
+        self.AnthroHand = AnthroHand()
+        self.AnthroHand.set_dofs(np.pi/5 * np.random.rand(self.AnthroHand.num_dofs(),1))
 
         self.reset_state()
 
@@ -400,6 +408,8 @@ class CSModesDemo(Application):
         # ----------------------------------------------------------------------
         self.target.draw(shader)
         # self.target.draw_wireframe(shader)
+
+        # self.AnthroHand.draw(shader)
 
         for o in self.obs:
             o.draw(shader)

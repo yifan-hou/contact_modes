@@ -3,6 +3,7 @@ from numpy.linalg import norm
 
 from contact_modes.collision import CollisionManager, TransformManager
 from contact_modes.shape import Box, BoxWithHole, Cylinder, Torus
+from contact_modes.dynamics import AnthroHand, Body
 
 from .lattice import FaceLattice
 from .util import get_color
@@ -148,4 +149,11 @@ def torus_puzzle(n=8):
     normals = np.zeros((3, n))
     tangents = np.zeros((3, n, 2))
     
+    return points, normals, tangents, target, obstacles, manager
+
+def hand_baton():
+    hand = AnthroHand()
+    baton = Body()
+    baton.set_shape(Cylinder(0.5, 1.0))
+
     return points, normals, tangents, target, obstacles, manager

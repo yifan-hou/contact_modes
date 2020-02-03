@@ -6,7 +6,7 @@ from .halfedgemesh import HalfedgeMesh
 
 
 class Link(HalfedgeMesh):
-    def __init__(self, r=0.5, l=1.5, outer_step=1.0):
+    def __init__(self, r=0.5, l=1.5, outer_step=3.0):
         super(Link, self).__init__()
 
         # Create path + normals.
@@ -62,9 +62,9 @@ class Link(HalfedgeMesh):
                 poly = [idx_next[j-1], idx_prev[j-1], idx_prev[j%n_loop], idx_next[j%n_loop]]
                 polygons.append(poly)
         vertices = vertices.reshape((3,n_path * n_loop))
-        print(vertices.shape)
+        # print(vertices.shape)
         vertices = [vertices[:,i,None] for i in range(vertices.shape[1])]
-        print(len(vertices))
+        # print(len(vertices))
 
         # Build link.
         self.build(polygons, vertices)
@@ -74,4 +74,4 @@ class Link(HalfedgeMesh):
         self.set_tf_world(SE3.identity())
 
         self.init_geometry()
-        self.init_opengl(True)
+        self.init_opengl(False)
