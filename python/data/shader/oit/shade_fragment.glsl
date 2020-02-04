@@ -54,7 +54,8 @@ vec4 ShadeFragment()
     // diffuse 
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
-    float diff = max(dot(norm, lightDir), 0.0);
+    // float diff = max(dot(norm, lightDir), 0.0);
+    float diff = abs(dot(norm, lightDir));
     vec3 diffuse = diff * lightColor;
 
     // specular
