@@ -4,9 +4,26 @@ from contact_modes import SE3, SO3
 
 
 class Body(object):
-    def __init__(self):
+    def __init__(self, name=None):
         self.g_wb = SE3.identity()
         self.mask = np.array([True] * 6, bool)
+        self.name = name
+        self.contacts = []
+
+    def reset_contacts(self):
+        self.contacts.clear()
+
+    def get_contacts(self):
+        return self.contacts
+    
+    def add_contact(self, manifold):
+        self.contacts.append(manifold)
+
+    def get_collision_flag(self):
+        return self.flag
+
+    def set_collision_flag(self, flag):
+        self.flag = flag
 
     def get_transform_world(self):
         return self.g_wb
@@ -32,6 +49,7 @@ class Body(object):
 
     def set_shape(self, shape):
         self.shape = shape
+        self.shape.set_tf_world(self.get_transform_world())
 
     def get_dof_mask(self):
         return self.mask
@@ -47,6 +65,9 @@ class Body(object):
 
     def draw(self, shader):
         self.shape.draw(shader)
+
+    def set_color(self, color):
+        self.shape.set_color(color)
 
     def supmap(self, v):
         return self.shape.supmap(v)

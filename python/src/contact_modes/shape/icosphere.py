@@ -73,7 +73,7 @@ class Icosphere(HalfedgeMesh):
         self.loop_subdivide()
 
         for v in self.vertices:
-            v.position *= self.radius/np.linalg.norm(v.position)
+            v.position *= 1.0/np.linalg.norm(v.position)
 
     def set_radius(self, radius):
         self.radius = radius

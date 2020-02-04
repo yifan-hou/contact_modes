@@ -21,6 +21,9 @@ class Box(HalfedgeMesh):
         V[1,:] = 0.5*np.array([y, -y, y, -y, y, -y, y, -y])
         V[2,:] = 0.5*np.array([-z, -z, z, z, -z, -z, z, z])
         self.build_convex(V)
+    
+    def margin(self):
+        return 0.01
 
     def supmap(self, v):
         tf = self.get_tf_world()

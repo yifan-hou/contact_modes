@@ -16,7 +16,7 @@ from .interior_point import int_pt_cone, interior_point_halfspace
 from .lattice import FaceLattice, Face
 from .se3 import *
 
-DEBUG = True
+DEBUG = False
 
 def make_frame(z):
     z = z.reshape((3,1))

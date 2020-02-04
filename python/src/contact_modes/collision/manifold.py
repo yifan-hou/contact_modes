@@ -1,5 +1,6 @@
 import numpy as np
 
+from contact_modes import SE3, SO3, make_frame
 from contact_modes.viewer.backend import *
 
 
@@ -21,6 +22,18 @@ class CollisionManifold(object):
         self.dist = None
         self.shape_A = None
         self.shape_B = None
+
+    def frame_A(self):
+        g_wa = SE3.identity()
+        g_wa.R.set_matrix(make_frame(self.normal))
+        g_wa.t = self.pts_A.copy()
+        return g_wa
+
+    def frame_B(self):
+        g_wb = SE3.identity()
+        g_wb.R.set_matrix(make_frame(self.normal))
+        g_wb.t = self.pts_B.copy()
+        return g_wb
 
     def draw(self):
         glDisable(GL_LIGHTING)
@@ -44,3 +57,15 @@ class CollisionManifold(object):
             pb = self.pts_B[:,i]
             glVertex3f(pb[0], pb[1], pb[2])
         glEnd()
+
+    def __str__(self):
+        return \
+        'manifold\n' \
+        '   pt A: {}\n' \
+        '   pt B: {}\n' \
+        '      n: {}\n' \
+        '   dist: {}\n' \
+        ' body A: {}\n' \
+        ' body B: {}' \
+        .format(self.pts_A.T, self.pts_B.T, self.normal.T, self.dist, 
+                self.shape_A.name, self.shape_B.name)

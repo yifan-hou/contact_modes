@@ -15,20 +15,19 @@ class AnthroHand(Tree):
 
     def init(self, num_fingers = 3, 
                    num_digits = 3,
-                   finger_length = 0.5, 
-                   finger_width = 0.20, 
-                   finger_thickness = 0.06,
-                   palm_length = 1.0, 
-                   palm_width = 1.0,
-                   palm_thickness = 0.06):
+                   finger_length = 5, 
+                   finger_width = 2, 
+                   finger_thickness = 0.6,
+                   palm_length = 10.0, 
+                   palm_width = 10.0,
+                   palm_thickness = 0.6):
         # Create anthropomorphic hand.
-        self.links = [Static()]
-        self.links[0].set_shape(Box(palm_width, palm_length, palm_thickness))
-        # Create gₛₗ(0), ξ's, and mask for each finger.
         num_dofs = num_fingers * num_digits + (num_digits - 1)
+        self.links = []
+        # Create gₛₗ(0), ξ's, and mask for each finger.
         dof_id = 0
         for i in range(num_fingers + 1):
-            finger = [Link()]
+            finger = [Link('f%d_%d' % (i, 0))]
             # Finger digit 0 position relative to palm.
             g_sl0 = SE3.exp(np.array([(palm_width-finger_width)/(num_fingers-1)*i - (palm_width-finger_width)/2, 
                                       palm_length/2 + finger_length/2, 
@@ -36,7 +35,7 @@ class AnthroHand(Tree):
             if i == num_fingers: # thumb
                 g_sl0 = SE3.exp(np.array(
                     [(palm_width+finger_width)/2,
-                    0,
+                    finger_length/2,
                     0, 0, 0, 0]))
             finger[0].set_transform_0(g_sl0)
             # Joint twist for digit 0.
@@ -61,7 +60,7 @@ class AnthroHand(Tree):
                 n_d -= 1
             for j in range(1, n_d):
                 # Link.
-                digit = Link()
+                digit = Link('f%d_%d' % (i, j))
                 finger.append(digit)
                 # Create gₛₗ(0).
                 xi_0 = np.zeros((6,1))
@@ -87,5 +86,11 @@ class AnthroHand(Tree):
                 finger[j].set_dof_mask(mask.copy())
             # Add finger links.
             self.links.extend(finger)
+        # Add palm.
+        self.links.append(Static('palm'))
+        self.links[-1].set_shape(Box(palm_width, palm_length, palm_thickness))
+        self.links[-1].set_dof_mask(np.array([False] * num_dofs))
         # Set to 0 position.
         self.set_dofs(np.zeros((num_dofs,1)))
+        # Create tree.
+        self.init_tree()

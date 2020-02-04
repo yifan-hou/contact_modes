@@ -30,6 +30,35 @@ class TransformManager(object):
 
         return points, normals, tangents, dists
 
+class DynamicCollisionManager(object):
+    def __init__(self):
+        self.pairs = []
+
+    def add_pair(self, body_A, body_B):
+        self.pairs.append((body_A, body_B))
+
+    def collide(self):
+        manifolds = []
+        n_pairs = len(self.pairs)
+        for i in range(n_pairs):
+            body_A = self.pairs[i][0]
+            body_B = self.pairs[i][1]
+            body_A.reset_contacts()
+            body_B.reset_contacts()
+        for i in range(n_pairs):
+            body_A = self.pairs[i][0]
+            body_B = self.pairs[i][1]
+            manifold = gjk(body_A, body_B)
+            if DEBUG:
+                print(manifold.pts_A)
+                print(manifold.pts_B)
+                print(manifold.normal)
+                print(manifold.dist)
+            body_A.add_contact(manifold)
+            body_B.add_contact(manifold)
+            manifolds.append(manifold)
+        return manifolds
+
 class CollisionManager(object):
     def __init__(self):
         self.pairs = []

@@ -8,12 +8,11 @@ from .body import *
 DEBUG=True
 
 class Static(Body):
-    def __init__(self):
-        super(Static, self).__init__()
-        self.g_wl0 = SE3.identity() # transform at q=0
+    def __init__(self, name=None):
+        super(Static, self).__init__(name=name)
 
-    def set_transform_0(self, g_wl0):
-        self.g_wl0 = g_wl0
+    def num_dofs(self):
+        return 0
 
     def get_dofs(self):
         return None

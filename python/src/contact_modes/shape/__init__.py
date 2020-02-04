@@ -12,3 +12,4 @@ from .collada import *
 from .torus import *
 from .link import *
 from .chain import *
+from .ellipse import *

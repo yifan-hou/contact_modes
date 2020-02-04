@@ -2,7 +2,7 @@ import numpy as np
 from numpy.linalg import norm
 
 from contact_modes.collision import CollisionManager, TransformManager
-from contact_modes.shape import Box, BoxWithHole, Cylinder, Torus
+from contact_modes.shape import Box, BoxWithHole, Cylinder, Torus, Ellipse
 from contact_modes.dynamics import AnthroHand, Body
 
 from .lattice import FaceLattice
@@ -154,6 +154,9 @@ def torus_puzzle(n=8):
 def hand_baton():
     hand = AnthroHand()
     baton = Body()
-    baton.set_shape(Cylinder(0.5, 1.0))
+    baton.set_shape(Ellipse(10, 5, 5))
+
+    hand_dofs = [0.967, 0.772, 1.052, 0.882, 0.882, 0.882, 0.967, 0.772, 1.052, 2.041, -0.590]
+    hand.set_dofs(np.array(hand_dofs)
 
     return points, normals, tangents, target, obstacles, manager
