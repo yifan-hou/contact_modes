@@ -34,14 +34,14 @@ class Body(object):
             self.shape.set_tf_world(self.g_wb)
 
     def num_dofs(self):
-        return np.sum(self.mask)
+        return 6
 
-    def get_dofs(self):
+    def get_state(self):
         q = np.zeros((len(self.mask), 1))
         q[self.mask] = SE3.log(self.g_wb)
         return q
 
-    def set_dofs(self, q):
+    def set_state(self, q):
         self.set_transform_world(SE3.exp(q[self.mask]))
 
     def get_shape(self):
@@ -54,11 +54,16 @@ class Body(object):
     def get_dof_mask(self):
         return self.mask
 
+    def reindex_dof_mask(self, index, total_dofs):
+        mask = np.array([False] * total_dofs, bool)
+        mask[index:(index + len(self.mask))] = self.mask
+        self.mask = mask
+
     def set_dof_mask(self, mask):
         self.mask = mask
 
     def get_body_jacobian(self):
-        return SE3.identity()
+        return np.eye(6)
 
     def get_spatial_jacobian(self):
         return SE3.Ad(self.get_transform_world()) @ self.get_body_jacobian()

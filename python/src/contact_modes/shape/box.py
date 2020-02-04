@@ -23,7 +23,7 @@ class Box(HalfedgeMesh):
         self.build_convex(V)
     
     def margin(self):
-        return 0.01
+        return 0.02
 
     def supmap(self, v):
         tf = self.get_tf_world()

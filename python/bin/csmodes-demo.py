@@ -18,7 +18,7 @@ from contact_modes import (SE3, SO3, FaceLattice, enum_sliding_sticking_3d,
                            sample_twist_contact_separating,
                            sample_twist_sliding_sticking)
 from contact_modes.collision import DynamicCollisionManager
-from contact_modes.dynamics import AnthroHand, Body
+from contact_modes.dynamics import AnthroHand, Body, System
 from contact_modes.modes_cases import *
 from contact_modes.shape import (Arrow, Box, Chain, Cylinder, Ellipse,
                                  Icosphere, Link, Torus)
@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser(description='Contact Modes Demo')
 parser.add_argument('-t', '--oit', action='store_true')
 ARGS = parser.parse_args()
 
-DEBUG = True
+DEBUG = False
 
 def track_velocity(prev_twist, prev_tf, curr_tf, points, normals, dists, csmode):
     """
@@ -368,7 +368,7 @@ class CSModesDemo(Application):
         self.draw_lattice_gui()
         self.draw_scene_gui()
         self.draw_plot_gui()
-        self.draw_hand_gui()
+        # self.draw_hand_gui()
 
         # Render GUI
         imgui.render()
@@ -403,16 +403,14 @@ class CSModesDemo(Application):
         # ----------------------------------------------------------------------
         # 2. Draw scene
         # ----------------------------------------------------------------------
-        # self.target.draw(shader)
+        self.target.draw(shader)
         # self.target.draw_wireframe(shader)
 
-        # self.AnthroHand.draw(shader)
-        self.hand.draw(shader)
-        self.baton.draw(shader)
+        # self.hand.draw(shader)
+        # self.baton.draw(shader)
 
         for o in self.obs:
-            # o.draw(shader)
-            pass
+            o.draw(shader)
 
         if self.show_grid:
             self.grid.draw(shader)
@@ -442,7 +440,7 @@ class CSModesDemo(Application):
         self.init_lattice_gui()
         self.init_scene_gui()
         self.init_plot_gui()
-        self.init_hand_gui()
+        # self.init_hand_gui()
 
     def draw_menu(self):
         if imgui.begin_main_menu_bar():
@@ -830,6 +828,11 @@ class CSModesDemo(Application):
         manifolds = self.collider.collide()
         for m in manifolds:
             print(m)
+        self.system = System()
+        self.system.add_body(self.hand)
+        self.system.add_obstacle(self.baton)
+        self.system.set_collider(self.collider)
+        self.system.reindex_dof_masks()
         # GUI parameters.
         self.hand_color = get_color('clay')
         self.hand_color[3] = 0.5
@@ -850,37 +853,31 @@ class CSModesDemo(Application):
             self.baton.set_color(np.array(new_color))
             self.baton_color = new_color
 
-        imgui.text('football')
-        dofs = self.baton.get_dofs()
-        for i in range(self.baton.num_dofs()):
+        imgui.text('state')
+        dofs = self.system.get_state()
+        for i in range(self.system.num_dofs()):
             changed, value = imgui.slider_float('b%d' % i, dofs[i], -np.pi, np.pi)
             if changed:
                 dofs[i] = value
-        self.baton.set_dofs(dofs)
-
-        imgui.text('hand')
-        dofs = self.hand.get_dofs()
-        for i in range(self.hand.num_dofs()):
-            changed, value = imgui.slider_float('q%02d' % i, dofs[i], -np.pi, np.pi)
-            if changed:
-                dofs[i] = value
-            imgui.same_line()
-            if imgui.button('step###%d' % i):
-                dofs = self.close(i)
-        self.hand.set_dofs(dofs)
+            if i < self.hand.num_dofs():
+                imgui.same_line()
+                if imgui.button('step###%d'%i):
+                    self.close(i)
+                    dofs = self.system.get_state()
+        self.system.set_state(dofs)
         
         self.load_hand = False
         imgui.end()
 
     def close(self, i):
         link = self.hand.get_links()[i]
-        q = self.hand.get_dofs()
+        q = self.hand.get_state()
         while True:
             manifold = link.get_contacts()[0]
             if manifold.dist < 1e-6:
                 break
             q = self.close_step(i)
-            self.hand.set_dofs(q)
+            self.hand.set_state(q)
         return q
 
     def close_step(self, i):
@@ -889,9 +886,9 @@ class CSModesDemo(Application):
         # Get variables.
         link = self.hand.get_links()[i]
         manifold = link.get_contacts()[0]
-        i_mask = np.array([False] * self.hand.num_dofs())
+        i_mask = np.array([False] * self.system.num_dofs())
         i_mask[i] = True
-        if True: #DEBUG:
+        if DEBUG:
             print(manifold)
         # Create contact frame g_oc.
         g_wo = link.get_transform_world()
@@ -917,7 +914,7 @@ class CSModesDemo(Application):
         alpha = 0.15
         d = np.array([[manifold.dist]])
         dq = np.linalg.lstsq(J_h, alpha*d)[0]
-        q = self.hand.get_dofs() + dq
+        q = self.hand.get_state() + dq
         return q
 
     def on_key_press_0(self, win, key, scancode, action, mods):

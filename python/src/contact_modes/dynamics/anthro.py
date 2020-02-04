@@ -10,7 +10,8 @@ from .tree import *
 
 
 class AnthroHand(Tree):
-    def __init__(self):
+    def __init__(self, name=None):
+        super(AnthroHand, self).__init__(name)
         self.init()
 
     def init(self, num_fingers = 3, 
@@ -24,6 +25,7 @@ class AnthroHand(Tree):
         # Create anthropomorphic hand.
         num_dofs = num_fingers * num_digits + (num_digits - 1)
         self.links = []
+        self.mask = np.array([True]*num_dofs, bool)
         # Create gₛₗ(0), ξ's, and mask for each finger.
         dof_id = 0
         for i in range(num_fingers + 1):
@@ -91,6 +93,6 @@ class AnthroHand(Tree):
         self.links[-1].set_shape(Box(palm_width, palm_length, palm_thickness))
         self.links[-1].set_dof_mask(np.array([False] * num_dofs))
         # Set to 0 position.
-        self.set_dofs(np.zeros((num_dofs,1)))
+        self.set_state(np.zeros((num_dofs,1)))
         # Create tree.
         self.init_tree()

@@ -33,9 +33,13 @@ class TransformManager(object):
 class DynamicCollisionManager(object):
     def __init__(self):
         self.pairs = []
+        self.manifolds = []
 
     def add_pair(self, body_A, body_B):
         self.pairs.append((body_A, body_B))
+
+    def get_manifolds(self):
+        return self.manifolds
 
     def collide(self):
         manifolds = []
@@ -57,6 +61,7 @@ class DynamicCollisionManager(object):
             body_A.add_contact(manifold)
             body_B.add_contact(manifold)
             manifolds.append(manifold)
+        self.manifolds = manifolds
         return manifolds
 
 class CollisionManager(object):

@@ -7,7 +7,8 @@ from .link import *
 
 
 class Tree(Body):
-    def __init__(self):
+    def __init__(self, name=None):
+        super(Tree, self).__init__(name)
         self.links = []
 
     def init(self):
@@ -29,9 +30,9 @@ class Tree(Body):
                 if np.sum(np.logical_xor(m0, m1)) == 1:
                     idx = np.where(np.logical_xor(m0, m1))[0].item()
                     if m0[idx]:
-                        l0.add_child(l1)
-                    else:
                         l1.add_child(l0)
+                    else:
+                        l0.add_child(l1)
 
     def get_collision_flag(self):
         return self.flag
@@ -42,15 +43,26 @@ class Tree(Body):
             link.set_collision_flag(flag)
 
     def num_dofs(self):
-        return len(self.q)
-
-    def get_dofs(self):
-        return self.q
-
-    def set_dofs(self, q):
-        self.q = q.reshape((-1,1))
+        num_dofs = 0
         for link in self.links:
-            link.set_dofs(self.q)
+            num_dofs += link.num_dofs()
+        return num_dofs
+
+    def get_state(self):
+        q = np.zeros((len(self.mask), 1))
+        for link in self.links:
+            q += link.get_state()
+        return q
+
+    def set_state(self, q):
+        for link in self.links:
+            link.set_state(q)
+
+    def reindex_dof_mask(self, index, total_dofs):
+        super().reindex_dof_mask(index, total_dofs)
+        num_dofs = self.num_dofs()
+        for link in self.links:
+            link.reindex_dof_mask(index, total_dofs)
 
     def draw(self, shader):
         for link in self.links:

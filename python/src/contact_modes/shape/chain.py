@@ -127,11 +127,11 @@ class Chain(Shape):
     def num_dofs(self):
         return 2*self.n-2
 
-    def set_dofs(self, q):
+    def set_state(self, q):
         for l in self.links:
-            l.set_dofs(q)
+            l.set_state(q)
 
-    def get_dofs(self, q):
+    def get_state(self, q):
         pass
 
     def draw(self, shader):
@@ -146,7 +146,7 @@ class ChainLink(Shape):
     def set_tf_expr(self, g_sl):
         self.g_sl = g_sl
 
-    def set_dofs(self, q):
+    def set_state(self, q):
         self.get_tf_world().set_matrix(self.g_sl(*q))
 
     def draw(self, shader):

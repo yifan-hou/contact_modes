@@ -12,6 +12,6 @@ def test_chain():
     chain.generate_forward_kinematics()
     t_start = time()
     for i in range(1000):
-        chain.set_dofs(np.random.rand(8))
+        chain.set_state(np.random.rand(8))
     print((time() - t_start)/1000)
     assert(False)

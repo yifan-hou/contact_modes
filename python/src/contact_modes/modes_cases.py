@@ -1,14 +1,17 @@
 import numpy as np
 from numpy.linalg import norm
 
-from contact_modes.collision import CollisionManager, TransformManager
-from contact_modes.shape import Box, BoxWithHole, Cylinder, Torus, Ellipse
-from contact_modes.dynamics import AnthroHand, Body
+from contact_modes.collision import (CollisionManager, DynamicCollisionManager,
+                                     TransformManager)
+from contact_modes.dynamics import (AnthroHand, Body, Proxy, Static, System,
+                                    build_normal_velocity_constraints)
+from contact_modes.shape import (Box, BoxWithHole, Cylinder, Ellipse,
+                                 Icosphere, Torus)
 
 from .lattice import FaceLattice
-from .util import get_color
 from .se3 import SE3
 from .so3 import SO3
+from .util import get_color
 
 
 def box_case(walls=1):
@@ -58,7 +61,45 @@ def box_case(walls=1):
                 tangents[:,k,0] = T[i][0]
                 tangents[:,k,1] = T[i][1]
                 k += 1
-    
+
+    # Try with new collision detection.
+    target0 = Body('target')
+    target0.set_shape(Box())
+    N = [z, y, x, -x, -y, -z]
+    obstacles0 = []
+    for i in range(walls):
+        n = N[i]
+        wall = Static('wall%d' % i)
+        box_dims = np.array([10., 10., 10.])
+        box_dims[np.where(np.abs(n) > 0)] = 1.0
+        wall.set_shape(Box(*box_dims))
+        tf = wall.get_transform_world()
+        tf.set_translation(-n)
+        wall.set_transform_world(tf)
+        obstacles0.append(wall)
+    collider = DynamicCollisionManager()
+    for i in range(walls):
+        for t_x in [1, -1]:
+            for t_y in [1, -1]:
+                pt = -0.5 * (N[i] + t_x * T[i][0] + t_y * T[i][1])
+                pt = pt.flatten()
+                proxy = Proxy('proxy%+d%+d%+d' % (i, -t_x, -t_y))
+                proxy.set_body(target0)
+                proxy.set_shape(Icosphere(0.1, 0))
+                proxy.set_transform_body(SE3.exp([pt[0], pt[1], pt[2], 0, 0, 0]))
+                collider.add_pair(proxy, obstacles0[i])
+    manifolds = collider.collide()
+    for m in manifolds:
+        print(m)
+
+    system = System()
+    system.add_body(target0)
+    for obs in obstacles0:
+        system.add_obstacle(obs)
+    system.set_collider(collider)
+    system.reindex_dof_masks()
+    print(system.get_state())
+
     return points, normals, tangents, target, obstacles, manager
 
 def peg_in_hole(n=8):
@@ -157,6 +198,6 @@ def hand_baton():
     baton.set_shape(Ellipse(10, 5, 5))
 
     hand_dofs = [0.967, 0.772, 1.052, 0.882, 0.882, 0.882, 0.967, 0.772, 1.052, 2.041, -0.590]
-    hand.set_dofs(np.array(hand_dofs)
+    hand.set_state(np.array(hand_dofs))
 
     return points, normals, tangents, target, obstacles, manager
