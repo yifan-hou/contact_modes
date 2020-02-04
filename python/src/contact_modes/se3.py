@@ -104,6 +104,7 @@ class SE3(object):
 
     @staticmethod
     def exp(x):
+        x = np.array(x, dtype=np.float64)
         x = x.reshape((6,1))
 
         X = SE3()

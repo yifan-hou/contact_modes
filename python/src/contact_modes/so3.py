@@ -114,6 +114,8 @@ class SO3(object):
 
     @staticmethod
     def exp(x):
+        x = x.reshape((3,1))
+        x = np.array(x, dtype=np.float64)
         theta_sq = np.dot(x.T,x)
         coefs = ExpCoefs(theta_sq, dtype=x.dtype)
         X = SO3(dtype=x.dtype)

@@ -19,7 +19,7 @@ def genvec_SE3():
     return x
 
 def skew3(a):
-    skew_a = np.zeros((9,))
+    skew_a = np.zeros((9,), dtype=np.float64)
     skew_a[0], skew_a[4], skew_a[8] = 0, 0, 0
     skew_a[1] = -a[2]
     skew_a[2] = a[1]
@@ -46,9 +46,9 @@ def gamma(n):
 
 def compute_exp_matrix3(a, b, c, w):
     # Compute m = A*I + B*wx + C*ww'
-    m0 = np.zeros((3,))
-    m1 = np.zeros((3,))
-    m2 = np.zeros((3,))
+    m0 = np.zeros((3,), dtype=np.float64)
+    m1 = np.zeros((3,), dtype=np.float64)
+    m2 = np.zeros((3,), dtype=np.float64)
 
     Cw0 = c * w[0]
     Cw1 = c * w[1]
@@ -82,10 +82,10 @@ def compute_exp_coefs_small(theta_sq, coefs):
     coefs.A = 1.0 - tt*coefs.C
 
 def compute_exp_coefs_large(theta_sq, coefs):
-    theta = math.sqrt(theta_sq)
+    theta = np.sqrt(theta_sq)
     inv_tt = 1.0 / theta_sq
-    coefs.A = math.sin(theta)/theta
-    coefs.cos_theta = math.cos(theta)
+    coefs.A = np.sin(theta)/theta
+    coefs.cos_theta = np.cos(theta)
     coefs.B = (1.0 - coefs.cos_theta) * inv_tt
     coefs.C = (1.0 - coefs.A) * inv_tt
     return inv_tt
