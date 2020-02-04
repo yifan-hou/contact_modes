@@ -10,6 +10,9 @@ class Proxy(Body):
         super(Proxy, self).__init__(name)
         self.body = None
         self.g_bp = SE3.identity()
+
+    def get_transform_world(self):
+        return self.body.get_transform_world()
     
     def set_transform_body(self, g_bp):
         self.g_bp = g_bp

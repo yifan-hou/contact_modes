@@ -10,6 +10,9 @@ class System(object):
     def set_collider(self, collider):
         self.collider = collider
 
+    def get_collider(self):
+        return self.collider
+
     def add_body(self, body):
         self.bodies.append(body)
 

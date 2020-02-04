@@ -3,11 +3,11 @@ from numpy.linalg import norm
 
 from contact_modes.collision import (CollisionManager, DynamicCollisionManager,
                                      TransformManager)
-from contact_modes.dynamics import (AnthroHand, Body, Proxy, Static, System,
-                                    build_normal_velocity_constraints)
+from contact_modes.dynamics import AnthroHand, Body, Proxy, Static, System
 from contact_modes.shape import (Box, BoxWithHole, Cylinder, Ellipse,
                                  Icosphere, Torus)
 
+from .modes_3d import contacts_to_half
 from .lattice import FaceLattice
 from .se3 import SE3
 from .so3 import SO3
@@ -62,6 +62,9 @@ def box_case(walls=1):
                 tangents[:,k,1] = T[i][1]
                 k += 1
 
+    # print('A og')
+    # print(contacts_to_half(points, normals)[0])
+
     # Try with new collision detection.
     target0 = Body('target')
     target0.set_shape(Box())
@@ -89,8 +92,8 @@ def box_case(walls=1):
                 proxy.set_transform_body(SE3.exp([pt[0], pt[1], pt[2], 0, 0, 0]))
                 collider.add_pair(proxy, obstacles0[i])
     manifolds = collider.collide()
-    for m in manifolds:
-        print(m)
+    # for m in manifolds:
+    #     print(m)
 
     system = System()
     system.add_body(target0)
@@ -98,9 +101,8 @@ def box_case(walls=1):
         system.add_obstacle(obs)
     system.set_collider(collider)
     system.reindex_dof_masks()
-    print(system.get_state())
 
-    return points, normals, tangents, target, obstacles, manager
+    return system
 
 def peg_in_hole(n=8):
     # --------------------------------------------------------------------------

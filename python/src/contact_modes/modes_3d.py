@@ -9,14 +9,17 @@ from pyhull.halfspace import Halfspace
 from scipy.linalg import null_space as null
 from scipy.linalg import orth
 
+from .constraints import (build_normal_velocity_constraints,
+                          build_tangential_velocity_constraints)
 from .helpers import (exp_comb, feasible_faces, get_lattice_mode, hat,
                       lexographic_combinations, signed_covectors, to_lattice,
                       vertex2lattice, zonotope_add, zonotope_vertex)
 from .interior_point import int_pt_cone, interior_point_halfspace
-from .lattice import FaceLattice, Face
+from .lattice import Face, FaceLattice
 from .se3 import *
+from .affine import proj_affine
 
-DEBUG = False
+DEBUG = True
 
 def make_frame(z):
     z = z.reshape((3,1))
@@ -56,8 +59,8 @@ def contacts_to_half(points, normals):
 
     return A, b
 
-def sample_twist_contact_separating(points, normals, modestr):
-    A, b = contacts_to_half(points, normals)
+def sample_twist_contact_separating(system, modestr):
+    A, b = build_normal_velocity_constraints(system.collider.manifolds)
     c = np.where(modestr == 'c')[0]
 
     if DEBUG:
@@ -65,7 +68,7 @@ def sample_twist_contact_separating(points, normals, modestr):
         print('A')
         print(A)
 
-    n_pts = points.shape[1]
+    n_pts = A.shape[0]
     
     mask = np.zeros(n_pts, dtype=bool)
     mask[c] = 1
@@ -226,23 +229,21 @@ def enumerate_contact_separating_3d_exponential(points, normals):
     # return np.array(sorted(modes))
     return np.array(modes)
 
-def enumerate_contact_separating_3d(points, normals):
-    # Check inputs dimensions.
-    assert(points.shape[1] == normals.shape[1])
-    assert(points.shape[0] == 3)
-    assert(normals.shape[0] == 3)
-
-    n_pts = points.shape[1]
-
+def enumerate_contact_separating_3d(system):
     # Create solve info.
     info = dict()
-    info['n'] = n_pts
 
     # Create halfspace inequalities, Ax - b <= 0.
-    A, b = contacts_to_half(points, normals)
+    A, b = build_normal_velocity_constraints(system.collider.manifolds)
+    # b = np.zeros(b.shape)
     if DEBUG:
         print('A')
         print(A)
+        print('b')
+        print(b)
+
+    n_pts = A.shape[0]
+    info['n'] = n_pts
 
     # Get interior point using linear programming.
     t_lp = time()
@@ -269,7 +270,7 @@ def enumerate_contact_separating_3d(points, normals):
     # let NULL(A_c) = [x0, ... , xc]
     # A'⋅NULL(A_c)x' ≤ 0
     if np.sum(mask) > 0:
-        N = null(A_c)
+        N = null(A_c, np.finfo(np.float32).eps)
         A = A @ N
         int_pt = np.linalg.lstsq(N, int_pt)[0]
         if DEBUG:
@@ -303,18 +304,10 @@ def enumerate_contact_separating_3d(points, normals):
         return cs_modes[1:3], lattice, info
 
     # Project dual points into affine space.
-    N = sp.linalg.null_space((dual - dual[1,:]))
-    O = sp.linalg.orth((dual - dual[1,:]).T)
-    if O.shape[1] != 6:
-        dual = np.dot((dual-dual[1,:]), O)
-        if DEBUG:
-            print('orth @ dual')
-            print(dual)
+    dual = proj_affine(dual.T).T
     if DEBUG:
-        print('null')
-        print(N)
-        print('orth')
-        print(O)
+        print('proj dual')
+        print(dual)
     info['d'] = dual.shape[1]
 
     # Filter duplicate points.

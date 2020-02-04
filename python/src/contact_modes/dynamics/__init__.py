@@ -5,5 +5,4 @@ from .anthro import *
 from .octopus import *
 from .chain import *
 from .proxy import *
-from .constraints import *
 from .system import *

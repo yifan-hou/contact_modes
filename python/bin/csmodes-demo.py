@@ -27,7 +27,7 @@ from contact_modes.viewer import (Application, BasicLightingRenderer,
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
-np.set_printoptions(suppress=True, precision=8)
+np.set_printoptions(suppress=True, precision=8, linewidth=160)
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='Contact Modes Demo')
@@ -181,19 +181,14 @@ class CSModesDemo(Application):
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
     def build_mode_case(self, mode_case_func):
-        points, normals, tangents, target, obs, dist = mode_case_func()
-        self.points = points
-        self.normals = normals
-        self.tangents = tangents
-        self.target = target
-        self.obs = obs
-        self.dist = dist
-        self.target_start = self.target.get_tf_world()
+        system = mode_case_func()
+        self.system = system
+        self.q0 = system.get_state()
 
         # Build mode lattices.
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
-            modes, lattice, info = enumerate_contact_separating_3d(self.points, self.normals)
+            modes, lattice, info = enumerate_contact_separating_3d(self.system)
             self.lattice0 = lattice
             self.lattice1 = None
             self.solve_info = info
@@ -286,8 +281,9 @@ class CSModesDemo(Application):
                 self.reset_state()
 
     def reset_state(self):
-        self.target.set_tf_world(self.target_start)
-        self.prev_tf = self.target_start
+        self.system.set_state(self.q0)
+        self.system.collider.collide()
+        self.prev_tf = self.q0
         self.prev_twist = self.sample_twist()
         self.start_time = time()
         self.curr_time = time()
@@ -328,7 +324,7 @@ class CSModesDemo(Application):
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
             mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
-            return sample_twist_contact_separating(self.points, self.normals, mode)
+            return sample_twist_contact_separating(self.system, mode)
         if solver == 'csss-modes':
             last = (len(self.lattice1.L)-1,0)
             # Skip empty face.
@@ -403,14 +399,10 @@ class CSModesDemo(Application):
         # ----------------------------------------------------------------------
         # 2. Draw scene
         # ----------------------------------------------------------------------
-        self.target.draw(shader)
-        # self.target.draw_wireframe(shader)
+        self.system.draw(shader)
 
         # self.hand.draw(shader)
         # self.baton.draw(shader)
-
-        for o in self.obs:
-            o.draw(shader)
 
         if self.show_grid:
             self.grid.draw(shader)
@@ -680,7 +672,7 @@ class CSModesDemo(Application):
 
         changed, new_color = imgui.color_edit4('object', *self.object_color)
         if changed or self.load_scene:
-            self.target.set_color(np.array(new_color))
+            [body.set_color(np.array(new_color)) for body in self.system.bodies]
             self.object_color = new_color
         
         changed, new_color = imgui.color_edit4('normal', *self.normal_color)
@@ -727,8 +719,7 @@ class CSModesDemo(Application):
 
         changed, new_color = imgui.color_edit4('obs', *self.obstacle_color)
         if changed or self.load_scene:
-            for o in self.obs:
-                o.set_color(np.array(new_color))
+            [o.set_color(np.array(new_color)) for o in self.system.obstacles]
             self.obstacle_color = new_color
 
         changed, new_pos = imgui.slider_float3('light', *self.light_pos, -10.0, 10.0)
@@ -799,7 +790,7 @@ class CSModesDemo(Application):
             if imgui.button('reset'):
                 self.reset_data()
             imgui.end()
-    
+
     def reset_data(self):
         self.x_data = []
         self.x_label = self.x_axis[self.x_axis_index]
