@@ -19,7 +19,7 @@ from .lattice import Face, FaceLattice
 from .se3 import *
 from .affine import proj_affine
 
-DEBUG = True
+DEBUG = False
 
 def make_frame(z):
     z = z.reshape((3,1))
@@ -272,7 +272,7 @@ def enumerate_contact_separating_3d(system):
     if np.sum(mask) > 0:
         N = null(A_c, np.finfo(np.float32).eps)
         A = A @ N
-        int_pt = np.linalg.lstsq(N, int_pt)[0]
+        int_pt = np.linalg.lstsq(N, int_pt, None)[0]
         if DEBUG:
             print('Null A_c')
             print(N)

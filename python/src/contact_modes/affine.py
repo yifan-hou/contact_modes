@@ -5,7 +5,7 @@ from scipy.linalg import null_space as null
 from scipy.linalg import orth
 
 
-DEBUG = True
+DEBUG = False
 
 def affine_dim(x):
     return linear_dim(x - x[None,0,:])

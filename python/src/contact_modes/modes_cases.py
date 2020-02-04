@@ -108,9 +108,9 @@ def peg_in_hole(n=8):
     # --------------------------------------------------------------------------
     # Contact points, normals, and tangents
     # --------------------------------------------------------------------------
-    radius = 0.30
-    height = 2.0
-    side_length = 1.0
+    radius = 3.0
+    height = 20.0
+    side_length = 10.0
     cylinder_scale = 1/1.5
 
     top_points = np.zeros((3, n))
@@ -147,10 +147,45 @@ def peg_in_hole(n=8):
     # --------------------------------------------------------------------------
     # Object and obstacle meshes
     # --------------------------------------------------------------------------
-    target = Cylinder(radius, height * cylinder_scale)
-    hole = BoxWithHole(radius, side_length, height)
+    # Try with new system.
+    peg = Body('peg')
+    peg.set_shape(Cylinder(radius, height * cylinder_scale))
+    hole = Static('hole')
+    hole.set_shape(BoxWithHole(radius, side_length, height))
 
-    return points, normals, tangents, target, [hole], TorusPuzzleManager(0)
+    collider = DynamicCollisionManager()
+    for i in range(points.shape[1]):
+        p0 = Proxy('p%d+' % i)
+        p1 = Proxy('p%d-' % i)
+
+        p0.set_body(peg)
+        p0.set_shape(Icosphere(0.1, 0))
+        p0.set_margin(0.1)
+        p0.set_num_dofs(6) # HACK
+        p1.set_body(peg)
+        p1.set_shape(Icosphere(0.1, 0))
+        p1.set_margin(0.1)
+        p0.set_num_dofs(0) # HACK
+
+        xi0 = np.zeros((6,1))
+        xi0[0:3,0] = points[:,i] + 0.1 * normals[:,i]
+        p0.set_transform_body(SE3.exp(xi0))
+        xi1 = np.zeros((6,1))
+        xi1[0:3,0] = points[:,i] - 0.1 * normals[:,i]
+        p1.set_transform_body(SE3.exp(xi1))
+
+        collider.add_pair(p0, p1)
+    manifolds = collider.collide()
+    # for m in manifolds:
+    #     print(m)
+
+    system = System()
+    system.add_body(peg)
+    system.add_obstacle(hole)
+    system.set_collider(collider)
+    system.reindex_dof_masks()
+
+    return system
 
 class TorusPuzzleManager(object):
     def __init__(self, n):

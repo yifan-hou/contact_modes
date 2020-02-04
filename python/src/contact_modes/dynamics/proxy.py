@@ -10,6 +10,15 @@ class Proxy(Body):
         super(Proxy, self).__init__(name)
         self.body = None
         self.g_bp = SE3.identity()
+        self.m = 0
+        self.n_dofs = 1
+
+    def set_num_dofs(self, num_dofs):
+        print('WARNING: Hacking proxy DOFs')
+        self.n_dofs = num_dofs
+
+    def num_dofs(self):
+        return self.n_dofs
 
     def get_transform_world(self):
         return self.body.get_transform_world()
@@ -19,6 +28,9 @@ class Proxy(Body):
 
     def set_body(self, body):
         self.body = body
+
+    def get_dof_mask(self):
+        return self.body.get_dof_mask()
 
     def get_body_jacobian(self):
         return self.body.get_body_jacobian()
@@ -34,5 +46,8 @@ class Proxy(Body):
 
         return self.get_shape().supmap(v)
 
+    def set_margin(self, m):
+        self.m = m
+
     def margin(self):
-        return 0
+        return self.m
