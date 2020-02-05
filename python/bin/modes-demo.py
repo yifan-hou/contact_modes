@@ -189,7 +189,7 @@ class ModesDemo(Application):
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
             modes, lattice, info = enumerate_contact_separating_3d(self.system)
-            for k in range(-1, lattice.rank()):
+            for k in range(lattice.rank()-1, -2, -1):
                 print('# (%+3d)-faces' % k, lattice.num_k_faces(k))
             print(info)
             self.lattice0 = lattice

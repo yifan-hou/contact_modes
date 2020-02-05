@@ -218,42 +218,23 @@ class FaceLattice(object):
                     if i == j:
                         continue
                     v = intersect_sorted(H[i].verts, H[j].verts)
-                    J = intersect(H[i], H[j])
 
-                    if J is None:
+                    if len(v) < k + 1: # k-face => at least k + 1 vertices
                         continue
 
-                    J.verts = tuple(sorted(J.verts))
-                    assert(v == J.verts)
-                    
-                    # if not v:
-                    #     continue
-                    # if len(v) < k + 1:
-                    #     continue
-
-                    # print('  v:', v)
-                    # print('J.v:', J.verts)
-
-                    # if v in faces.keys():
-                    #     if H[i] not in faces[v].parents:
-                    #         faces[v].parents.append(H[i])
-                    #     if H[j] not in faces[v].parents:
-                    #         faces[v].parents.append(H[j])
-                    if J.verts in faces.keys():
-                        if H[i] not in faces[J.verts].parents:
-                            faces[J.verts].parents.append(H[i])
-                        if H[j] not in faces[J.verts].parents:
-                            faces[J.verts].parents.append(H[j])
+                    if v in faces:
+                        if H[i] not in faces[v].parents:
+                            faces[v].parents.append(H[i])
+                        if H[j] not in faces[v].parents:
+                            faces[v].parents.append(H[j])
                     else:
-                        faces[J.verts] = J
-                    if J.verts in vert_sets:
-                        continue
-                    vert_sets.add(J.verts)
-                    L[-1].append(J)
-                    # print(J.verts)
+                        G = Face(v, k)
+                        G.parents = [H[i], H[j]]
+                        faces[v] = G
+                        L[-1].append(G)
 
-        # Create empty face.
-        E = Face([], 0)
+        # Create -1 face.
+        E = Face([], -1)
         E.parents = L[-1]
         L.append([E])
 
@@ -287,7 +268,9 @@ class FaceLattice(object):
         if k == -1 and len(self.L) == 1:
             return 0
         r = len(self.L)-2
-        return len(self.L[r-k])
+        num_k_faces = len(self.L[r-k])
+        assert(self.L[r-k][0].d == k)
+        return num_k_faces
     
     def csmodes(self, mask, dual_map):
         cs_modes = []
