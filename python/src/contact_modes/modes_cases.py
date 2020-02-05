@@ -187,54 +187,26 @@ def peg_in_hole(n=8):
 
     return system
 
-class TorusPuzzleManager(object):
-    def __init__(self, n):
-        self.n = n
-
-    def closest_points(self, points, normals, tangents, tf):
-        # Transform object points.
-        points = SE3.transform_point(tf, points)
-        # Transform object normals.
-        normals = SO3.transform_point(tf.R, normals)
-        # Transform object tangents.
-        n_pts = points.shape[1]
-        for i in range(n_pts):
-            tangents[:,i,0] = SO3.transform_point(tf.R, tangents[:,i,0]).flatten()
-            tangents[:,i,1] = SO3.transform_point(tf.R, tangents[:,i,1]).flatten()
-        # Get distances.
-        dists = np.zeros((n_pts,))
-
-        return points, normals, tangents, dists
-
-def torus_puzzle(n=8):
-    # --------------------------------------------------------------------------
-    # Object and obstacle meshes
-    # --------------------------------------------------------------------------
-    target = Torus(strip_color=get_color('clay'))
-    target.get_tf_world().set_translation(np.array([0, 0, 0.0]))
-
-    obstacle = Torus(strip_color=get_color('teal'))
-
-    # --------------------------------------------------------------------------
-    # Collision manager
-    # --------------------------------------------------------------------------
-    manager = TorusPuzzleManager(n)
-    
-    # --------------------------------------------------------------------------
-    # Contact points, normals, and tangents
-    # --------------------------------------------------------------------------
-    points = np.zeros((3, n))
-    normals = np.zeros((3, n))
-    tangents = np.zeros((3, n, 2))
-    
-    return points, normals, tangents, target, obstacles, manager
-
-def hand_baton():
-    hand = AnthroHand()
-    baton = Body()
-    baton.set_shape(Ellipse(10, 5, 5))
-
+def hand_football():
+    # Object and obstacles
+    hand = AnthroHand('hand')
     hand_dofs = [0.967, 0.772, 1.052, 0.882, 0.882, 0.882, 0.967, 0.772, 1.052, 2.041, -0.590]
-    hand.set_state(np.array(hand_dofs))
+    hand.set_state(hand_dofs)
+    football = Body('football')
+    football.set_shape(Ellipse(10, 5, 5))
+    football.set_state([0,2.5,5+0.6/2,0,0,0])
 
-    return points, normals, tangents, target, obstacles, manager
+    # Close hand around football.
+    collider = DynamicCollisionManager()
+    for link in hand.links:
+        collider.add_pair(football, link)
+    collider.collide()
+    
+    # Create system.
+    system = System()
+    system.add_body(hand)
+    system.add_obstacle(football)
+    system.set_collider(collider)
+    system.reindex_dof_masks()
+
+    return system

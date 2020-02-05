@@ -42,6 +42,7 @@ class Body(object):
         return q
 
     def set_state(self, q):
+        q = np.array(q).reshape((-1,1))
         self.set_transform_world(SE3.exp(q[self.mask]))
 
     def get_shape(self):
@@ -63,7 +64,9 @@ class Body(object):
         self.mask = mask
 
     def get_body_jacobian(self):
-        return np.eye(6)
+        J_b = np.zeros((6, len(self.mask)))
+        J_b[:, self.mask] = np.eye(6)
+        return J_b
 
     def get_spatial_jacobian(self):
         return SE3.Ad(self.get_transform_world()) @ self.get_body_jacobian()

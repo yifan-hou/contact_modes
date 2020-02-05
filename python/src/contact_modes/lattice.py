@@ -250,6 +250,9 @@ class FaceLattice(object):
         E.parents = None
         self.L.append([E])
 
+    def rank(self):
+        return len(self.L)-1
+
     def num_proper_faces(self):
         cnt = 0
         L = self.L

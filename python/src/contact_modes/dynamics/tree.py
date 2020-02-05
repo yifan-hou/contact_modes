@@ -55,6 +55,7 @@ class Tree(Body):
         return q
 
     def set_state(self, q):
+        q = np.array(q).reshape((-1,1))
         for link in self.links:
             link.set_state(q)
 

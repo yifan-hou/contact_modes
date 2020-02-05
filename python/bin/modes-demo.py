@@ -27,7 +27,7 @@ from contact_modes.viewer import (Application, BasicLightingRenderer,
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
-np.set_printoptions(suppress=True, precision=8, linewidth=160)
+np.set_printoptions(suppress=True, precision=8, linewidth=120)
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='Contact Modes Demo')
@@ -140,7 +140,7 @@ def track_velocity(prev_twist, prev_tf, curr_tf, points, normals, dists, csmode)
 
     return x
 
-class CSModesDemo(Application):
+class ModesDemo(Application):
     def __init__(self):
         super().__init__()
 
@@ -189,6 +189,9 @@ class CSModesDemo(Application):
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
             modes, lattice, info = enumerate_contact_separating_3d(self.system)
+            for k in range(-1, lattice.rank()):
+                print('# (%+3d)-faces' % k, lattice.num_k_faces(k))
+            print(info)
             self.lattice0 = lattice
             self.lattice1 = None
             self.solve_info = info
@@ -613,7 +616,8 @@ class CSModesDemo(Application):
             'box-case-4',
             'box-case-5',
             'peg-in-hole-4', 
-            'peg-in-hole-8'
+            'peg-in-hole-8',
+            'hand-football'
             ]
         self.peel_depth = 4
         self.alpha = 0.7
@@ -655,6 +659,8 @@ class CSModesDemo(Application):
                 self.build_mode_case(lambda: peg_in_hole(4))
             if new_scene == 'peg-in-hole-8':
                 self.build_mode_case(lambda: peg_in_hole(8))
+            if new_scene == 'hand-football':
+                self.build_mode_case(hand_football)
 
         imgui.text('control:')
         changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
@@ -926,5 +932,5 @@ class CSModesDemo(Application):
             
 
 viewer = Viewer()
-viewer.add_application(CSModesDemo())
+viewer.add_application(ModesDemo())
 viewer.start()

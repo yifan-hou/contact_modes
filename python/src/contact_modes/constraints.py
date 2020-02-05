@@ -36,7 +36,7 @@ def build_normal_velocity_constraints(manifolds):
                  print(B.T)
                  print(J_h)
             A[k,None,:] += J_h
-            k += 1
+            d_k += 1
         if body_B.num_dofs() > 0:
             g_wo = body_B.get_transform_world()
             g_wc = m.frame_B()
@@ -50,6 +50,8 @@ def build_normal_velocity_constraints(manifolds):
                  print(B.T)
                  print(J_h)
             A[k,None,:] -= J_h
+            d_k += 1
+        if d_k > 0:
             k += 1
     A = -A[0:k,:]
     b = np.array([[m.dist] for m in manifolds])
