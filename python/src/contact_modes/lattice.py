@@ -99,9 +99,6 @@ class FaceLattice(object):
             self.build_fast(M, d)
             # print('build fast', time()-t_start)
 
-    def euler_characteristic(self):
-        pass
-
     def build_fast(self, M, d):
         # If needed, convert to polar vertex-facet incidence matrix so that
         # algorithm runs in O(min{m,n}⋅α⋅φ) time.
@@ -125,14 +122,14 @@ class FaceLattice(object):
         # Create lattice.
         L = [dict() for i in range(d+2)]
         L[0][()] = Face((), 
-                        0, 
+                        -1, 
                         v=[len(F[i]) for i in range(n_verts)], 
                         f=(range(n_facets)))
 
         # Main loop.
         verts = tuple(range(n_verts))
-        for i in range(d+1):
-            Q = L[i].values()
+        for k in range(0, d+1):
+            Q = L[k].values()
             for H in Q:
                 V_H = difference_sorted(verts, H.verts)
                 color = [0] * n_verts
@@ -168,13 +165,15 @@ class FaceLattice(object):
                             color[v] = -1
                             break
                     if color[v] == 1:
-                        if not L[i+1].get(G):
-                            L[i+1][G] = Face(G, H.d + 1, G_v, G_f)
-                        H.parents.append(L[i+1][G])
-                        L[i+1][G].children.append(H)
+                        if not L[k+1].get(G):
+                            if DEBUG:
+                                assert(H.d + 1 == k)
+                            L[k+1][G] = Face(G, H.d + 1, G_v, G_f)
+                        H.parents.append(L[k+1][G])
+                        L[k+1][G].children.append(H)
         
         # Add arcs to P.
-        L[d+1][0] = Face(tuple(range(n_verts)), d + 1)
+        L[d+1][0] = Face(tuple(range(n_verts)), d)
         Q = L[d].values()
         for H in Q:
             H.parents.append(L[d+1][0])
@@ -271,13 +270,12 @@ class FaceLattice(object):
             return 0
         r = len(self.L)-2
         num_k_faces = len(self.L[r-k])
-        # assert(self.L[r-k][0].d == k)
+        assert(self.L[r-k][0].d == k)
         return num_k_faces
 
     def euler_poincare_formula(self):
         f_sum = -1
         for k in range(0, self.rank()):
-            print('k', k)
             f_sum += (-1)**k * self.num_k_faces(k)
         return f_sum
     
