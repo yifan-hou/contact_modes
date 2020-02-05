@@ -186,43 +186,59 @@ class FaceLattice(object):
             self.L[i] = list(L[d+1-i].values())
 
     def build(self, M, d):
-        assert(M is not None)
-        assert(d is not None)
-
         # Rows are vertices, columns are faces.
         n_verts = M.shape[0]
         n_facets = M.shape[1]
+        print('# verts', n_verts)
+        print('# facets', n_facets)
 
-        # Create graded lattice.
+        # Initialize lattice.
         L = []
 
-        # Create polytope face.
+        # Create d face.
         P = Face(tuple(range(n_verts)), d)
         L.append([P])
 
-        # Create facets.
-        # print('rank', d-1)
+        # Create d-1 faces (facets).
         L.append([])
         for i in range(n_facets):
             F = Face(tuple(np.where(M[:,i] > 0)[0]), d-1)
             F.parents = [P]
-            # print(F.verts)
             L[-1].append(F)
 
-        # Create faces.
-        for di in range(d-1):
-            # print('rank', d-2-di)
+        # Create k faces, k ≥ 0.
+        for k in range(d-2, -1, -1):
             H = L[-1]
+            num_super_faces = len(H)
             L.append([])
             vert_sets = set()
             faces = dict()
-            for i in range(len(H)):
-                for j in range(i + 1, len(H)):
+            for i in range(num_super_faces):
+                for j in range(i + 1, num_super_faces):
                     if i == j:
                         continue
+                    v = intersect_sorted(H[i].verts, H[j].verts)
                     J = intersect(H[i], H[j])
+
                     if J is None:
                         continue
+
+                    J.verts = tuple(sorted(J.verts))
+                    assert(v == J.verts)
+                    
+                    # if not v:
+                    #     continue
+                    # if len(v) < k + 1:
+                    #     continue
+
+                    # print('  v:', v)
+                    # print('J.v:', J.verts)
+
+                    # if v in faces.keys():
+                    #     if H[i] not in faces[v].parents:
+                    #         faces[v].parents.append(H[i])
+                    #     if H[j] not in faces[v].parents:
+                    #         faces[v].parents.append(H[j])
                     if J.verts in faces.keys():
                         if H[i] not in faces[J.verts].parents:
                             faces[J.verts].parents.append(H[i])
