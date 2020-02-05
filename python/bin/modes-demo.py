@@ -476,13 +476,16 @@ class ModesDemo(Application):
         imgui.end_group()
         
         imgui.text('contacting/separating modes:')
-        if self.big_lattice:
+        if self.lattice0.num_faces() > 250:
             self.draw_big_lattice(self.lattice0, 'cs-lattice', self.index0)
         else:
             self.draw_lattice(self.lattice0, 'cs-lattice', self.index0)
         imgui.text('sliding/sticking modes:')
         if self.lattice1 is not None:
-            self.draw_lattice(self.lattice1, 'ss-lattice', self.index1)
+            if self.lattice1.num_faces() > 250:
+                self.draw_big_lattice(self.lattice1, 'ss-lattice', self.index1)
+            else:
+                self.draw_lattice(self.lattice1, 'ss-lattice', self.index1)
         imgui.end()
 
     def draw_lattice(self, L, name='lattice', index=None):
@@ -564,44 +567,51 @@ class ModesDemo(Application):
         rank_sep = region_size[1] / n_r
         node_sep = region_size[0] / n_n
         # radius = np.min([node_sep, rank_sep]) / 8
-        radius = 2.5
+        radius = 6.0
         off_x = win_pos.x + region_min.x + node_sep
         off_y = win_pos.y + region_min.y + rank_sep
 
         draw_list = imgui.get_window_draw_list()
 
         # Create ranks manually
-        color = imgui.get_color_u32_rgba(*get_color('safety yellow'), 1.0)
+        color = imgui.get_color_u32_rgba(*get_color('safety yellow'))
         offset = np.max([(len(l) - 1) * node_sep for l in L])/2
+        extents = []
         for i in range(len(L)):
             n_f = len(L[i])
             l = max(radius, (n_f - 1) * node_sep)
-            x0 = off_x + offset + -l/2 + 0
-            y0 = off_y + rank_sep * i
-            x1 = off_x + offset + -l/2 + l
-            y1 = off_y + rank_sep * i
+            x0 = round(off_x + offset + -l/2 + 0)
+            y0 = round(off_y + rank_sep * i)
+            x1 = round(off_x + offset + -l/2 + l)
+            y1 = round(off_y + rank_sep * i)
             draw_list.add_line(x0, y0, x1, y1, color, radius)
+            extents.append([np.array([x0, y0]), np.array([x1, y1])])
 
-        # Create lattice
+        # Add random lines to simulate a lattice structure.
         thickness = 1
-        # for i in range(len(L)):
-        #     for j in range(len(L[i])):
-        #         F = L[i][j]
-        #         # f_n = names[F]
-        #         # print(f_n)
-        #         fx, fy = pos[F]
-        #         if F.parents is None:
-        #             continue
-        #         for H in F.parents:
-        #             # print(i,j)
-        #             if H in pos:
-        #                 hx, hy = pos[H]
-        #                 draw_list.add_line(hx, hy, fx, fy, color, thickness)
-
-        # if index is not None:
-        #     x, y = pos[L[index[0]][index[1]]]
-        #     active = imgui.get_color_u32_rgba(1.0,0.0,0.0,1.0)
-        #     draw_list.add_circle_filled(x, y, radius, active)
+        np.random.seed(0)
+        for i in range(1, len(L)):
+            for s0, s1 in [(1, 1), (0, 0)]:
+                e0 = extents[i-1]
+                e1 = extents[i]
+                # s0 = np.random.rand()
+                # s0 = s
+                p0 = s0*e0[0] + (1-s0)*e0[1]
+                # s1 = np.random.rand()
+                # s1 = 1-s
+                p1 = s1*e1[0] + (1-s1)*e1[1]
+                draw_list.add_line(p0[0], p0[1], p1[0], p1[1], color, thickness)
+        
+        # Draw current index in red.
+        if index is not None:
+            e = extents[index[0]]
+            if len(L[index[0]]) > 1:
+                s = index[1]/(len(L[index[0]]) - 1)
+            else:
+                s = 0.5
+            p = (1-s)*e[0] + s*e[1]
+            red = imgui.get_color_u32_rgba(*get_color('red'))
+            draw_list.add_line(p[0]+radius/2, p[1], p[0]-radius/2, p[1], red, radius)
 
         imgui.end_child()
 
@@ -631,9 +641,9 @@ class ModesDemo(Application):
         self.contact_color = get_color('yellow')
         self.contact_scale = 0.04
         self.obstacle_color = get_color('teal')
-        self.show_grid = True
+        self.show_grid = False
         self.show_contact_frames = False
-        self.big_lattice = False
+        self.big_lattice = True
         self.lattice_height = 265
         self.loop_time = 2.0
         self.light_pos = [0, 2.0, 10.0]
