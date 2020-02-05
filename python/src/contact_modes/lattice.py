@@ -92,11 +92,11 @@ class FaceLattice(object):
     def __init__(self, M=None, d=None):
         if M is not None:
             # t_start = time()
-            self.build(M, d)
+            # self.build(M, d)
             # print('build', time()-t_start)
 
             # t_start = time()
-            # self.build_fast(M, d)
+            self.build_fast(M, d)
             # print('build fast', time()-t_start)
 
     def euler_characteristic(self):
@@ -191,6 +191,8 @@ class FaceLattice(object):
         n_facets = M.shape[1]
         print('# verts', n_verts)
         print('# facets', n_facets)
+        print('M')
+        print(M)
 
         # Initialize lattice.
         L = []
@@ -269,8 +271,15 @@ class FaceLattice(object):
             return 0
         r = len(self.L)-2
         num_k_faces = len(self.L[r-k])
-        assert(self.L[r-k][0].d == k)
+        # assert(self.L[r-k][0].d == k)
         return num_k_faces
+
+    def euler_poincare_formula(self):
+        f_sum = -1
+        for k in range(0, self.rank()):
+            print('k', k)
+            f_sum += (-1)**k * self.num_k_faces(k)
+        return f_sum
     
     def csmodes(self, mask, dual_map):
         cs_modes = []

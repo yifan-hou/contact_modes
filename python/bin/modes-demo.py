@@ -191,6 +191,7 @@ class ModesDemo(Application):
             modes, lattice, info = enumerate_contact_separating_3d(self.system)
             for k in range(lattice.rank()-1, -2, -1):
                 print('# (%+3d)-faces' % k, lattice.num_k_faces(k))
+            print('euler-poincare =', lattice.euler_poincare_formula())
             print(info)
             self.lattice0 = lattice
             self.lattice1 = None
