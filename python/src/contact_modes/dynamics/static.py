@@ -5,7 +5,7 @@ from contact_modes import SE3, SO3
 from .body import *
 
 
-DEBUG=True
+DEBUG=False
 
 class Static(Body):
     def __init__(self, name=None):
@@ -21,6 +21,9 @@ class Static(Body):
         return q
 
     def set_state(self, q):
+        pass
+
+    def step(self, q_dot):
         pass
 
     def get_body_jacobian(self):

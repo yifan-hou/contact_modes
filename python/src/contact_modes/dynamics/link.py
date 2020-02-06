@@ -57,6 +57,11 @@ class Link(Body):
         g_wl = exp * self.g_wl0
         self.set_transform_world(g_wl)
 
+    def step(self, q_dot):
+        q_dot = np.array(q_dot).reshape((-1,1))
+        dq = q_dot[self.mask]
+        self.set_state(self.q + dq)
+
     def get_body_jacobian(self):
         J_s = self.get_spatial_jacobian()
         J_b = SE3.Ad(SE3.inverse(self.get_transform_world())) @ J_s

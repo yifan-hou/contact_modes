@@ -27,7 +27,7 @@ from contact_modes.viewer import (Application, BasicLightingRenderer,
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
-np.set_printoptions(suppress=True, precision=8, linewidth=120)
+np.set_printoptions(suppress=False, precision=8, linewidth=120)
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='Contact Modes Demo')
@@ -35,110 +35,6 @@ parser.add_argument('-t', '--oit', action='store_true')
 ARGS = parser.parse_args()
 
 DEBUG = False
-
-def track_velocity(prev_twist, prev_tf, curr_tf, points, normals, dists, csmode):
-    """
-    Finds a twist v such that the contact point velocities are as close to the
-    previous ones as possible while maintain contact constraints.
-
-    Arguments:
-        prev_twist {np.ndarray} -- 6x1 previous twist
-        prev_tf {SE3}           -- previous transform
-        curr_tf {SE3}           -- current transform
-        points {np.ndarray}     -- 3xn contact points in body frame
-        normals {np.ndarray}    -- 3xn contact normals in world frame
-        dists {np.ndarray}      -- nx1 contact distances
-        csmode {[str]}          -- contacting/separating modes
-    
-    Returns:
-        np.ndarray -- 6x1 current twist
-    """
-    # Get number of points.
-    n_pts = points.shape[1]
-
-    # Get spatial velocities at each contact point.
-    v_b = SE3.velocity_at_point(prev_twist, points)
-    v_s = SO3.transform_point(prev_tf.R, v_b)
-    v_s = v_s.reshape((-1,1), order='F')
-
-    # Create spatial velocity matrix at current transform.
-    # vₛ = Rŵp + u = -Rp̂w + u = [I -Rp̂]⋅[u w]ᵀ
-    IRp = np.zeros((3 * n_pts, 6))
-    for i in range(n_pts):
-        IRp[3*i:(3*i+3), 0:3] = np.eye(3)
-        IRp[3*i:(3*i+3), 3:6] = -curr_tf.R.matrix() @ SO3.ad(points[:,i]).reshape((3,3))
-    
-    # Create cost function which minimizes distance between spatial velocities.
-    # min ‖[I -Rp̂]ξ - vₛ‖² = ξᵀ[I -Rp̂]ᵀ[I -Rp̂]ξ - vₛᵀ[I -Rp̂]ξ
-    # lamb = 0.01
-    # G = IRp.T @ IRp + lamb * np.eye(6)
-    # a = v_s.T @ IRp
-
-    # Create a cost function which minimizes distance with previous twist.
-    G = np.eye(6)
-    a = prev_twist
-
-    # Create normal velocity constraints for contact points.
-    normals = SO3.transform_point_by_inverse(curr_tf.R, normals)
-    C0 = np.zeros((n_pts, 6))
-    for i in range(n_pts):
-        g_oc = SE3()
-        g_oc.set_rotation(make_frame(normals[:,i,None]))
-        g_oc.set_translation(points[:,i,None])
-        Ad = SE3.Ad(SE3.inverse(g_oc))
-        B = np.array([0, 0, 1., 0, 0, 0]).reshape((6,1))
-        C0[i,:] = B.T @ Ad
-    b0 = -dists
-
-    # Add soft equality constraints to cost function.
-    c = np.where(csmode == 'c')[0]
-    mask = np.zeros((n_pts,), dtype=bool)
-    mask[c] = 1
-    n_contact = np.sum(mask)
-    k = 0
-    C1 = np.zeros((n_contact, 6))
-    for i in range(n_pts):
-        if mask[i]:
-            C1[k,:] = C0[i,:]
-            k += 1
-    lamb1 = 1000
-    G += lamb1 * C1.T @ C1
-
-    # Reorder constraints for points maintaining contact.
-    c = np.where(csmode == 'c')[0]
-    mask = np.zeros((n_pts,), dtype=bool)
-    mask[c] = 1
-    n_contact = np.sum(mask)
-    k = 0
-    C =  np.zeros((n_pts, 6))
-    b = -np.ones((n_pts, 1))
-    # for i in range(n_pts):
-    #     if mask[i]:
-    #         C[k,:] = C0[i,:]
-    #         b[k] = b0[i]
-    #         k += 1
-    # HACK
-    n_contact = 0
-    for i in range(n_pts):
-        if not mask[i]:
-            C[k,:] = C0[i,:]
-            b[k] = b0[i]
-            k += 1
-    
-    # Solve QP.
-    a = a.reshape((-1,))
-    C = C.T
-    b = b.reshape((-1,))
-    sol = quadprog.solve_qp(G, a, C, b, n_contact)
-    x = sol[0].reshape((6,1))
-
-    if DEBUG:
-        print(x)
-        print(C.T @ x)
-        print(C.T @ x - b.reshape((-1,1)))
-        print(b.reshape((-1,1)))
-
-    return x
 
 class ModesDemo(Application):
     def __init__(self):
@@ -288,46 +184,30 @@ class ModesDemo(Application):
         self.system.set_state(self.q0)
         self.system.collider.collide()
         self.prev_tf = self.q0
-        self.prev_twist = self.sample_twist()
+        self.q_dot_target = self.sample_twist()
+        if DEBUG:
+            print('sample twist')
+            print(self.q_dot_target.T)
         self.start_time = time()
         self.curr_time = time()
 
     def step(self, dt):
-        # Get state.
-        prev_tf = self.prev_tf
-        curr_tf = self.target.get_tf_world()
-        prev_twist = self.prev_twist
-
-        # Update normal orientations in world frame.
-        points = self.points
-        normals = self.normals
-        tangents = self.tangents
-        dists = np.zeros((points.shape[1],1))
-        if self.dist is not None:
-            _, normals, tangents, dists = self.dist.closest_points(points, 
-                normals, tangents, curr_tf)
-
         # Get csmode string from lattice 0
-        csmode = self.lattice0.L[self.index0[0]][self.index0[1]].m
+        cs_mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
 
         # Compute tracking twist subject to contact constraints.
-        curr_twist = track_velocity(
-            prev_twist, prev_tf, curr_tf, points, normals, dists, csmode)
+        q_dot = self.system.track_velocity(self.q_dot_target, cs_mode)
 
-        # Apply twist.
+        # Apply velocity.
         h = 0.005
-        v_s = SE3.Ad(curr_tf) @ curr_twist
-        next_tf = SE3.exp(h * dt * v_s) * curr_tf
-        self.target.set_tf_world(next_tf)
-
-        # Record state.
-        self.prev_tf = curr_tf
-        # self.prev_twist = curr_twist
+        self.system.step(h * dt * q_dot)
 
     def sample_twist(self):
         solver = self.solver_list[self.solver_index]
         if solver == 'cs-modes':
             mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
+            if DEBUG:
+                print('cs mode', mode)
             return sample_twist_contact_separating(self.system, mode)
         if solver == 'csss-modes':
             last = (len(self.lattice1.L)-1,0)

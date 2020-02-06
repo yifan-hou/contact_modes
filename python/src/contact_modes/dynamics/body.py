@@ -45,6 +45,14 @@ class Body(object):
         q = np.array(q).reshape((-1,1))
         self.set_transform_world(SE3.exp(q[self.mask]))
 
+    def step(self, q_dot):
+        q_dot = np.array(q_dot).reshape((-1,1))
+        v_b = q_dot[self.mask]
+        g_prev = self.get_transform_world()
+        v_s = SE3.Ad(g_prev) @ v_b
+        g_next = SE3.exp(v_s) * g_prev
+        self.set_transform_world(g_next)
+
     def get_shape(self):
         return self.shape
 
