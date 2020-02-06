@@ -5,7 +5,7 @@ from contact_modes import SE3, SO3
 from .body import *
 
 
-DEBUG=False
+DEBUG = False
 
 class Link(Body):
     def __init__(self, name=None):
@@ -37,6 +37,12 @@ class Link(Body):
 
     def num_dep_dofs(self):
         return len(self.xi)
+
+    def get_dofs(self):
+        pass
+    
+    def set_dofs(self, dofs):
+        pass
 
     def get_state(self):
         q = np.zeros((len(self.mask), 1))
@@ -73,7 +79,7 @@ class Link(Body):
         J = np.zeros((6, len(self.xi)))
         exp = SE3.identity()
         for i in range(len(self.xi)):
-            if i-1 > 0:
+            if i-1 >= 0:
                 exp = exp * SE3.exp(self.xi[i-1] * self.q[i-1,0])
             J[:,i,None] = SE3.Ad(exp) @ self.xi[i]
         J_s = np.zeros((6, len(self.mask)))

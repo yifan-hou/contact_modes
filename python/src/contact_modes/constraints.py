@@ -31,6 +31,13 @@ def build_normal_velocity_constraints(manifolds):
                 Ad_g_co = SE3.Ad(SE3.inverse(g_oc))
                 J_h = B.T @ Ad_g_co @ J_b
                 if DEBUG:
+                    print('g_wo')
+                    print(g_wo)
+                    print('g_wc')
+                    print(g_wc)
+                    print('g_oc')
+                    print(g_oc)
+                    print('J_b')
                     print(J_b)
                     print(Ad_g_co)
                     print(B.T)
@@ -44,14 +51,26 @@ def build_normal_velocity_constraints(manifolds):
             g_wo = body_B.get_transform_world()
             g_wc = m.frame_B()
             g_oc = SE3.inverse(g_wo) * g_wc
+            J_s = body_B.get_spatial_jacobian()
             J_b = body_B.get_body_jacobian()
             Ad_g_co = SE3.Ad(SE3.inverse(g_oc))
             J_h = B.T @ Ad_g_co @ J_b
             if DEBUG:
-                 print(J_b)
-                 print(Ad_g_co)
-                 print(B.T)
-                 print(J_h)
+                print('q')
+                print(body_B.q)
+                print('g_wo')
+                print(g_wo)
+                print('g_wc')
+                print(g_wc)
+                print('g_oc')
+                print(g_oc)
+                print('J_s')
+                print(J_s)
+                print('J_b')
+                print(J_b)
+                print(Ad_g_co)
+                print(B.T)
+                print(J_h)
             A[k,None,:] -= J_h
             d_k += 1
         if d_k > 0:

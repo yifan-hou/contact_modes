@@ -813,6 +813,8 @@ class ModesDemo(Application):
             self.next()
         if key == glfw.KEY_P and action == glfw.PRESS:
             self.prev()
+        if key == glfw.KEY_S and action == glfw.PRESS:
+            self.play()
         if key  == glfw.KEY_UP and action == glfw.PRESS:
             t = self.target.get_tf_world().t
             t[2,0] += 0.05
