@@ -1,9 +1,11 @@
 import numpy as np
+from numpy.linalg import svd
 from quadprog import solve_qp
 from scipy.linalg import null_space as null
 from scipy.linalg import orth as orth
 from scipy.optimize import linprog
 
+from ._remove_redundancy import _remove_redundancy
 
 DEBUG = False
 
@@ -24,6 +26,13 @@ def int_pt_cone(H, Aeq=None, beq=None):
             H = np.concatenate((H, n.T), axis=0)
             b = np.concatenate((b, offset), axis=0)
 
+    # Reduce A to minimal row rank.
+    if Aeq is not None:
+        Aeq, beq, status, msg = _remove_redundancy(Aeq, beq)
+        if status > 0:
+            print(msg)
+            assert(status)
+
     # Solve linear program for strictly interior point.
     n = H.shape[0]
     z = np.concatenate((np.ones((m,1)), np.zeros((n-m,1))), axis=0)
@@ -41,9 +50,15 @@ def int_pt_cone(H, Aeq=None, beq=None):
     x = x.x[0:dim,None]
 
     if DEBUG:
+        print('H')
+        print(H[0:m,0:dim])
         print('H @ x')
         print(H[0:m,0:dim] @ x)
         if Aeq is not None:
+            print('A_eq')
+            print(Aeq[:,0:dim])
+            print('SVD(A_eq)')
+            print(svd(Aeq[:,0:dim])[1])
             print('A_eq @ x')
             print(Aeq[:,0:dim] @ x)
 
