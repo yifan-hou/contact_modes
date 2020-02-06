@@ -21,7 +21,7 @@ from contact_modes.collision import DynamicCollisionManager
 from contact_modes.dynamics import AnthroHand, Body, System
 from contact_modes.modes_cases import *
 from contact_modes.shape import (Arrow, Box, Chain, Cylinder, Ellipse,
-                                 Icosphere, Link, Torus)
+                                 Icosphere, Link, Torus, Frame)
 from contact_modes.viewer import (Application, BasicLightingRenderer,
                                   OITRenderer, Shader, Viewer, Window)
 from contact_modes.viewer.backend import *
@@ -60,6 +60,7 @@ class ModesDemo(Application):
         self.normal_arrow = Arrow()
         self.velocity_arrow = Arrow()
         self.contact_sphere = Icosphere()
+        self.frame = Frame()
 
         self.reset_state()
 
@@ -308,13 +309,21 @@ class ModesDemo(Application):
                 print(m)
             body_A = m.shape_A
             body_B = m.shape_B
+
+            if not mask[i]:
+                continue
+
             if body_A.num_dofs() > 0:
                 # Draw contact sphere A.
+                
 
                 # Draw velocity of contact point A.
+                
 
                 # Draw contact frame A.
-                pass
+                g_wc = m.frame_A()
+                self.frame.set_tf_world(g_wc)
+                self.frame.draw(shader)
 
             if body_B.num_dofs() > 0:
                 # Draw contact sphere B.
@@ -322,17 +331,9 @@ class ModesDemo(Application):
                 # Draw velocity of contact point B.
 
                 # Draw contact frame B.
-                pass
-
-            if mask[i]:
-                p = SE3.transform_point(self.target.get_tf_world(), self.points[:,i,None])
-                self.contact_sphere.get_tf_world().set_translation(p)
-                self.contact_sphere.draw(shader)
-
-                n = SO3.transform_point(self.target.get_tf_world().R, self.normals[:,i,None])
-                self.normal_arrow.set_origin(p)
-                self.normal_arrow.set_z_axis(n)
-                self.normal_arrow.draw(shader)
+                g_wc = m.frame_B()
+                self.frame.set_tf_world(g_wc)
+                self.frame.draw(shader)
 
     def init_gui(self):
         self.init_lattice_gui()
@@ -540,7 +541,7 @@ class ModesDemo(Application):
         self.object_color = get_color('clay')
         self.object_color[3] = 0.5
         self.normal_color = get_color('green')
-        self.normal_scale = [0.2, 0.02, 0.05, 0.035]
+        self.frame_scale = [0.02, 0.35, 0.50]
         self.velocity_color = get_color('yellow')
         self.velocity_scale = [0.2, 0.02, 0.05, 0.035]
         self.contact_color = get_color('yellow')
@@ -607,15 +608,14 @@ class ModesDemo(Application):
             self.normal_arrow.set_color(np.array(new_color))
             self.normal_color = new_color
         
-        changed, new_scale = imgui.drag_float4('normal', 
-                                               *self.normal_scale,
-                                               0.005, 0.0, 1.0)
+        changed, new_scale = imgui.drag_float3('frame', 
+                                               *self.frame_scale,
+                                               0.005, 0.0, 5.0)
         if changed or self.load_scene:
-            self.normal_arrow.set_shaft_length(new_scale[0])
-            self.normal_arrow.set_shaft_radius(new_scale[1])
-            self.normal_arrow.set_head_length(new_scale[2])
-            self.normal_arrow.set_head_radius(new_scale[3])
-            self.normal_scale = new_scale
+            self.frame.set_radius(new_scale[0])
+            self.frame.set_length(new_scale[1])
+            self.frame.set_alpha(new_scale[2])
+            self.frame_scale = new_scale
 
         changed, new_color = imgui.color_edit4('contact', *self.contact_color)
         if changed or self.load_scene:
