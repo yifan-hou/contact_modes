@@ -23,6 +23,9 @@ class SE3(object):
     def __rmul__(self, other):
         return SE3.multiply(other, self)
 
+    def __imul__(self, other):
+        assert(False)
+
     def invert(self):
         ginv = SE3.inverse(self)
         self.R = ginv.R

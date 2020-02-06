@@ -6,7 +6,7 @@ import imgui
 from contact_modes import (build_normal_velocity_constraints,
                            build_tangential_velocity_constraints)
 
-DEBUG = True
+DEBUG = False
 
 class System(object):
     def __init__(self):
@@ -78,7 +78,7 @@ class System(object):
         self.cs_modes = None
         self.qdot = None
         self.qdot_star = None
-        self.lamb0 = 0.1
+        self.lamb0 = 1.0
         self.lamb1 = 1000
 
     def draw_tracking_gui(self):
@@ -132,6 +132,16 @@ class System(object):
         # 2. Create contact constraints.
         N, dists = build_normal_velocity_constraints(manifolds)
         assert(N.shape[0] == len(manifolds))
+
+        if DEBUG:
+            # sort by distance and print top-k constraints.
+            idx = np.flip(np.argsort(dists.flatten())).flatten()
+            print(idx)
+            for i in range(3):
+                print('dist, mode', cs_modes[idx[i]])
+                print(dists[idx[i]])
+                print('N')
+                print(N[idx[i],:])
 
         # 3. Create a cost function which minimizes distance with target
         #    velocity.

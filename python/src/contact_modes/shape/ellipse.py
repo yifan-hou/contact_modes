@@ -5,7 +5,7 @@ from contact_modes.viewer.backend import *
 
 from .icosphere import Icosphere
 
-DEBUG=False
+DEBUG = False
 
 class Ellipse(Icosphere):
     def __init__(self, r1, r2, r3):

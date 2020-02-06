@@ -5,7 +5,7 @@ from contact_modes import SE3, SO3
 from .body import *
 
 
-DEBUG=False
+DEBUG = False
 
 class Static(Body):
     def __init__(self, name=None):
