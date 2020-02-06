@@ -93,7 +93,7 @@ class ModesDemo(Application):
             self.lattice1 = None
             self.solve_info = info
         if solver == 'csss-modes':
-            modes, lattice = enum_sliding_sticking_3d_proj(self.points, self.normals, self.tangents, 2)
+            modes, lattice = enum_sliding_sticking_3d_proj(self.system, 2)
             self.lattice0 = lattice
             self.lattice1 = lattice.L[0][0].ss_lattice
         if solver == 'all-modes':
@@ -210,10 +210,10 @@ class ModesDemo(Application):
             if self.index1 == last:
                 return np.zeros((6,1))
             mode = self.lattice1.L[self.index1[0]][self.index1[1]].m
-            return sample_twist_sliding_sticking(self.points, self.normals, self.tangents, mode)
+            return sample_twist_sliding_sticking(self.system, mode)
         if solver == 'all-modes':
             mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
-            return sample_twist_sliding_sticking(self.points, self.normals, self.tangents, mode)
+            return sample_twist_sliding_sticking(self.system, mode)
 
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
