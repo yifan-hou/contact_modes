@@ -27,7 +27,7 @@ from contact_modes.viewer import (Application, BasicLightingRenderer,
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
-np.set_printoptions(suppress=False, precision=8, linewidth=120)
+np.set_printoptions(suppress=True, precision=8, linewidth=250)
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='Contact Modes Demo')
@@ -243,6 +243,7 @@ class ModesDemo(Application):
         self.draw_lattice_gui()
         self.draw_scene_gui()
         self.draw_plot_gui()
+        self.system.draw_tracking_gui()
         # self.draw_hand_gui()
 
         # Render GUI
@@ -494,7 +495,7 @@ class ModesDemo(Application):
         self.load_scene = True
         self.solver_index = 1
         self.solver_list = ['all-modes', 'cs-modes', 'csss-modes', 'exp']
-        self.case_index = 0
+        self.case_index = 7
         self.case_list = [
             'box-case-1',
             'box-case-2',
@@ -506,7 +507,7 @@ class ModesDemo(Application):
             'hand-football'
             ]
         self.max_steps = 50
-        self.h = 0.015
+        self.h = 0.001
         self.peel_depth = 4
         self.alpha = 0.7
         self.object_color = get_color('clay')

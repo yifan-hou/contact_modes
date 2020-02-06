@@ -17,26 +17,29 @@ def build_normal_velocity_constraints(manifolds):
     k = 0
     for i in range(n_contacts):
         m = manifolds[i]
+        if DEBUG:
+            print(m)
         body_A = m.shape_A
         body_B = m.shape_B
-        if DEBUG:
-            print(body_A.name)
-            print(body_B.name)
         d_k = 0
         if body_A.num_dofs() > 0:
-            g_wo = body_A.get_transform_world()
-            g_wc = m.frame_A()
-            g_oc = SE3.inverse(g_wo) * g_wc
-            J_b = body_A.get_body_jacobian()
-            Ad_g_co = SE3.Ad(SE3.inverse(g_oc))
-            J_h = B.T @ Ad_g_co @ J_b
-            if DEBUG:
-                 print(J_b)
-                 print(Ad_g_co)
-                 print(B.T)
-                 print(J_h)
-            A[k,None,:] += J_h
-            d_k += 1
+            try:
+                g_wo = body_A.get_transform_world()
+                g_wc = m.frame_A()
+                g_oc = SE3.inverse(g_wo) * g_wc
+                J_b = body_A.get_body_jacobian()
+                Ad_g_co = SE3.Ad(SE3.inverse(g_oc))
+                J_h = B.T @ Ad_g_co @ J_b
+                if DEBUG:
+                    print(J_b)
+                    print(Ad_g_co)
+                    print(B.T)
+                    print(J_h)
+                A[k,None,:] += J_h
+                d_k += 1
+            except:
+                print(m)
+                assert(False)
         if body_B.num_dofs() > 0:
             g_wo = body_B.get_transform_world()
             g_wc = m.frame_B()

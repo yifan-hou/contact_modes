@@ -59,6 +59,10 @@ class Tree(Body):
         for link in self.links:
             link.set_state(q)
 
+    def step(self, qdot):
+        for link in self.links:
+            link.step(qdot)
+
     def reindex_dof_mask(self, index, total_dofs):
         super().reindex_dof_mask(index, total_dofs)
         num_dofs = self.num_dofs()

@@ -190,11 +190,12 @@ def peg_in_hole(n=8):
 def hand_football():
     # Object and obstacles
     hand = AnthroHand('hand')
-    hand_dofs = [0.967, 0.772, 1.052, 0.882, 0.882, 0.882, 0.967, 0.772, 1.052, 2.041, -0.590]
+    # hand_dofs = [0.967, 0.772, 1.052, 0.882, 0.882, 0.882, 0.967, 0.772, 1.052, 2.041, -0.590]
+    hand_dofs = [0.966, 0.771, 1.051, 0.881, 0.881, 0.881, 0.966, 0.771, 1.051, 2.042, -0.589]
     hand.set_state(hand_dofs)
-    football = Body('football')
+    football = Static('football')
     football.set_shape(Ellipse(10, 5, 5))
-    football.set_state([0,2.5,5+0.6/2,0,0,0])
+    football.set_transform_world(SE3.exp([0,2.5,5+0.6/2,0,0,0]))
 
     # Close hand around football.
     collider = DynamicCollisionManager()

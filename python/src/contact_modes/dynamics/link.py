@@ -60,7 +60,9 @@ class Link(Body):
     def step(self, q_dot):
         q_dot = np.array(q_dot).reshape((-1,1))
         dq = q_dot[self.mask]
-        self.set_state(self.q + dq)
+        q = self.get_state()
+        q[self.mask] = self.q + dq
+        self.set_state(q)
 
     def get_body_jacobian(self):
         J_s = self.get_spatial_jacobian()

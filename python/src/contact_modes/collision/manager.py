@@ -36,6 +36,8 @@ class DynamicCollisionManager(object):
         self.manifolds = []
 
     def add_pair(self, body_A, body_B):
+        if body_A.num_dofs() == 0 and body_B.num_dofs() == 0:
+            return
         self.pairs.append((body_A, body_B))
 
     def get_manifolds(self):
