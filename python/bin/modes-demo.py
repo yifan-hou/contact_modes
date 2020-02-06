@@ -168,13 +168,11 @@ class ModesDemo(Application):
         return (y, x)
 
     def play(self):
-        t = time()
-        dt = t - self.curr_time
-        d0 = t - self.start_time
 
-        self.step(dt)
+        self.step()
+        self.curr_step += 1
 
-        if d0 > self.loop_time:
+        if self.curr_step > self.max_steps:
             if self.play_mode == 1:
                 self.next()
             if self.play_mode == 2:
@@ -183,15 +181,13 @@ class ModesDemo(Application):
     def reset_state(self):
         self.system.set_state(self.q0)
         self.system.collider.collide()
-        self.prev_tf = self.q0
         self.q_dot_target = self.sample_twist()
         if DEBUG:
             print('sample twist')
             print(self.q_dot_target.T)
-        self.start_time = time()
-        self.curr_time = time()
+        self.curr_step = 0
 
-    def step(self, dt):
+    def step(self):
         # Get csmode string from lattice 0
         cs_mode = self.lattice0.L[self.index0[0]][self.index0[1]].m
 
@@ -199,8 +195,7 @@ class ModesDemo(Application):
         q_dot = self.system.track_velocity(self.q_dot_target, cs_mode)
 
         # Apply velocity.
-        h = 0.005
-        self.system.step(h * dt * q_dot)
+        self.system.step(self.h * q_dot)
 
     def sample_twist(self):
         solver = self.solver_list[self.solver_index]
@@ -510,6 +505,8 @@ class ModesDemo(Application):
             'peg-in-hole-8',
             'hand-football'
             ]
+        self.max_steps = 100
+        self.h = 0.05
         self.peel_depth = 4
         self.alpha = 0.7
         self.object_color = get_color('clay')
@@ -556,6 +553,9 @@ class ModesDemo(Application):
         imgui.text('control:')
         changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)
         changed, self.plot_gui = imgui.checkbox('plot', self.plot_gui)
+        changed, self.max_steps = imgui.drag_float('max steps', self.max_steps,
+                                                    1, 0, 200)
+        changed, self.h = imgui.drag_float('h', self.h, 0.0001, 0, 0.05)
 
         imgui.text('render:')
         changed, self.alpha = imgui.slider_float('alpha', self.alpha, 0.0, 1.0)
@@ -592,7 +592,7 @@ class ModesDemo(Application):
             self.contact_sphere.set_color(np.array(new_color))
             self.contact_color = new_color
 
-        changed, new_scale = imgui.drag_float('contact', 
+        changed, new_scale = imgui.drag_float('contact r', 
                                               self.contact_scale,
                                               0.005, 0.0, 1.0)
         if changed or self.load_scene:
