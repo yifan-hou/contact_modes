@@ -505,8 +505,8 @@ class ModesDemo(Application):
             'peg-in-hole-8',
             'hand-football'
             ]
-        self.max_steps = 100
-        self.h = 0.05
+        self.max_steps = 50
+        self.h = 0.015
         self.peel_depth = 4
         self.alpha = 0.7
         self.object_color = get_color('clay')
