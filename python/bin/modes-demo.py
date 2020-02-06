@@ -291,13 +291,39 @@ class ModesDemo(Application):
             self.draw_contact_frames(shader)
         
     def draw_contact_frames(self, shader):
-        n_pts = self.points.shape[1]
+        # Get collision manifolds.
+        manifolds = self.system.collider.manifolds
 
+        # Get contacting separating mode.
+        n_pts = len(manifolds)
         csmode = self.lattice0.L[self.index0[0]][self.index0[1]].m
         c = np.where(csmode == 'c')[0]
         mask = np.zeros((n_pts,), dtype=bool)
         mask[c] = 1
+
+        # Render contact spheres and normals.
         for i in range(n_pts):
+            m = manifolds[i]
+            if DEBUG:
+                print(m)
+            body_A = m.shape_A
+            body_B = m.shape_B
+            if body_A.num_dofs() > 0:
+                # Draw contact sphere A.
+
+                # Draw velocity of contact point A.
+
+                # Draw contact frame A.
+                pass
+
+            if body_B.num_dofs() > 0:
+                # Draw contact sphere B.
+
+                # Draw velocity of contact point B.
+
+                # Draw contact frame B.
+                pass
+
             if mask[i]:
                 p = SE3.transform_point(self.target.get_tf_world(), self.points[:,i,None])
                 self.contact_sphere.get_tf_world().set_translation(p)
@@ -504,7 +530,8 @@ class ModesDemo(Application):
             'box-case-5',
             'peg-in-hole-4', 
             'peg-in-hole-8',
-            'hand-football'
+            'hand-football',
+            'hand-football-fixed'
             ]
         self.max_steps = 50
         self.h = 0.001
@@ -549,7 +576,9 @@ class ModesDemo(Application):
             if new_scene == 'peg-in-hole-8':
                 self.build_mode_case(lambda: peg_in_hole(8))
             if new_scene == 'hand-football':
-                self.build_mode_case(hand_football)
+                self.build_mode_case(lambda: hand_football(False))
+            if new_scene == 'hand-football-fixed':
+                self.build_mode_case(lambda: hand_football(True))
 
         imgui.text('control:')
         changed, self.lattice_height = imgui.slider_float('height', self.lattice_height, 0, 500)

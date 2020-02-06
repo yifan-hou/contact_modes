@@ -187,13 +187,16 @@ def peg_in_hole(n=8):
 
     return system
 
-def hand_football():
+def hand_football(fixed_ball=False):
     # Object and obstacles
     hand = AnthroHand('hand')
     # hand_dofs = [0.967, 0.772, 1.052, 0.882, 0.882, 0.882, 0.967, 0.772, 1.052, 2.041, -0.590]
     hand_dofs = [0.966, 0.771, 1.051, 0.881, 0.881, 0.881, 0.966, 0.771, 1.051, 2.042, -0.589]
     hand.set_state(hand_dofs)
-    football = Static('football')
+    if fixed_ball:
+        football = Static('football')
+    else:
+        football = Body('football')
     football.set_shape(Ellipse(10, 5, 5))
     football.set_transform_world(SE3.exp([0,2.5,5+0.6/2,0,0,0]))
 
@@ -211,3 +214,4 @@ def hand_football():
     system.reindex_dof_masks()
 
     return system
+

@@ -92,7 +92,7 @@ class System(object):
 
         imgui.begin('tracking controls')
 
-        imgui.columns(2, 'controls', border=True)
+        # imgui.columns(2, 'controls', border=True)
         for m, i in zip(manifolds, range(len(manifolds))):
             imgui.text(m.shape_A.name)
             imgui.same_line()
@@ -105,9 +105,9 @@ class System(object):
             imgui.text('%+.3f' % self.qdot[i])
             imgui.same_line()
             imgui.text('%+.3f' % self.qdot_star[i])
-        imgui.next_column()
-        changed, self.lamb0 = imgui.slider_float('lamb0', self.lamb0, 0.01, 1.0)
-        changed, self.lamb1 = imgui.slider_float('lamb1', self.lamb1, 0.0, 1e6, power=2.0)
+        # imgui.next_column()
+        # changed, self.lamb0 = imgui.slider_float('lamb0', self.lamb0, 0.01, 1.0)
+        # changed, self.lamb1 = imgui.slider_float('lamb1', self.lamb1, 0.0, 1e6, power=2.0)
         imgui.end()
 
     def track_velocity(self, qdot_star, cs_modes, ss_modes=None):
