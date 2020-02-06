@@ -90,7 +90,7 @@ def sample_twist_contact_separating(system, modestr):
 
     return xi
 
-def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
+def sample_twist_sliding_sticking(system, modestr):
     # Create halfspace inequalities, Ax - b ≥ 0.
     mode = modestr
     if len(mode.shape)==2:
@@ -99,26 +99,28 @@ def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
     if DEBUG:
         print(mode)
     
-    n_pts = points.shape[1]
+    n_pts = len(system.collider.manifolds)
     num_sliding_planes = int(len(modestr)/n_pts - 1)
-    A = np.zeros((n_pts, 6))
-    for i in range(n_pts):
-        A[i, 0:3] = normals[:, i].flatten()
-        A[i, 3:6] = np.dot(normals[:, i].T, hat(points[:, i])).flatten()
-
-    # Get linearized sliding sections from number of sliding modes
-    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
-    T = np.zeros((sum(mode[0:n_pts]==0),num_sliding_planes,6)) # sliding plane normals
-    k=0
-    for i in range(n_pts):
-        if mode[i] == 1:
-            continue
-        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
-        for j in range(num_sliding_planes):
-            T_i = np.dot(R,D[j])
-            T[k,j,0:3] = T_i
-            T[k,j,3:6] = np.dot(T_i, hat(points[:, i]))
-        k+=1
+    # A = np.zeros((n_pts, 6))
+    # for i in range(n_pts):
+    #     A[i, 0:3] = normals[:, i].flatten()
+    #     A[i, 3:6] = np.dot(normals[:, i].T, hat(points[:, i])).flatten()
+    #
+    # # Get linearized sliding sections from number of sliding modes
+    # D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
+    # T = np.zeros((sum(mode[0:n_pts]==0),num_sliding_planes,6)) # sliding plane normals
+    # k=0
+    # for i in range(n_pts):
+    #     if mode[i] == 1:
+    #         continue
+    #     R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
+    #     for j in range(num_sliding_planes):
+    #         T_i = np.dot(R,D[j])
+    #         T[k,j,0:3] = T_i
+    #         T[k,j,3:6] = np.dot(T_i, hat(points[:, i]))
+    #     k+=1
+    A, b = build_normal_velocity_constraints(system.collider.manifolds)
+    T, t = build_tangential_velocity_constraints(system.collider.manifolds,num_sliding_planes)
 
     # identify separation modes
     c_mode = mode[0:n_pts] == 0
@@ -129,7 +131,7 @@ def sample_twist_sliding_sticking(points, normals, tangentials, modestr):
     print('mode')
     print(mode)
 
-    N = -np.vstack((A, T.reshape(-1, T.shape[2])))
+    N = np.vstack((A, T.reshape(-1, T.shape[-1])))
     C = N[mode==0]
     H = np.vstack((N[mode==1], -N[mode==-1]))
     print('H')
@@ -694,23 +696,57 @@ def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
 
     return Modes_str, FilteredLattice
 
-def enum_sliding_sticking_3d_proj(points, normals, tangentials, num_sliding_planes):
+def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
 
-    cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(points, normals)
+    cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(system)
     all_modes = []
-    n_pts = points.shape[1]
-    A, b = contacts_to_half(points, normals)
-    # Get linearized sliding sections from number of sliding modes
-    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
-    T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
-    for i in range(n_pts):
-        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
-        for j in range(num_sliding_planes):
-            T_i = np.dot(R,D[j])
-            T[i,j,0:3] = T_i
-            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
-    T *= -1
-    H = np.vstack((A, T.reshape(-1, T.shape[2])))
+    #
+    # manifolds = system.collider.manifolds
+    # n_contacts = len(manifolds)
+    # points = np.zeros((3,n_contacts))
+    # tangents = np.zeros((3,n_contacts,2))
+    # normals = np.zeros((3,n_contacts))
+    # for i in range(n_contacts):
+    #     m = manifolds[i]
+    #     body_A = m.shape_A
+    #
+    #     if body_A.num_dofs() > 0:
+    #
+    #         g_wo = body_A.get_transform_world()
+    #         g_wc = m.frame_A()
+    #         g_oc = SE3.inverse(g_wo) * g_wc
+    #         g_oc_m = g_oc.matrix()
+    #         print(g_oc_m)
+    #         points[:,i] = g_oc_m[1:3,-1]
+    #         normals[:, i] = g_oc_m[1:3, 2]
+    #         tangents[:, i] = g_oc_m[1:3, 0:1]
+    # print(points)
+    # print(normals)
+    A, b = build_normal_velocity_constraints(system.collider.manifolds)
+    n_pts = len(system.collider.manifolds)
+
+    # A_, b_ = contacts_to_half(points, normals)
+    # print('A')
+    # print(A)
+    # print('A_')
+    # print(A_)
+
+    #Get linearized sliding sections from number of sliding modes
+    # D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
+    # T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
+    # for i in range(n_pts):
+    #     R = np.concatenate((tangents[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
+    #     for j in range(num_sliding_planes):
+    #         T_i = np.dot(R,D[j])
+    #         T[i,j,0:3] = T_i
+    #         T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
+    # T *= -1
+    T, bt = build_tangential_velocity_constraints(system.collider.manifolds, num_sliding_planes)
+    # print('T')
+    # print(T)
+    # print('T_')
+    # print(T_)
+    H = np.vstack((A, T.reshape(-1, T.shape[-1])))
 
     num_modes = 0
     for layer in cs_lattice.L:
@@ -729,7 +765,7 @@ def enum_sliding_sticking_3d_proj(points, normals, tangentials, num_sliding_plan
                 L.L[0][0].m = mode_sign
 
             else:
-                nc = null(A[mask_c])
+                nc = null(A[mask_c], np.finfo(np.float32).eps)
 
                 if not np.all(nc.shape):
                     mode_sign = np.zeros(H.shape[0])
@@ -757,11 +793,13 @@ def enum_sliding_sticking_3d_proj(points, normals, tangentials, num_sliding_plan
                     feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                     V = V_all[feasible_ind]
                     Sign = Sign_all[feasible_ind]
+                    #print(feasible_ind)
                     L = vertex2lattice(V)
 
                     mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                     mode_sign[:,mask] = Sign
                     modes = get_lattice_mode(L,mode_sign)
+            print(modes)
 
             num_modes+=len(modes)
             all_modes.append(modes)

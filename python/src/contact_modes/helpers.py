@@ -5,9 +5,9 @@ from scipy.optimize import linprog
 import scipy as sp
 from time import time
 from .lattice import FaceLattice
-from scipy.spatial import ConvexHull
 from itertools import combinations
 from scipy.linalg import null_space as null
+from .affine import proj_affine
 def hat_2d():
     pass
 
@@ -124,25 +124,27 @@ def zonotope_vertex(normals):
         Sign_[Sign.shape[0]:,-1] = -1
 
         # take the convex hull of V_
-        orth = sp.linalg.orth((V_ - np.mean(V_,axis=0)).T)
+        # orth = sp.linalg.orth((V_ - np.mean(V_,axis=0)).T)
+        Vr = proj_affine(V_.T).T
 
-        if orth.shape[1] != V.shape[1]:
-            Vr = np.dot((V_ - np.mean(V_,axis=0)), orth)
-        else:
-            Vr = V_ - np.mean(V_,axis=0)
-        if orth.shape[1] <= 1:
+        # if orth.shape[1] != V.shape[1]:
+        #     Vr = np.dot((V_ - np.mean(V_,axis=0)), orth)
+        # else:
+        #     Vr = V_ - np.mean(V_,axis=0)
+
+        if Vr.shape[1] <= 1:
             V = V_[[np.argmax(Vr),np.argmin(Vr)]]
             Sign = Sign_[[np.argmax(Vr),np.argmin(Vr)]]
             continue
-        vertices = [list(Vr[i]) for i in range(Vr.shape[0])]
 
+        vertices = [list(Vr[i]) for i in range(Vr.shape[0])]
         ret = pyhull.qconvex('Fv', vertices)
         #ind_vertices = [int(ret[j]) for j in range(1, len(ret))]
         ind_vertices = []
         for i in range(1, len(ret)):
             ind_vertices = ind_vertices + [int(x) for x in ret[i].split(' ')][1:]
         ind_vertices = np.unique(ind_vertices)
-
+        #print(ret)
         V = V_[ind_vertices]
         Sign = Sign_[ind_vertices]
 
@@ -286,8 +288,10 @@ def get_lattice_mode(Lattice, Sign):
 
 def vertex2lattice(V):
 
-    orth = sp.linalg.orth((V - np.mean(V, 0)).T)
-    dim_V = orth.shape[1]
+    # orth = sp.linalg.orth((V - np.mean(V, 0)).T)
+    # dim_V = orth.shape[1]
+    V_aff = proj_affine(V.T).T
+    dim_V = V_aff.shape[1]
     n_vert = V.shape[0]
     if n_vert == 2 or n_vert == 1:
         M = np.ones((n_vert,1),int)
@@ -295,12 +299,12 @@ def vertex2lattice(V):
         return L
 
     # project V into affine space
-    if dim_V != V.shape[1]:
-        V = np.dot((V - np.mean(V,0)), orth)
+    # if dim_V != V.shape[1]:
+    #     V = np.dot((V - np.mean(V,0)), orth)
+    # vertices = [list(V[i]) for i in range(n_vert)]
 
-    vertices = [list(V[i]) for i in range(n_vert)]
+    vertices = [list(V_aff[i]) for i in range(n_vert)]
     ret = pyhull.qconvex('Fv', vertices)
-    #print(np.array(ret))
 
     # get the convex hull of V
     # select faces with desired modes

@@ -60,6 +60,59 @@ def build_normal_velocity_constraints(manifolds):
     b = np.array([[m.dist] for m in manifolds])
     return A, b
 
-def build_tangential_velocity_constraints(manifolds):
+def build_tangential_velocity_constraints(manifolds, num_sliding_planes):
+
+    n_contacts = len(manifolds)
+    n_dofs = len(manifolds[0].shape_A.get_dof_mask())
+    A = np.zeros((n_contacts*num_sliding_planes, n_dofs))
+    if DEBUG:
+        print('n_contacts', n_contacts)
+        print('n_dofs', n_dofs)
+    B = np.array([[np.cos(np.pi * i / num_sliding_planes), np.sin(np.pi * i / num_sliding_planes), 0, 0, 0, 0] for i in
+                  range(num_sliding_planes)]).T
+    k = 0
+    for i in range(n_contacts):
+        m = manifolds[i]
+        if DEBUG:
+            print(m)
+        body_A = m.shape_A
+        body_B = m.shape_B
+        d_k = 0
+        if body_A.num_dofs() > 0:
+            try:
+                g_wo = body_A.get_transform_world()
+                g_wc = m.frame_A()
+                g_oc = SE3.inverse(g_wo) * g_wc
+                J_b = body_A.get_body_jacobian()
+                Ad_g_co = SE3.Ad(SE3.inverse(g_oc))
+                J_h = B.T @ Ad_g_co @ J_b
+                if DEBUG:
+                    print(J_b.shape)
+                    print(Ad_g_co.shape)
+                    print(B.T.shape)
+                    print(J_h.shape)
+                A[k:k+num_sliding_planes,:] +=  J_h
+                d_k += 1
+            except:
+                print(m)
+                assert(False)
+        if body_B.num_dofs() > 0:
+            g_wo = body_B.get_transform_world()
+            g_wc = m.frame_B()
+            g_oc = SE3.inverse(g_wo) * g_wc
+            J_b = body_B.get_body_jacobian()
+            Ad_g_co = SE3.Ad(SE3.inverse(g_oc))
+            J_h = B.T @ Ad_g_co @ J_b
+            if DEBUG:
+                 print(J_b.shape)
+                 print(Ad_g_co.shape)
+                 print(B.T.shape)
+                 print(J_h.shape)
+            A[k:k+num_sliding_planes,:] -= J_h
+            d_k += 1
+        if d_k > 0:
+            k += num_sliding_planes
+    A = -A[0:k,:]
+    b = np.array([[m.dist]*num_sliding_planes for m in manifolds]).reshape(-1)
     # Create halfspace inequalities, Ax - b ≤ 0.
-    pass
+    return A, b
