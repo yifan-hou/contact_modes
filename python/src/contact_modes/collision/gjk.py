@@ -42,7 +42,7 @@ def gjk(obj_A, obj_B, v=None):
     # eps_abs = 10*epsilon(np.float32)
     # eps_rel = 100*sqrt_epsilon(np.float32)
     eps_abs = epsilon(np.float32)
-    eps_rel = sqrt_epsilon(np.float32)
+    eps_rel = 10*sqrt_epsilon(np.float32)
     lamb = np.array([[1.0],[0.0],[0.0],[0.0]])
     while True:
         if DEBUG:

@@ -35,8 +35,13 @@ class Window(object):
         glfw.swap_interval(0)
 
         # Set positions.
-        x = int(1920 + 1200/2 - width/2)
+        # x = int(1920 + 1200/2 - width/2)
+        # y = int(1920/2 - height/2)
+        x = int(1920/2 - width/2)
+        # y = int(1080 - height/2)
         y = int(1920/2 - height/2)
+        # y = int(1080 - height)
+
         glfw.set_window_pos(win, x, y)
 
         # Add callbacks.
