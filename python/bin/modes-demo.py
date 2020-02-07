@@ -288,7 +288,7 @@ class ModesDemo(Application):
         if self.show_grid:
             self.grid.draw(shader)
 
-        if self.show_contact_frames:
+        if self.show_contact_frames or self.show_contacts or self.show_velocities:
             self.draw_contact_frames(shader)
         
     def draw_contact_frames(self, shader):
@@ -313,27 +313,18 @@ class ModesDemo(Application):
             if not mask[i]:
                 continue
 
-            if body_A.num_dofs() > 0:
-                # Draw contact sphere A.
-                
-
-                # Draw velocity of contact point A.
-                
-
-                # Draw contact frame A.
-                g_wc = m.frame_A()
-                self.frame.set_tf_world(g_wc)
-                self.frame.draw(shader)
-
-            if body_B.num_dofs() > 0:
-                # Draw contact sphere B.
-
-                # Draw velocity of contact point B.
-
-                # Draw contact frame B.
-                g_wc = m.frame_B()
-                self.frame.set_tf_world(g_wc)
-                self.frame.draw(shader)
+            for body, frame in zip([body_A, body_B], [m.frame_A, m.frame_B]):
+                if body.num_dofs() > 0:
+                    g_wc = frame()
+                    # Draw contact sphere.
+                    if self.show_contacts:
+                        self.contact_sphere.get_tf_world().set_translation(g_wc.t)
+                        self.contact_sphere.draw(shader)
+                    # Draw velocity of contact point A.
+                    # Draw contact frame A.
+                    if self.show_contact_frames:
+                        self.frame.set_tf_world(g_wc)
+                        self.frame.draw(shader)
 
     def init_gui(self):
         self.init_lattice_gui()
@@ -522,7 +513,7 @@ class ModesDemo(Application):
         self.load_scene = True
         self.solver_index = 1
         self.solver_list = ['all-modes', 'cs-modes', 'csss-modes', 'exp']
-        self.case_index = 7
+        self.case_index = 0
         self.case_list = [
             'box-case-1',
             'box-case-2',
@@ -549,6 +540,8 @@ class ModesDemo(Application):
         self.obstacle_color = get_color('teal')
         self.show_grid = False
         self.show_contact_frames = False
+        self.show_contacts = False
+        self.show_velocities = False
         self.big_lattice = True
         self.lattice_height = 265
         self.loop_time = 2.0
@@ -662,6 +655,10 @@ class ModesDemo(Application):
         changed, self.big_lattice = imgui.checkbox('big lattice', self.big_lattice)
 
         changed, self.show_contact_frames = imgui.checkbox('frames', self.show_contact_frames)
+
+        changed, self.show_contacts = imgui.checkbox('contacts', self.show_contacts)
+
+        changed, self.show_velocities = imgui.checkbox('velocities', self.show_velocities)
         
         self.load_scene = False
         imgui.end()
