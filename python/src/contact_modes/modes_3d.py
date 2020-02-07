@@ -92,6 +92,8 @@ def sample_twist_contact_separating(system, modestr):
 
 def sample_twist_sliding_sticking(system, modestr):
     # Create halfspace inequalities, Ax - b ≥ 0.
+    print('modestr')
+    print(modestr)
     mode = modestr
     if len(mode.shape)==2:
         modestr = mode[0]
@@ -121,21 +123,23 @@ def sample_twist_sliding_sticking(system, modestr):
     #     k+=1
     A, b = build_normal_velocity_constraints(system.collider.manifolds)
     T, t = build_tangential_velocity_constraints(system.collider.manifolds,num_sliding_planes)
+    N = np.vstack((A, T.reshape(-1, T.shape[-1])))
 
     # identify separation modes
     c_mode = mode[0:n_pts] == 0
     active_mode = np.hstack((np.ones(n_pts,dtype=bool),
                              np.vstack((c_mode, c_mode)).T.flatten()))
-    print(active_mode)
+    N = N[active_mode]
+    # print(active_mode)
     mode = modestr[active_mode]
-    print('mode')
-    print(mode)
+    # print('mode')
+    # print(mode)
 
-    N = np.vstack((A, T.reshape(-1, T.shape[-1])))
+
     C = N[mode==0]
     H = np.vstack((N[mode==1], -N[mode==-1]))
-    print('H')
-    print(H)
+    # print('H')
+    # print(H)
 
     if all(C.shape):
         # null = sp.linalg.null_space(C)
@@ -799,7 +803,7 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
                     mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                     mode_sign[:,mask] = Sign
                     modes = get_lattice_mode(L,mode_sign)
-            print(modes)
+            #print(np.array(modes))
 
             num_modes+=len(modes)
             all_modes.append(modes)
