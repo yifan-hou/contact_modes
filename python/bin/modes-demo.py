@@ -860,14 +860,23 @@ class ModesDemo(Application):
             self.prev()
         if key == glfw.KEY_S and action == glfw.PRESS:
             self.play()
+        if key == glfw.KEY_K and action == glfw.PRESS:
+            self.index0 = [self.index0[0], len(self.lattice0.L[self.index0[0]])-1]
+            self.next()
+            self.index0 = [self.index0[0], np.random.randint(len(self.lattice0.L[self.index0[0]])) ]
+            self.next()
         if key  == glfw.KEY_UP and action == glfw.PRESS:
-            t = self.target.get_tf_world().t
-            t[2,0] += 0.05
-            self.target.get_tf_world().set_translation(t)
+            self.camera.cam_eye[1] += 0.1
+            self.camera.cam_focus[1] += 0.1
         if key  == glfw.KEY_DOWN and action == glfw.PRESS:
-            t = self.target.get_tf_world().t
-            t[2,0] -= 0.05
-            self.target.get_tf_world().set_translation(t)
+            self.camera.cam_eye[1] -= 0.1
+            self.camera.cam_focus[1] -= 0.1
+        if key  == glfw.KEY_RIGHT and action == glfw.PRESS:
+            self.camera.cam_eye[0] += 0.1
+            self.camera.cam_focus[0] += 0.1
+        if key  == glfw.KEY_LEFT and action == glfw.PRESS:
+            self.camera.cam_eye[0] -= 0.1
+            self.camera.cam_focus[0] -= 0.1
             
 
 viewer = Viewer()
