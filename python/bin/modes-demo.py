@@ -57,10 +57,14 @@ class ModesDemo(Application):
         # Create basic test case.
         self.build_mode_case(lambda: box_case(1))
 
-        self.normal_arrow = Arrow()
-        self.velocity_arrow = Arrow()
-        self.contact_sphere = Icosphere()
+        # Create visualization elements.
         self.frame = Frame()
+        self.contact_spheres = []
+        self.contact_arrows = []
+        self.contact_spheres.append(Icosphere())
+        self.contact_arrows.append(Arrow())
+        self.contact_spheres.append(Icosphere(radius=1-1e-3))
+        self.contact_arrows.append(Arrow(offset=1e-3))
 
         self.reset_state()
 
@@ -310,18 +314,32 @@ class ModesDemo(Application):
             body_A = m.shape_A
             body_B = m.shape_B
 
-            if not mask[i]:
-                continue
-
             for body, frame in zip([body_A, body_B], [m.frame_A, m.frame_B]):
                 if body.num_dofs() > 0:
                     g_wc = frame()
+                    sphere = self.contact_spheres[int(not mask[i])]
+                    arrow = self.contact_arrows[int(not mask[i])]
+                    # Draw velocity of contact point A.
+                    if self.show_velocities:
+                        qdot = body.get_velocity()
+                        J_s = body.get_spatial_jacobian()
+                        v_c = SE3.velocity_at_point(J_s @ qdot, g_wc.t)
+                        if norm(v_c) > 1e-8:
+                            mag = norm(v_c)
+                            vv = v_c / mag
+                            arrow.set_origin(g_wc.t)
+                            arrow.set_z_axis(vv)
+                            l = arrow.get_shaft_length()
+                            arrow.set_shaft_length(mag * l)
+                            arrow.draw(shader)
+                            arrow.set_shaft_length(l)
                     # Draw contact sphere.
                     if self.show_contacts:
-                        self.contact_sphere.get_tf_world().set_translation(g_wc.t)
-                        self.contact_sphere.draw(shader)
-                    # Draw velocity of contact point A.
+                        sphere.get_tf_world().set_translation(g_wc.t)
+                        sphere.draw(shader)
                     # Draw contact frame A.
+                    if not mask[i]:
+                        continue
                     if self.show_contact_frames:
                         self.frame.set_tf_world(g_wc)
                         self.frame.draw(shader)
@@ -529,15 +547,17 @@ class ModesDemo(Application):
         self.h = 0.001
         self.peel_depth = 4
         self.alpha = 0.7
+
         self.object_color = get_color('clay')
         self.object_color[3] = 0.5
-        self.normal_color = get_color('green')
-        self.frame_scale = [0.02, 0.35, 0.50]
-        self.velocity_color = get_color('yellow')
-        self.velocity_scale = [0.2, 0.02, 0.05, 0.035]
-        self.contact_color = get_color('yellow')
-        self.contact_scale = 0.04
         self.obstacle_color = get_color('teal')
+
+        self.frame_scale = [0.02, 0.35, 0.50]
+        self.contact_color = get_color('yellow')
+        self.separating_color = get_color('purple')
+        self.contact_scale = 0.04
+        self.velocity_scale = [30, 0.02, 0.05, 0.035]
+
         self.show_grid = False
         self.show_contact_frames = False
         self.show_contacts = False
@@ -596,11 +616,6 @@ class ModesDemo(Application):
             [body.set_color(np.array(new_color)) for body in self.system.bodies]
             self.object_color = new_color
         
-        changed, new_color = imgui.color_edit4('normal', *self.normal_color)
-        if changed or self.load_scene:
-            self.normal_arrow.set_color(np.array(new_color))
-            self.normal_color = new_color
-        
         changed, new_scale = imgui.drag_float3('frame', 
                                                *self.frame_scale,
                                                0.005, 0.0, 5.0)
@@ -612,29 +627,33 @@ class ModesDemo(Application):
 
         changed, new_color = imgui.color_edit4('contact', *self.contact_color)
         if changed or self.load_scene:
-            self.contact_sphere.set_color(np.array(new_color))
+            self.contact_spheres[0].set_color(np.array(new_color))
+            self.contact_arrows[0].set_color(np.array(new_color))
             self.contact_color = new_color
 
-        changed, new_scale = imgui.drag_float('contact r', 
+        changed, new_color = imgui.color_edit4('separate', *self.separating_color)
+        if changed or self.load_scene:
+            self.contact_spheres[1].set_color(np.array(new_color))
+            self.contact_arrows[1].set_color(np.array(new_color))
+            self.separating_color = new_color
+
+        changed, new_scale = imgui.drag_float('sphere r',
                                               self.contact_scale,
                                               0.005, 0.0, 1.0)
         if changed or self.load_scene:
-            self.contact_sphere.set_radius(self.contact_scale)
+            for sphere in self.contact_spheres:
+                sphere.set_radius(self.contact_scale)
             self.contact_scale = new_scale
         
-        changed, new_color = imgui.color_edit4('vel', *self.velocity_color)
-        if changed or self.load_scene:
-            self.velocity_arrow.set_color(np.array(new_color))
-            self.velocity_color = new_color
-
         changed, new_scale = imgui.drag_float4('vel', 
                                                *self.velocity_scale,
-                                               0.005, 0.0, 1.0)
+                                               0.005, 0.0, 100.0)
         if changed or self.load_scene:
-            self.velocity_arrow.set_shaft_length(new_scale[0])
-            self.velocity_arrow.set_shaft_radius(new_scale[1])
-            self.velocity_arrow.set_head_length(new_scale[2])
-            self.velocity_arrow.set_head_radius(new_scale[3])
+            for arrow in self.contact_arrows:
+                arrow.set_shaft_length(new_scale[0])
+                arrow.set_shaft_radius(new_scale[1])
+                arrow.set_head_length(new_scale[2])
+                arrow.set_head_radius(new_scale[3])
             self.velocity_scale = new_scale
 
         changed, new_color = imgui.color_edit4('obs', *self.obstacle_color)

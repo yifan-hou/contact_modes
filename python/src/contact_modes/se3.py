@@ -42,7 +42,7 @@ class SE3(object):
         self.t = tf[0:3,3,None]
 
     def set_translation(self, t):
-        self.t = t.reshape((3,1))
+        self.t = t.copy().reshape((3,1))
     
     def set_rotation(self, R):
         self.R.set_matrix(R)

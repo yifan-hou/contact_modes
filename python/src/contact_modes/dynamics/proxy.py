@@ -32,6 +32,9 @@ class Proxy(Body):
     def get_dof_mask(self):
         return self.body.get_dof_mask()
 
+    def get_velocity(self):
+        return self.body.get_velocity()
+
     def get_body_jacobian(self):
         return self.body.get_body_jacobian()
 

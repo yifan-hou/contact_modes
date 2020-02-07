@@ -21,10 +21,10 @@ def make_frame(z):
     return R
 
 class Arrow(Shape):
-    def __init__(self, n=30):
+    def __init__(self, n=30, offset=0):
         super(Arrow, self).__init__()
-        self.shaft = Cylinder(1.0, 1.0, n)
-        self.head = Cone(1.0, 1.0, n)
+        self.shaft = Cylinder(1.0-offset, 1.0-offset, n)
+        self.head = Cone(1.0-offset, 1.0-offset, n)
         self.shaft_radius = 0.25
         self.shaft_length = 1.0
         self.head_radius = 0.30
@@ -35,6 +35,9 @@ class Arrow(Shape):
 
     def set_shaft_length(self, length):
         self.shaft_length = length
+
+    def get_shaft_length(self):
+        return self.shaft_length
 
     def set_head_length(self, length):
         self.head_length = length

@@ -92,7 +92,8 @@ class AnthroHand(Tree):
         self.links.append(Static('palm'))
         self.links[-1].set_shape(Box(palm_width, palm_length, palm_thickness))
         self.links[-1].set_dof_mask(np.array([False] * num_dofs))
-        # Set to 0 position.
+        # Set to 0 position and velocity.
         self.set_state(np.zeros((num_dofs,1)))
+        self.set_velocity(np.zeros((num_dofs,1)))
         # Create tree.
         self.init_tree()

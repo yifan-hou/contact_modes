@@ -65,6 +65,7 @@ class Link(Body):
 
     def step(self, q_dot):
         q_dot = np.array(q_dot).reshape((-1,1))
+        self.set_velocity(q_dot)
         dq = q_dot[self.mask]
         q = self.get_state()
         q[self.mask] = self.q + dq

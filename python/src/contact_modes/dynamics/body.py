@@ -9,6 +9,7 @@ class Body(object):
         self.mask = np.array([True] * 6, bool)
         self.name = name
         self.contacts = []
+        self.qdot = np.zeros((6,1))
 
     def reset_contacts(self):
         self.contacts.clear()
@@ -45,8 +46,18 @@ class Body(object):
         q = np.array(q).reshape((-1,1))
         self.set_transform_world(SE3.exp(q[self.mask]))
 
+    def get_velocity(self):
+        qdot = np.zeros((len(self.mask), 1))
+        qdot[self.mask] = self.qdot
+        return qdot
+
+    def set_velocity(self, qdot):
+        qdot = np.array(qdot).reshape((-1,1))
+        self.qdot = qdot[self.mask]
+
     def step(self, q_dot):
         q_dot = np.array(q_dot).reshape((-1,1))
+        self.set_velocity(q_dot)
         v_b = q_dot[self.mask]
         g_prev = self.get_transform_world()
         v_s = SE3.Ad(g_prev) @ v_b
