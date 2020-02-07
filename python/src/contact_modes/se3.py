@@ -72,6 +72,16 @@ class SE3(object):
         return adjoint
 
     @staticmethod
+    def hat(xi):
+        xi = np.array(xi, np.float64).reshape((6,1))
+        xi_hat = np.eye(4)
+        v = xi[0:3,0]
+        w = xi[3:6,0]
+        xi_hat[0:3,0:3] = SO3.hat(w)
+        xi_hat[0:3,3] = v
+        return xi_hat
+
+    @staticmethod
     def identity():
         return SE3(R=SO3.identity())
 

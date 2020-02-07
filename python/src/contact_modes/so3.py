@@ -81,6 +81,10 @@ class SO3(object):
         return skew3(a).reshape((3,3))
 
     @staticmethod
+    def hat(w):
+        return skew3(w).reshape((3,3))
+
+    @staticmethod
     def identity():
         return SO3(R=np.eye(3).flatten())
 
