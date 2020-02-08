@@ -701,6 +701,9 @@ def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
     return Modes_str, FilteredLattice
 
 def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
+    info = dict()
+    info['time zono'] = 0
+    info['time lattice'] = 0
 
     cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(system)
     all_modes = []
@@ -793,12 +796,19 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
                 else:
 
                     H_proj = np.dot(H[mask], nc)
+
+                    t_start = time()
                     V_all, Sign_all = zonotope_vertex(H_proj)
+                    info['time zono'] += time() - t_start
+
                     feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                     V = V_all[feasible_ind]
                     Sign = Sign_all[feasible_ind]
                     #print(feasible_ind)
+
+                    t_start = time()
                     L = vertex2lattice(V)
+                    info['time lattice'] += time() - t_start
 
                     mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                     mode_sign[:,mask] = Sign
@@ -808,6 +818,9 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
             num_modes+=len(modes)
             all_modes.append(modes)
             face.ss_lattice = L
+
+    info['# faces'] = num_modes
+    
     print(num_modes)
 
     # np.set_printoptions(suppress=True)
@@ -817,4 +830,4 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
     #             for ss_face in ss_layer:
     #                 if hasattr(ss_face, 'm'):
     #                     print(sample_twist_sliding_sticking(points, normals, tangentials, ss_face.m).T)
-    return all_modes, cs_lattice
+    return all_modes, cs_lattice, info

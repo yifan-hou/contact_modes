@@ -98,9 +98,10 @@ class ModesDemo(Application):
             self.lattice1 = None
             self.solve_info = info
         if solver == 'csss-modes':
-            modes, lattice = enum_sliding_sticking_3d_proj(self.system, 2)
+            modes, lattice, info = enum_sliding_sticking_3d_proj(self.system, 2)
             self.lattice0 = lattice
             self.lattice1 = lattice.L[0][0].ss_lattice
+            print(info)
         if solver == 'all-modes':
             modes, lattice = enumerate_all_modes_3d(self.points, self.normals, self.tangents, 4)
             self.lattice0 = lattice
