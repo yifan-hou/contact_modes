@@ -114,8 +114,8 @@ def initial_arrangement(A, b, eps=np.finfo(np.float32).eps):
     for i in range(d+1):
         for c in lexographic_combinations(d, i):
             f = Node(d)
-            f.sign_vector = np.ones((d,), int)
-            f.sign_vector[c] = -1
+            f._sv_key = np.ones((d,), int)
+            f._sv_key[c] = -1
             f.superfaces.append(one)
             one.subfaces.append(f)
             I.add_node(f)
@@ -126,14 +126,14 @@ def initial_arrangement(A, b, eps=np.finfo(np.float32).eps):
         R_k = I.rank(k + 1)
         for g in R_k.values():
             for i in range(d):
-                sign_vector = g.sign_vector.copy()
+                sign_vector = g._sv_key.copy()
                 if sign_vector[i] == 0:
                     continue
                 sign_vector[i] = 0
                 f = I.find(sv=sign_vector, r=k)
                 if f is None:
                     f = Node(k)
-                    f.sign_vector = sign_vector
+                    f._sv_key = sign_vector
                     I.add_node(f)
                 f.superfaces.append(g)
                 g.subfaces.append(f)
@@ -154,18 +154,18 @@ def initial_arrangement(A, b, eps=np.finfo(np.float32).eps):
 
     # Compute interior point for 1 faces.
     for f in I.rank(1).values():
-        null = null_space(A[f.sign_vector == 0])
-        dot = A[f.sign_vector != 0] @ null
-        i = np.where(f.sign_vector != 0)[0][0]
-        if dot * f.sign_vector[i] > 0:
+        null = null_space(A[f._sv_key == 0])
+        dot = A[f._sv_key != 0] @ null
+        i = np.where(f._sv_key != 0)[0][0]
+        if dot * f._sv_key[i] > 0:
             f.int_pt = vertex.int_pt + null
         else:
             f.int_pt = vertex.int_pt - null
         if DEBUG:
-            # print(' f.sv', f.sign_vector)
+            # print(' f.sv', f._sv_key)
             pt = (A @ f.int_pt - b).flatten().T
             sv = get_sign(pt)
-            assert(np.array_equal(f.sign_vector, sv))
+            assert(np.array_equal(f._sv_key, sv))
             # print(get_sign(pt))
             # print('A@f-b', (A @ f.int_pt - b).flatten().T)
 
@@ -177,8 +177,8 @@ def initial_arrangement(A, b, eps=np.finfo(np.float32).eps):
             if DEBUG:
                 pt = (A @ f.int_pt - b).flatten().T
                 sv = get_sign(pt)
-                assert(np.array_equal(f.sign_vector, sv))
-                # print(' f.sv', f.sign_vector)
+                assert(np.array_equal(f._sv_key, sv))
+                # print(' f.sv', f._sv_key)
                 # print('A@f-b', (A @ f.int_pt - b).flatten().T)
 
     return I
@@ -188,10 +188,12 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     norm_a = np.linalg.norm(a)
     a = a / norm_a
     b = b / norm_a
-
+    I.add_halfspace(a, b)
     # ==========================================================================
     # Phase 1: Find an edge e₀ in 𝓐(H) such that cl(e₀) ∩ h ≠ ∅
     # ==========================================================================
+    if DEBUG:
+        print('PHASE 1')
     n = I.num_halfspaces()
     u = I.get(0, 0)
     # Find an incident edge e on v such that aff(e) is not parallel to h.
@@ -208,8 +210,9 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     while True:
         if color_edge(e0, a, b, eps) > COLOR_WHITE:
             if DEBUG:
-                print(e0.sign_vector)
-                print('color', color_edge(e0, a, b, eps))
+                # print(e0._sv_key)
+                # print('color', color_edge(e0, a, b, eps))
+                pass
             break
         # Find v(e0) closer to h.
         if len(e0.subfaces) == 2:
@@ -225,6 +228,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
             v = e0.subfaces[0]
         # Find e in v such that aff(e0) == aff(e).
         e_min = None
+        v_min = None
         min_dist = np.inf
         for e in v.superfaces:
             if e is e0:
@@ -233,11 +237,18 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
             dist = np.linalg.norm(v_e - (v_e0.T @ v_e) * v_e0)
             if dist < min_dist:
                 e_min = e
+                v_min = v_e
+                min_dist = dist
         e0 = e_min
+        # if DEBUG:
+        #     print('e0', color_edge(e0, a, b, eps))
+        #     print('e0', e0._sv_key.astype(float))
     
     # ==========================================================================
     # Phase 2: Mark all faces f with cl(f) ∩ h ≠ ∅ pink, red, or crimson.
     # ==========================================================================
+    if DEBUG:
+        print('PHASE 2')
     # Add some 2 face incident upon e₀ to Q and mark it green.
     f = e0.superfaces[0]
     f.color = COLOR_GREEN
@@ -246,7 +257,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     d = a.shape[1]
     L = [[] for i in range(d+1)]
     while Q:
-        f = Q.pop(0)
+        f = Q.pop()
         for e in f.subfaces:
             if e.color != COLOR_WHITE:
                 continue
@@ -281,7 +292,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                             above = 1
                             below = 1
                             break
-                        s = get_sign(f_g.int_pt.T @ a - b, eps)
+                        s = get_sign(a @ f_g.int_pt - b, eps)
                         if s > 0:
                             above = 1
                         elif s < 0:
@@ -308,12 +319,150 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     # ==========================================================================
     # Phase 3: Update all marked faces.
     # ==========================================================================
+    if DEBUG:
+        print('PHASE 3')
+    cnt_V = 0
+    cnt = 0
     for k in range(0, d+1):
-        for i in range(len(L[k])):
+        f_k = len(L[k])
+        for i in range(f_k):
             g = L[k][i]
             if g.color == COLOR_PINK:
                 g.color = COLOR_GREY
             elif g.color == COLOR_CRIMSON:
                 g.color = COLOR_BLACK
             elif g.color == COLOR_RED:
-                pass
+                pt = (I.A @ g.int_pt - I.b).flatten().T
+                g_sv = get_sign(pt, eps)
+                # Step 1. Create g_a = g ∩ h⁺ and g_b = g ∩ h⁻. Remove g from
+                # 𝓐(H) and Lₖ and replace with g_a, g_b.
+                g_a = Node(k)
+                g_a.color = COLOR_GREY
+                g_a._sv_key = np.concatenate((g._sv_key, np.array([1], int)))
+                g_a._sv_key = g_sv.copy()
+                g_a._sv_key[-1] = 1
+                g_b = Node(k)
+                g_b.color = COLOR_GREY
+                g_b._sv_key = np.concatenate((g._sv_key, np.array([-1], int)))
+                g_b._sv_key = g_sv.copy()
+                g_b._sv_key[-1] = -1
+                I.remove_node(g)
+                L[k][i] = g_a
+                L[k].append(g_b)
+                I.add_node(g_a)
+                I.add_node(g_b)
+                # Step 2. Create the black face f = g ∩ h, connect it to g_a and
+                # g_b, and put f into 𝓐(H) and Lₖ₋₁.
+                f = Node(k-1)
+                f.color = COLOR_BLACK
+                # f._sv_key = np.concatenate((g._sv_key, np.array([0], int)))
+                f._sv_key = g_sv.copy()
+                f._sv_key[-1] = 0
+                f.superfaces = [g_a, g_b]
+                g_a.subfaces = [f]
+                g_b.subfaces = [f]
+                L[k-1].append(f)
+                I.add_node(f)
+                # Step 3. Connect each red superface of g with g_a and g_b.
+                for r in g.superfaces:
+                    if DEBUG:
+                        # if r.color != COLOR_RED:
+                        #     print('r', r.rank)
+                        #     print('r', r._sv_key)
+                        #     print('r', r._sv_key.astype(float))
+                        #     # for u in 
+                        assert(r.color == COLOR_RED or r.rank == d+1)
+                    # if r.color == COLOR_RED:
+                    g_a.superfaces.append(r)
+                    g_b.superfaces.append(r)
+                    r.subfaces.append(g_a)
+                    r.subfaces.append(g_b)
+                # Step 4. Connect each white or grey subface of g with g_a if it
+                # is in h⁺, and with g_b, otherwise.
+                for u in g.subfaces:
+                    if u.color != COLOR_WHITE and u.color != COLOR_GREY:
+                        if DEBUG:
+                            assert(u.color == COLOR_BLACK)
+                        continue
+                    s = get_sign(a @ u.int_pt - b, eps)
+                    if s == 1:
+                        g_a.subfaces.append(u)
+                        u.superfaces.append(g_a)
+                    elif s == -1:
+                        g_b.subfaces.append(u)
+                        u.superfaces.append(g_b)
+                    else:
+                        assert(False)
+                # Step 5. If k = 1, connect f with the -1 face, and connect f
+                # with the black subfaces of the grey subfaces of g, otherwise.
+                if k == 1:
+                    zero = I.get(-1, 0)
+                    f.subfaces.append(zero)
+                    zero.superfaces.append(f)
+                else:
+                    V = dict()
+                    # cnt = 0
+                    for u in g.subfaces:
+                        if u.color != COLOR_GREY:
+                            continue
+                        for v in u.subfaces:
+                            cnt += 1
+                            if v.color == COLOR_BLACK:
+                                # print('add')
+                                # print('g', g._sv_key.astype(float))
+                                # print('a', g_a._sv_key.astype(float))
+                                # print('b', g_b._sv_key.astype(float))
+                                # print('u', u._sv_key.astype(float))
+                                # print('v', v._sv_key.astype(float))
+                                # print('f', f._sv_key.astype(float))
+                                V[tuple(v._sv_key)] = v
+                    # print('%d/%d' % (len(V), cnt))
+                    cnt_V += len(V)
+                    for v in V.values():
+                        f.subfaces.append(v)
+                        v.superfaces.append(f)
+                # Step 6. Update the interior points for f, g_a, and g_b.
+                for u in [f, g_a, g_b]:
+                    if u.rank == 0:
+                        id0 = np.where(u._sv_key == 0)[0]
+                        if DEBUG:
+                            assert(len(id0) == d)
+                        # TODO THIS IS OKAY I THINK
+                        u.int_pt = np.linalg.solve(I.A[id0], I.b[id0])
+                    elif u.rank == 1:
+                        if len(u.subfaces) == 2:
+                            p = np.array([v.int_pt.flatten() for v in u.subfaces]).T
+                            u.int_pt = np.mean(p, axis=1, keepdims=True)
+                        elif len(u.subfaces) == 1:
+                            g_sv = u._sv_key[0:-1]
+                            v = u.subfaces[0]
+                            null = null_space(I.A[u._sv_key == 0], eps)
+                            i = np.where(u._sv_key != v._sv_key)[0].item()
+                            dot = I.A[i] @ null
+                            if dot * u._sv_key[i] > 0:
+                                u.int_pt = v.int_pt + null
+                            else:
+                                u.int_pt = v.int_pt - null
+                        else:
+                            assert(False)
+                    else:
+                        if DEBUG:
+                            assert(len(u.subfaces) >= 2)
+                        p = np.array([v.int_pt.flatten() for v in u.subfaces]).T
+                        u.int_pt = np.mean(p, axis=1, keepdims=True)
+                    if DEBUG:
+                        # Check interior point.
+                        pt = (I.A @ u.int_pt - I.b).flatten().T
+                        sv = get_sign(pt)
+                        # print('u', u._sv_key.astype(float))
+                        # if u.rank >= 1:
+                        #     for v in u.subfaces:
+                        #         print('v', v._sv_key.astype(float))
+                        # print('p', sv.astype(float))
+                        assert(np.array_equal(u._sv_key, sv))
+                        # Check for duplicates in super/sub faces.
+    print('%d/%d' % (cnt_V, cnt))
+    # Clear all colors.
+    for k in range(0, d+1):
+        for f in L[k]:
+            f.color = COLOR_WHITE

@@ -5,7 +5,7 @@ class Node(object):
     def __init__(self, k):
         self.color = 0
         self.rank = k
-        self.sign_vector = ()
+        self._sv_key = () # FIXME NEVER USE THIS ITS ACTUALLY AN INDEX
         self.int_pt = None
         self.superfaces = []
         self.subfaces = []
@@ -18,6 +18,9 @@ class IncidenceGraph(object):
 
     def dim(self):
         return self.A.shape[1]
+
+    def halfspaces(self):
+        return self.A, self.b
 
     def num_halfspaces(self):
         return self.A.shape[0]
@@ -34,7 +37,16 @@ class IncidenceGraph(object):
         self.b = np.concatenate((self.b, b), axis=0)
 
     def add_node(self, node):
-        self.rank(node.rank)[tuple(node.sign_vector)] = node
+        self.rank(node.rank)[tuple(node._sv_key)] = node
+
+    def remove_node(self, node):
+        # Remove arcs.
+        for f in node.subfaces:
+            f.superfaces.remove(node)
+        for g in node.superfaces:
+            g.subfaces.remove(node)
+        # Remove node.
+        del self.rank(node.rank)[tuple(node._sv_key)]
     
     def rank(self, k):
         return self.lattice[k+1]
