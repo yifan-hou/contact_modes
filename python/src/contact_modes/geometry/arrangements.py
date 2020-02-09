@@ -1,3 +1,7 @@
+from time import time
+import operator as op
+from functools import reduce
+
 import numpy as np
 from scipy.linalg import null_space
 
@@ -7,17 +11,7 @@ from .incidence_graph import *
 
 
 DEBUG=True
-
-COLOR_WHITE=0
-COLOR_PINK =1
-COLOR_RED =2
-COLOR_CRIMSON =3
-COLOR_GREY =4
-COLOR_BLACK =5
-COLOR_GREEN =6
-
-import operator as op
-from functools import reduce
+PROFILE=True
 
 def num_incidences_simple(d):
     i_sum = 0
@@ -55,9 +49,9 @@ def sign_vertex(v, a, b, eps=np.finfo(np.float32).eps):
 def color_vertex(v, a, b, eps=np.finfo(np.float32).eps):
     s = sign_vertex(v, a, b, eps)
     if s == 0:
-        return COLOR_CRIMSON
+        return COLOR_AH_CRIMSON
     else:
-        return COLOR_WHITE
+        return COLOR_AH_WHITE
 
 def color_edge(e, a, b, eps=np.finfo(np.float32).eps):
     # Assume |a| = 1.
@@ -67,13 +61,13 @@ def color_edge(e, a, b, eps=np.finfo(np.float32).eps):
         s0 = sign_vertex(v0, a, b, eps)
         s1 = sign_vertex(v1, a, b, eps)
         if s0 * s1 == 1:
-            return COLOR_WHITE
+            return COLOR_AH_WHITE
         elif s0 == 0 and s1 == 0:
-            return COLOR_CRIMSON
+            return COLOR_AH_CRIMSON
         elif s0 == 0 or s1 == 0:
-            return COLOR_PINK
+            return COLOR_AH_PINK
         elif s0 + s1 == 0:
-            return COLOR_RED
+            return COLOR_AH_RED
         else:
             assert(False)
     elif len(e.subfaces) == 1:
@@ -82,15 +76,15 @@ def color_edge(e, a, b, eps=np.finfo(np.float32).eps):
         v_e = vector(e)
         s_e = get_sign(a@v_e, eps).item()
         if s0 == 0 and s_e == 0:
-            return COLOR_CRIMSON
+            return COLOR_AH_CRIMSON
         elif s0 == 0 and s_e != 0:
-            return COLOR_PINK
+            return COLOR_AH_PINK
         elif s0 * s_e == 1:
-            return COLOR_WHITE
+            return COLOR_AH_WHITE
         elif s0 * s_e == -1:
-            return COLOR_RED
+            return COLOR_AH_RED
         elif s0 != 0 and s_e == 0:
-            return COLOR_WHITE
+            return COLOR_AH_WHITE
         # TODO Check above conditions.
         else:
             assert(False)
@@ -208,7 +202,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     e0 = e
     v_e0 = vector(e0) / np.linalg.norm(vector(e0))
     while True:
-        if color_edge(e0, a, b, eps) > COLOR_WHITE:
+        if color_edge(e0, a, b, eps) > COLOR_AH_WHITE:
             if DEBUG:
                 # print(e0._sv_key)
                 # print('color', color_edge(e0, a, b, eps))
@@ -251,7 +245,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
         print('PHASE 2')
     # Add some 2 face incident upon e₀ to Q and mark it green.
     f = e0.superfaces[0]
-    f.color = COLOR_GREEN
+    f.color = COLOR_AH_GREEN
     Q = [f]
     # Color vertices, edges, and 2 faces of 𝓐(H).
     d = a.shape[1]
@@ -259,15 +253,15 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     while Q:
         f = Q.pop()
         for e in f.subfaces:
-            if e.color != COLOR_WHITE:
+            if e.color != COLOR_AH_WHITE:
                 continue
             color_e = color_edge(e, a, b, eps)
-            if color_e > COLOR_WHITE:
+            if color_e > COLOR_AH_WHITE:
                 # Mark each white vertex v ∈ h crimson and insert v into L₀.
                 for v in e.subfaces:
-                    if v.color == COLOR_WHITE:
+                    if v.color == COLOR_AH_WHITE:
                         color_v = color_vertex(v, a, b, eps)
-                        if color_v == COLOR_CRIMSON:
+                        if color_v == COLOR_AH_CRIMSON:
                             v.color = color_v
                             L[0].append(v)
                 # Color e and insert e into L₁.
@@ -275,20 +269,20 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                 L[1].append(e)
                 # Mark all white 2 faces green and put them into Q.
                 for g in e.superfaces:
-                    if g.color == COLOR_WHITE:
-                        g.color = COLOR_GREEN
+                    if g.color == COLOR_AH_WHITE:
+                        g.color = COLOR_AH_GREEN
                         Q.append(g)
     # Color k faces, 2 ≤ k ≤ d.
     for k in range(2, d+1):
         for f in L[k-1]:
             for g in f.superfaces:
-                if g.color != COLOR_WHITE and g.color != COLOR_GREEN:
+                if g.color != COLOR_AH_WHITE and g.color != COLOR_AH_GREEN:
                     continue
-                if f.color == COLOR_PINK:
+                if f.color == COLOR_AH_PINK:
                     above = 0
                     below = 0
                     for f_g in g.subfaces:
-                        if f_g.color == COLOR_RED:
+                        if f_g.color == COLOR_AH_RED:
                             above = 1
                             below = 1
                             break
@@ -298,19 +292,19 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                         elif s < 0:
                             below = 1
                     if above * below == 1:
-                        g.color = COLOR_RED
-                elif f.color == COLOR_RED:
-                    g.color = COLOR_RED
-                elif f.color == COLOR_CRIMSON:
+                        g.color = COLOR_AH_RED
+                elif f.color == COLOR_AH_RED:
+                    g.color = COLOR_AH_RED
+                elif f.color == COLOR_AH_CRIMSON:
                     crimson = True
                     for f_g in g.subfaces:
-                        if f_g.color != COLOR_CRIMSON:
+                        if f_g.color != COLOR_AH_CRIMSON:
                             crimson = False
                             break
                     if crimson:
-                        g.color = COLOR_CRIMSON
+                        g.color = COLOR_AH_CRIMSON
                     else:
-                        g.color = COLOR_PINK
+                        g.color = COLOR_AH_PINK
                 else:
                     assert(False)
                 # In any case, insert g into Lₖ.
@@ -321,28 +315,46 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     # ==========================================================================
     if DEBUG:
         print('PHASE 3')
-    cnt_V = 0
-    cnt = 0
+    if PROFILE:
+        step_1_time = 0
+        step_2_time = 0
+        step_3_time = 0
+        step_4_time = 0
+        step_4_hit = 0
+        step_4_total = 0
+        step_5_time = 0
+        step_5_hit = 0
+        step_5_total = 0
+        step_6_time = 0
     for k in range(0, d+1):
         f_k = len(L[k])
         for i in range(f_k):
             g = L[k][i]
-            if g.color == COLOR_PINK:
-                g.color = COLOR_GREY
-            elif g.color == COLOR_CRIMSON:
-                g.color = COLOR_BLACK
-            elif g.color == COLOR_RED:
+            if g.color == COLOR_AH_PINK:
+                g.color = COLOR_AH_GREY
+                # Add to grey subfaces of superfaces
+                for u in g.superfaces:
+                    u._grey_subfaces.append(g)
+            elif g.color == COLOR_AH_CRIMSON:
+                g.color = COLOR_AH_BLACK
+                # Add to black subfaces of superfaces
+                for u in g.superfaces:
+                    u._black_subfaces.append(g)
+            elif g.color == COLOR_AH_RED:
                 pt = (I.A @ g.int_pt - I.b).flatten().T
                 g_sv = get_sign(pt, eps)
+
+                if PROFILE:
+                    t_start = time()
                 # Step 1. Create g_a = g ∩ h⁺ and g_b = g ∩ h⁻. Remove g from
                 # 𝓐(H) and Lₖ and replace with g_a, g_b.
                 g_a = Node(k)
-                g_a.color = COLOR_GREY
+                g_a.color = COLOR_AH_GREY
                 g_a._sv_key = np.concatenate((g._sv_key, np.array([1], int)))
                 g_a._sv_key = g_sv.copy()
                 g_a._sv_key[-1] = 1
                 g_b = Node(k)
-                g_b.color = COLOR_GREY
+                g_b.color = COLOR_AH_GREY
                 g_b._sv_key = np.concatenate((g._sv_key, np.array([-1], int)))
                 g_b._sv_key = g_sv.copy()
                 g_b._sv_key[-1] = -1
@@ -351,48 +363,76 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                 L[k].append(g_b)
                 I.add_node(g_a)
                 I.add_node(g_b)
+
+                if PROFILE:
+                    step_1_time += time() - t_start
+                    t_start = time()
                 # Step 2. Create the black face f = g ∩ h, connect it to g_a and
                 # g_b, and put f into 𝓐(H) and Lₖ₋₁.
                 f = Node(k-1)
-                f.color = COLOR_BLACK
+                f.color = COLOR_AH_BLACK
                 # f._sv_key = np.concatenate((g._sv_key, np.array([0], int)))
                 f._sv_key = g_sv.copy()
                 f._sv_key[-1] = 0
                 f.superfaces = [g_a, g_b]
                 g_a.subfaces = [f]
                 g_b.subfaces = [f]
+                g_a._black_subfaces = [f]
+                g_b._black_subfaces = [f]
                 L[k-1].append(f)
                 I.add_node(f)
+
+                if PROFILE:
+                    step_2_time += time() - t_start
+                    t_start = time()
                 # Step 3. Connect each red superface of g with g_a and g_b.
                 for r in g.superfaces:
                     if DEBUG:
-                        # if r.color != COLOR_RED:
+                        # if r.color != COLOR_AH_RED:
                         #     print('r', r.rank)
                         #     print('r', r._sv_key)
                         #     print('r', r._sv_key.astype(float))
                         #     # for u in 
-                        assert(r.color == COLOR_RED or r.rank == d+1)
-                    # if r.color == COLOR_RED:
+                        assert(r.color == COLOR_AH_RED or r.rank == d+1)
+                    # if r.color == COLOR_AH_RED:
                     g_a.superfaces.append(r)
                     g_b.superfaces.append(r)
                     r.subfaces.append(g_a)
                     r.subfaces.append(g_b)
+                    r._grey_subfaces.append(g_a)
+                    r._grey_subfaces.append(g_b)
+                
+                if PROFILE:
+                    step_3_time += time() - t_start
+                    t_start = time()
                 # Step 4. Connect each white or grey subface of g with g_a if it
                 # is in h⁺, and with g_b, otherwise.
                 for u in g.subfaces:
-                    if u.color != COLOR_WHITE and u.color != COLOR_GREY:
+                    if PROFILE:
+                        step_4_total += 1
+                    if u.color != COLOR_AH_WHITE and u.color != COLOR_AH_GREY:
                         if DEBUG:
-                            assert(u.color == COLOR_BLACK)
+                            assert(u.color == COLOR_AH_BLACK) # FIXME Can there be black subfaces?
                         continue
+                    if PROFILE:
+                        step_4_hit += 1
                     s = get_sign(a @ u.int_pt - b, eps)
                     if s == 1:
                         g_a.subfaces.append(u)
+                        if u.color == COLOR_AH_GREY:
+                            g_a._grey_subfaces.append(u)
                         u.superfaces.append(g_a)
                     elif s == -1:
                         g_b.subfaces.append(u)
+                        if u.color == COLOR_AH_GREY:
+                            g_b._grey_subfaces.append(u)
                         u.superfaces.append(g_b)
                     else:
                         assert(False)
+                
+                if PROFILE:
+                    step_4_time += time() - t_start
+                    t_start = time()
                 # Step 5. If k = 1, connect f with the -1 face, and connect f
                 # with the black subfaces of the grey subfaces of g, otherwise.
                 if k == 1:
@@ -400,27 +440,52 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                     f.subfaces.append(zero)
                     zero.superfaces.append(f)
                 else:
-                    V = dict()
-                    # cnt = 0
-                    for u in g.subfaces:
-                        if u.color != COLOR_GREY:
-                            continue
-                        for v in u.subfaces:
-                            cnt += 1
-                            if v.color == COLOR_BLACK:
-                                # print('add')
-                                # print('g', g._sv_key.astype(float))
-                                # print('a', g_a._sv_key.astype(float))
-                                # print('b', g_b._sv_key.astype(float))
-                                # print('u', u._sv_key.astype(float))
-                                # print('v', v._sv_key.astype(float))
-                                # print('f', f._sv_key.astype(float))
-                                V[tuple(v._sv_key)] = v
-                    # print('%d/%d' % (len(V), cnt))
-                    cnt_V += len(V)
-                    for v in V.values():
+                    # # VERSION 1
+                    # V = dict()
+                    # for u in g.subfaces:
+                    #     if u.color != COLOR_AH_GREY:
+                    #         continue
+                    #     if DEBUG:
+                    #         assert(u in g._grey_subfaces)
+                    #     for v in u.subfaces:
+                    #         if PROFILE:
+                    #             step_5_total += 1
+                    #         if v.color == COLOR_AH_BLACK:
+                    #             if DEBUG:
+                    #                 assert(v in u._black_subfaces)
+                    #             V[tuple(v._sv_key)] = v
+                    # V = list(V.values())
+
+                    # # VERSION 2
+                    # V = dict()
+                    # for u in g._grey_subfaces:
+                    #     for v in u._black_subfaces:
+                    #         if PROFILE:
+                    #             step_5_total += 1
+                    #         V[tuple(v._sv_key)] = v
+                    # V = list(V.values())
+                    
+                    # VERSION 3
+                    V = list()
+                    for u in g._grey_subfaces:
+                        for v in u._black_subfaces:
+                            if PROFILE:
+                                step_5_total += 1
+                            if v._black_bit == 0:
+                                V.append(v)
+                                v._black_bit = 1
+                            else:
+                                v._black_bit = 0
+
+                    if PROFILE:
+                        step_5_hit += len(V)
+                    for v in V:
                         f.subfaces.append(v)
                         v.superfaces.append(f)
+                
+                if PROFILE:
+                    step_5_time += time() - t_start
+                    t_start = time()
                 # Step 6. Update the interior points for f, g_a, and g_b.
                 for u in [f, g_a, g_b]:
                     if u.rank == 0:
@@ -461,8 +526,20 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                         # print('p', sv.astype(float))
                         assert(np.array_equal(u._sv_key, sv))
                         # Check for duplicates in super/sub faces.
-    print('%d/%d' % (cnt_V, cnt))
-    # Clear all colors.
+                
+                if PROFILE:
+                    step_6_time += time() - t_start
+                    t_start = time()
+    if PROFILE:
+        print('step 1: %0.8f' % (step_1_time))
+        print('step 2: %0.8f' % (step_2_time))
+        print('step 3: %0.8f' % (step_3_time))
+        print('step 4: %0.8f %d/%d' % (step_4_time, step_4_hit, step_4_total))
+        print('step 5: %0.8f %d/%d' % (step_5_time, step_5_hit, step_5_total))
+        print('step 6: %0.8f' % (step_6_time))
+    # Clear all colors, grey and black subface lists.
     for k in range(0, d+1):
         for f in L[k]:
-            f.color = COLOR_WHITE
+            f.color = COLOR_AH_WHITE
+            f._grey_subfaces.clear()
+            f._black_subfaces.clear()

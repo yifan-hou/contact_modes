@@ -5,6 +5,7 @@ import numpy as np
 from contact_modes.geometry import *
 
 np.set_printoptions(suppress=True, precision=5, linewidth=250, sign=' ')
+np.random.seed(0)
 
 d = 8
 

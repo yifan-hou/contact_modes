@@ -1,14 +1,28 @@
 import numpy as np
 
 
+COLOR_AH_WHITE=0
+COLOR_AH_PINK =1
+COLOR_AH_RED =2
+COLOR_AH_CRIMSON =3
+COLOR_AH_GREY =4
+COLOR_AH_BLACK =5
+COLOR_AH_GREEN =6
+
+
+
 class Node(object):
     def __init__(self, k):
         self.color = 0
         self.rank = k
-        self._sv_key = () # FIXME NEVER USE THIS ITS ACTUALLY AN INDEX
+        
         self.int_pt = None
         self.superfaces = []
         self.subfaces = []
+        self._sv_key = () # FIXME NEVER USE THIS ITS ACTUALLY AN INDEX
+        self._grey_subfaces = []
+        self._black_subfaces = []
+        self._black_bit = 0
 
 class IncidenceGraph(object):
     def __init__(self, d):
@@ -45,6 +59,10 @@ class IncidenceGraph(object):
             f.superfaces.remove(node)
         for g in node.superfaces:
             g.subfaces.remove(node)
+            if node.color == COLOR_AH_GREY:
+                g._grey_subfaces.remove(node)
+            elif node.color == COLOR_AH_BLACK:
+                g._black_subfaces.remove(node)
         # Remove node.
         del self.rank(node.rank)[tuple(node._sv_key)]
     
