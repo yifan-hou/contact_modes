@@ -27,7 +27,7 @@ from contact_modes.viewer import (Application, BasicLightingRenderer,
 from contact_modes.viewer.backend import *
 
 np.seterr(divide='ignore')
-np.set_printoptions(suppress=True, precision=8, linewidth=250)
+np.set_printoptions(suppress=True, precision=8, linewidth=250, sign='+')
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='Contact Modes Demo')

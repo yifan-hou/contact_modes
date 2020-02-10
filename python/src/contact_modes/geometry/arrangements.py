@@ -10,8 +10,8 @@ from contact_modes import lexographic_combinations
 from .incidence_graph import *
 
 
-DEBUG=True
-PROFILE=True
+DEBUG=False
+PROFILE=False
 
 def num_incidences_simple(d):
     i_sum = 0
@@ -91,11 +91,33 @@ def color_edge(e, a, b, eps=np.finfo(np.float32).eps):
     else:
         assert(False)
 
+def reorder_halfspaces(A, b, eps=np.finfo(np.float32).eps):
+    A = A.copy()
+    b = b.copy()
+    n = A.shape[0]
+    d = A.shape[1]
+    I = list(range(n))
+    i = 1
+    j = 1
+    while i < n and j < d:
+        A0 = np.concatenate((A[0:j], A[i,None]), axis=0)
+        if np.linalg.matrix_rank(A0, eps) > j:
+            A[j], A[i] = A[i].copy(), A[j].copy()
+            b[j], b[i] = b[i], b[j]
+            I[j], I[i] = I[i], I[j]
+            j += 1
+        i += 1
+    return A, b, np.array(I, int)
+
 def initial_arrangement(A, b, eps=np.finfo(np.float32).eps):
     # Assert we are given d linearly independent hyperplanes.
     n = A.shape[0]
     d = A.shape[1]
     assert(n == d)
+    if DEBUG:
+        print(A)
+        print('rank(A)', np.linalg.matrix_rank(A, eps))
+        print('d', d)
     assert(np.linalg.matrix_rank(A, eps) == d)
 
     # Build faces from top to bottom.
@@ -203,10 +225,9 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     v_e0 = vector(e0) / np.linalg.norm(vector(e0))
     while True:
         if color_edge(e0, a, b, eps) > COLOR_AH_WHITE:
-            if DEBUG:
-                # print(e0._sv_key)
-                # print('color', color_edge(e0, a, b, eps))
-                pass
+            # if DEBUG:
+            #     print(e0._sv_key)
+            #     print('color', color_edge(e0, a, b, eps))
             break
         # Find v(e0) closer to h.
         if len(e0.subfaces) == 2:
@@ -279,6 +300,10 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                 if g.color != COLOR_AH_WHITE and g.color != COLOR_AH_GREEN:
                     continue
                 if f.color == COLOR_AH_PINK:
+                    if DEBUG and k == d:
+                        # print('f  ', f._sv_key.astype(float))
+                        print('g  ', g._sv_key.astype(float))
+                        # print('g h', get_sign(I.A @ g.int_pt - I.b, eps).astype(float))
                     above = 0
                     below = 0
                     for f_g in g.subfaces:
@@ -287,12 +312,16 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                             below = 1
                             break
                         s = get_sign(a @ f_g.int_pt - b, eps)
+                        if DEBUG:
+                            print('f_g', s.astype(float))
                         if s > 0:
                             above = 1
                         elif s < 0:
                             below = 1
                     if above * below == 1:
                         g.color = COLOR_AH_RED
+                    else:
+                        g.color = COLOR_AH_PINK
                 elif f.color == COLOR_AH_RED:
                     g.color = COLOR_AH_RED
                 elif f.color == COLOR_AH_CRIMSON:
@@ -306,9 +335,17 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                     else:
                         g.color = COLOR_AH_PINK
                 else:
+                    # print('f sv', f._sv_key.astype(float))
+                    # print('f rank', f.rank)
+                    # for u in f.subfaces:
+                    #     print('u', u.color)
+                    # print('f color', f.color)
                     assert(False)
                 # In any case, insert g into Lₖ.
                 L[k].append(g)
+    if DEBUG:
+        for k in range(0, d+1):
+            print('L_%d' % k, len(L[k]))
     
     # ==========================================================================
     # Phase 3: Update all marked faces.
@@ -502,7 +539,8 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                             g_sv = u._sv_key[0:-1]
                             v = u.subfaces[0]
                             null = null_space(I.A[u._sv_key == 0], eps)
-                            i = np.where(u._sv_key != v._sv_key)[0].item()
+                            v_sv = get_sign(I.A @ v.int_pt - I.b, eps)
+                            i = np.where(u._sv_key != v_sv)[0][0]
                             dot = I.A[i] @ null
                             if dot * u._sv_key[i] > 0:
                                 u.int_pt = v.int_pt + null
@@ -513,17 +551,35 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                     else:
                         if DEBUG:
                             assert(len(u.subfaces) >= 2)
+                        # p = np.array([v.int_pt.flatten() for v in u.subfaces[0:u.rank+1]]).T
                         p = np.array([v.int_pt.flatten() for v in u.subfaces]).T
                         u.int_pt = np.mean(p, axis=1, keepdims=True)
                     if DEBUG:
                         # Check interior point.
                         pt = (I.A @ u.int_pt - I.b).flatten().T
                         sv = get_sign(pt)
-                        # print('u', u._sv_key.astype(float))
-                        # if u.rank >= 1:
-                        #     for v in u.subfaces:
-                        #         print('v', v._sv_key.astype(float))
-                        # print('p', sv.astype(float))
+                        if not np.array_equal(u._sv_key, sv):
+                            null = null_space(I.A[u._sv_key == 0], eps)
+                            v_sv = get_sign(I.A @ v.int_pt - I.b, eps)
+
+                            print('u', u._sv_key.astype(float))
+                            print('v', v_sv.astype(float))
+                            # i = np.where(u._sv_key != v_sv)[0].item()
+                            inds = np.where(u._sv_key != v_sv)[0]
+                            dot = I.A[i] @ null
+                            print('dot', dot)
+
+                            print('i', i)
+                            print('rank e', np.linalg.matrix_rank(I.A[u._sv_key == 0], eps))
+                            print('rank v', np.linalg.matrix_rank(I.A[v._sv_key == 0], eps))
+                            print('null', null)
+                            print('dot', dot)
+                            print('u', u._sv_key.astype(float))
+                            print('u rank', u.rank)
+                            if u.rank >= 1:
+                                for v in u.subfaces:
+                                    print('v', v._sv_key.astype(float))
+                            print('p', sv.astype(float))
                         assert(np.array_equal(u._sv_key, sv))
                         # Check for duplicates in super/sub faces.
                 

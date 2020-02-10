@@ -45,6 +45,9 @@ class IncidenceGraph(object):
             for f in self.rank(i).values():
                 f_sum += len(f.superfaces) + len(f.subfaces)
         return f_sum
+    
+    def num_k_faces(self, k):
+        return len(self.rank(k))
 
     def add_halfspace(self, a, b):
         self.A = np.concatenate((self.A, a), axis=0)
@@ -79,3 +82,16 @@ class IncidenceGraph(object):
 
     def get(self, r, i):
         return list(self.rank(r).values())[i]
+
+    def sign_vectors(self, k, I=None, eps=np.finfo(np.float32).eps):
+        sv = []
+        for u in self.rank(k).values():
+            s = self.get_sign(self.A @ u.int_pt - self.b, eps).tolist()
+            if I is not None:
+                s = [s[i] for i in I]
+            sv.append(s)
+        return np.array(sv)
+    
+    def get_sign(self, v, eps=np.finfo(np.float32).eps):
+        v = v.flatten()
+        return np.asarray(np.sign(np.where(np.abs(v) > eps, v, np.zeros((v.shape[0],)))), int)
