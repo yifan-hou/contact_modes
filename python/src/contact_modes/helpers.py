@@ -106,6 +106,10 @@ def zonotope_vertex(normals):
     info['# 0 faces'] = []
     info['# d-1 faces'] = []
 
+    # normals_proj = proj_affine(normals.T).T
+    # normals_u, idu = unique_row(normals_proj)
+    # normals = normals_u
+
     # N: normals of the hyperplanes
     num_normals = normals.shape[0]
     dim = normals.shape[1]
@@ -126,6 +130,7 @@ def zonotope_vertex(normals):
         # take the convex hull of V_
         # orth = sp.linalg.orth((V_ - np.mean(V_,axis=0)).T)
         Vr = proj_affine(V_.T).T
+        #print(Vr)
 
         # if orth.shape[1] != V.shape[1]:
         #     Vr = np.dot((V_ - np.mean(V_,axis=0)), orth)
@@ -138,7 +143,11 @@ def zonotope_vertex(normals):
             continue
 
         vertices = [list(Vr[i]) for i in range(Vr.shape[0])]
+
         ret = pyhull.qconvex('Fv', vertices)
+        if len(ret)-1 == 0:
+            return [],[]
+
         #ind_vertices = [int(ret[j]) for j in range(1, len(ret))]
         ind_vertices = []
         for i in range(1, len(ret)):
@@ -156,7 +165,7 @@ def zonotope_vertex(normals):
     #
     # for i in range(len(ind_vertices)):
     #     ret_facets[ret_facets == ind_vertices[i]] = i
-
+    #Sign = Sign[:,idu]
     return V, Sign#, ret_facets
 
 def zonotope_projected_vertex(normals):
@@ -290,10 +299,12 @@ def vertex2lattice(V):
 
     # orth = sp.linalg.orth((V - np.mean(V, 0)).T)
     # dim_V = orth.shape[1]
+    #print(V)
     V_aff = proj_affine(V.T).T
+    #print(V_aff)
     dim_V = V_aff.shape[1]
     n_vert = V.shape[0]
-    if n_vert == 2 or n_vert == 1:
+    if n_vert == 2 or n_vert == 1 or dim_V == 1:
         M = np.ones((n_vert,1),int)
         L = FaceLattice(M, dim_V)
         return L

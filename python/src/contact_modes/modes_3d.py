@@ -12,8 +12,8 @@ from scipy.linalg import orth
 from .constraints import (build_normal_velocity_constraints,
                           build_tangential_velocity_constraints)
 from .helpers import (exp_comb, feasible_faces, get_lattice_mode, hat,
-                      lexographic_combinations, signed_covectors, to_lattice,
-                      vertex2lattice, zonotope_add, zonotope_vertex)
+                      lexographic_combinations, signed_covectors,
+                      vertex2lattice, zonotope_vertex,unique_row)
 from .interior_point import int_pt_cone, interior_point_halfspace
 from .lattice import Face, FaceLattice
 from .se3 import *
@@ -759,6 +759,7 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
     for layer in cs_lattice.L:
         for face in layer:
             cs_mode = face.m
+            #print(cs_mode)
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
             mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
@@ -796,15 +797,38 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
                 else:
 
                     H_proj = np.dot(H[mask], nc)
-
+                    H_proj_u,idu = unique_row(H_proj)
+                    # if H_proj_u.shape[0] != H_proj.shape[0]:
+                    #     print('AHH')
+                    # print(H_proj_u)
                     t_start = time()
-                    V_all, Sign_all = zonotope_vertex(H_proj)
-                    info['time zono'] += time() - t_start
+                    V_all, Sign_all = zonotope_vertex(H_proj_u)
+                    if len(V_all) == 0:
+                        continue
 
+                    #print(Sign_all)
+                    info['time zono'] += time() - t_start
+                    Sign_all = Sign_all[:,idu]
                     feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                     V = V_all[feasible_ind]
                     Sign = Sign_all[feasible_ind]
                     #print(feasible_ind)
+                    if not np.all(feasible_ind.shape):
+                        continue
+                    V_uq,ind_uq = unique_row(V)
+                    if not V_uq.shape[0] == V.shape[0]:
+                        Sign_uq = np.zeros((V_uq.shape[0], Sign.shape[1]))
+                        for i in range(V_uq.shape[0]):
+                            s_all = Sign[ind_uq == i]
+                            s = np.zeros((1,Sign.shape[1]))
+                            if s_all.shape[0]>1:
+                                s[:,np.all(s_all == 1, axis = 0)] = 1
+                                s[:,np.all(s_all == -1, axis = 0)] = -1
+                            Sign_uq[i] = s
+                        V = V_uq
+                        Sign = Sign_uq
+
+
 
                     t_start = time()
                     L = vertex2lattice(V)
