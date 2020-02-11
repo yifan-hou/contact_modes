@@ -135,7 +135,6 @@ def sample_twist_sliding_sticking(system, modestr):
     # print('mode')
     # print(mode)
 
-
     C = N[mode==0]
     H = np.vstack((N[mode==1], -N[mode==-1]))
     # print('H')

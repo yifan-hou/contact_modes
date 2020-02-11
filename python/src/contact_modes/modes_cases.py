@@ -3,7 +3,7 @@ from numpy.linalg import norm
 
 from contact_modes.collision import (CollisionManager, DynamicCollisionManager,
                                      TransformManager)
-from contact_modes.dynamics import AnthroHand, Body, Proxy, Static, System
+from contact_modes.dynamics import AnthroHand, Body, Proxy, Static, System, Link
 from contact_modes.shape import (Box, BoxWithHole, Cylinder, Ellipse,
                                  Icosphere, Torus)
 
@@ -215,3 +215,84 @@ def hand_football(fixed_ball=False):
 
     return system
 
+def box_box_case(walls=1):
+    x = np.array([1., 0, 0])
+    y = np.array([0, 1., 0])
+    z = np.array([0, 0, 1.])
+    N = [z, y, x, -x, -y, -z]
+    T = [(x,y), (z,x), (y,z), (z,y), (x,z), (y,x)]
+
+    # box1 = Body('box1')
+    # box1.set_shape(Box())
+    box1 = Link('box1')
+    box1.set_shape(Box())
+    box1.set_joint_twists([
+        np.array([0., 0, 0, 0, 0, 1]).reshape((6,1)),
+        np.array([1., 0, 0, 0, 0, 0]).reshape((6,1)),
+        np.array([0., 1, 0, 0, 0, 0]).reshape((6,1))
+    ])
+    box1.set_transform_0(SE3.identity())
+    box1.set_dof_mask(np.array([True] * 3))
+    box1.set_state(np.zeros((3,1)))
+    
+    box2 = Body('box2')
+    box2.set_shape(Box(0.8, 0.8, 0.8))
+    box2.set_transform_world(SE3.exp([0, 0, 0.9, 0, 0, 0]))
+    obstacles = []
+    for i in range(walls):
+        n = N[i]
+        wall = Static('wall%d' % i)
+        box_dims = np.array([10., 10., 10.])
+        box_dims[np.where(np.abs(n) > 0)] = 1.0
+        wall.set_shape(Box(*box_dims))
+        tf = wall.get_transform_world()
+        tf.set_translation(-n)
+        wall.set_transform_world(tf)
+        obstacles.append(wall)
+    collider = DynamicCollisionManager()
+    for i in range(walls):
+        for t_x in [1, -1]:
+            for t_y in [1, -1]:
+                pt = -0.5 * (N[i] + t_x * T[i][0] + t_y * T[i][1])
+                pt = pt.flatten()
+                proxy = Proxy('proxy1%+d%+d%+d' % (i, -t_x, -t_y))
+                proxy.set_body(box1)
+                proxy.set_shape(Icosphere(0.1, 0))
+                proxy.set_transform_body(SE3.exp([pt[0], pt[1], pt[2], 0, 0, 0]))
+                collider.add_pair(proxy, obstacles[i])
+                if i == 0:
+                    continue
+                proxy = Proxy('proxy2%+d%+d%+d' % (i, -t_x, -t_y))
+                proxy.set_body(box2)
+                proxy.set_shape(Icosphere(0.1, 0))
+                proxy.set_transform_body(SE3.exp([pt[0], pt[1], pt[2], 0, 0, 0]))
+                collider.add_pair(proxy, obstacles[i])
+    for t_x in [1, -1]:
+        for t_y in [1, -1]:
+            pt1 = -0.5 * (N[-1] + t_x * T[-1][0] + t_y * T[-1][1])
+            pt1 = pt1.flatten()
+            pt2 = -0.4 * (N[0] + t_x * T[0][0] + t_y * T[0][1])
+            pt2 = pt2.flatten()
+            proxy1 = Proxy('box-box%+d%+d%+d' % (1, -t_x, -t_y))
+            proxy1.set_body(box1)
+            proxy1.set_shape(Icosphere(0.1, 0))
+            proxy1.set_transform_body(SE3.exp([pt1[0], pt1[1], pt1[2], 0, 0, 0]))
+            proxy2 = Proxy('box-box%+d%+d%+d' % (2, -t_x, -t_y))
+            proxy2.set_body(box2)
+            proxy2.set_shape(Icosphere(0.1, 0))
+            proxy2.set_transform_body(SE3.exp([pt2[0], pt2[1], pt2[2], 0, 0, 0]))
+            collider.add_pair(box1, proxy2)
+    manifolds = collider.collide()
+    for m in manifolds:
+        print(m)
+
+    system = System()
+    system.add_body(box1)
+    system.add_body(box2)
+    for obs in obstacles:
+        system.add_obstacle(obs)
+    system.set_collider(collider)
+    system.reindex_dof_masks()
+    print('num dofs', system.num_dofs())
+
+    return system

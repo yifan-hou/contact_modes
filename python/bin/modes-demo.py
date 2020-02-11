@@ -541,6 +541,10 @@ class ModesDemo(Application):
             'box-case-5',
             'peg-in-hole-4', 
             'peg-in-hole-8',
+            'box-box-1',
+            'box-box-2',
+            'box-box-3',
+            'box-box-4',
             'hand-football',
             'hand-football-fixed'
             ]
@@ -590,6 +594,8 @@ class ModesDemo(Application):
                 self.build_mode_case(lambda: peg_in_hole(4))
             if new_scene == 'peg-in-hole-8':
                 self.build_mode_case(lambda: peg_in_hole(8))
+            if 'box-box' in new_scene:
+                self.build_mode_case(lambda: box_box_case(int(new_scene[-1])))
             if new_scene == 'hand-football':
                 self.build_mode_case(lambda: hand_football(False))
             if new_scene == 'hand-football-fixed':
