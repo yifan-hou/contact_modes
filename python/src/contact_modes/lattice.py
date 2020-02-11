@@ -92,11 +92,11 @@ class FaceLattice(object):
     def __init__(self, M=None, d=None):
         if M is not None:
             # t_start = time()
-            self.build(M, d)
+            # self.build(M, d)
             # print('build', time()-t_start)
 
             # t_start = time()
-            # self.build_fast(M, d)
+            self.build_fast(M, d)
             # print('build fast', time()-t_start)
 
     def euler_characteristic(self):

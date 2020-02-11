@@ -297,6 +297,7 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
     for layer in cs_lattice.L:
         for face in layer:
             cs_mode = face.m
+            print('cs mode', cs_mode)
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
             mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
@@ -316,6 +317,8 @@ def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
                 V = V_all[feasible_ind]
                 Sign = Sign_all[feasible_ind]
                 L = vertex2lattice(V)
+
+                print('# faces', L.num_faces())
 
                 mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                 mode_sign[:,mask] = Sign
@@ -604,9 +607,11 @@ def enum_sliding_sticking_3d_proj(points, normals, tangentials, num_sliding_plan
     for layer in cs_lattice.L:
         for face in layer:
             cs_mode = face.m
+            print('cs', cs_mode)
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
-            mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
+            # mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
+            mask = np.hstack((cs_mode == '0', np.array([mask_c] * num_sliding_planes).T.flatten()))
             if all(mask_s):
 
                 L = FaceLattice()
@@ -618,6 +623,8 @@ def enum_sliding_sticking_3d_proj(points, normals, tangentials, num_sliding_plan
 
             else:
                 nc = null(A[mask_c])
+
+                print('null', nc.shape)
 
                 if not np.all(nc.shape):
                     mode_sign = np.zeros(H.shape[0])
@@ -644,12 +651,18 @@ def enum_sliding_sticking_3d_proj(points, normals, tangentials, num_sliding_plan
                     V_all, Sign_all = zonotope_vertex(H_proj)
                     feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                     V = V_all[feasible_ind]
-                    Sign = Sign_all[feasible_ind]
-                    L = vertex2lattice(V)
+                    # Sign = Sign_all[feasible_ind]
+                    Sign = Sign_all
+                    # L = vertex2lattice(V)
+                    L = vertex2lattice(V_all)
+
+                    print('# faces', L.num_faces())
 
                     mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                     mode_sign[:,mask] = Sign
                     modes = get_lattice_mode(L,mode_sign)
+
+                    print('# modes', len(modes))
 
             num_modes+=len(modes)
             all_modes.append(modes)
