@@ -758,10 +758,11 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
     for layer in cs_lattice.L:
         for face in layer:
             cs_mode = face.m
-            #print(cs_mode)
+            print(cs_mode)
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
-            mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
+            # mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
+            mask = np.hstack((cs_mode=='0', np.array([mask_c] * num_sliding_planes).T.flatten()))
             if all(mask_s):
 
                 L = FaceLattice()
@@ -827,7 +828,9 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
                         V = V_uq
                         Sign = Sign_uq
 
-
+                    # Hack.
+                    V = V_all
+                    Sign = Sign_all
 
                     t_start = time()
                     L = vertex2lattice(V)
@@ -836,6 +839,8 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
                     mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
                     mode_sign[:,mask] = Sign
                     modes = get_lattice_mode(L,mode_sign)
+
+                    print('# modes', len(modes))
             #print(np.array(modes))
 
             num_modes+=len(modes)

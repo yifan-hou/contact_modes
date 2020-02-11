@@ -283,8 +283,8 @@ def box_box_case(walls=1):
             proxy2.set_transform_body(SE3.exp([pt2[0], pt2[1], pt2[2], 0, 0, 0]))
             collider.add_pair(box1, proxy2)
     manifolds = collider.collide()
-    for m in manifolds:
-        print(m)
+    # for m in manifolds:
+    #     print(m)
 
     system = System()
     system.add_body(box1)
@@ -293,6 +293,5 @@ def box_box_case(walls=1):
         system.add_obstacle(obs)
     system.set_collider(collider)
     system.reindex_dof_masks()
-    print('num dofs', system.num_dofs())
 
     return system
