@@ -201,6 +201,8 @@ def initial_arrangement(A, b, eps=np.finfo(np.float32).eps):
 
 def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
     # Normalize halfspace, |a| = 1.
+    a = np.reshape(a, (1,-1))
+    b = np.reshape(b, (1, 1))
     norm_a = np.linalg.norm(a)
     a = a / norm_a
     b = b / norm_a
