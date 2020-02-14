@@ -11,7 +11,7 @@ from .incidence_graph import *
 
 
 DEBUG=False
-PROFILE=False
+PROFILE=True
 
 def num_incidences_simple(d):
     i_sum = 0
@@ -304,8 +304,9 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                 if f.color == COLOR_AH_PINK:
                     if DEBUG and k == d:
                         # print('f  ', f._sv_key.astype(float))
-                        print('g  ', g._sv_key.astype(float))
+                        # print('g  ', g._sv_key.astype(float))
                         # print('g h', get_sign(I.A @ g.int_pt - I.b, eps).astype(float))
+                        pass
                     above = 0
                     below = 0
                     for f_g in g.subfaces:
@@ -313,9 +314,14 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                             above = 1
                             below = 1
                             break
-                        s = get_sign(a @ f_g.int_pt - b, eps)
-                        if DEBUG:
-                            print('f_g', s.astype(float))
+                        if f_g._sign_bit_n != n:
+                            s = get_sign(a @ f_g.int_pt - b, eps)
+                            f_g._sign_bit_n = n
+                            f_g._sign_bit = s
+                        else:
+                            s = f_g._sign_bit
+                        # if DEBUG:
+                        #     print('f_g', s.astype(float))
                         if s > 0:
                             above = 1
                         elif s < 0:
@@ -345,7 +351,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                     assert(False)
                 # In any case, insert g into Lₖ.
                 L[k].append(g)
-    if DEBUG:
+    if PROFILE:
         for k in range(0, d+1):
             print('L_%d' % k, len(L[k]))
     
@@ -365,6 +371,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
         step_5_hit = 0
         step_5_total = 0
         step_6_time = 0
+        red_count = 0
     for k in range(0, d+1):
         f_k = len(L[k])
         for i in range(f_k):
@@ -384,6 +391,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                 g_sv = get_sign(pt, eps)
 
                 if PROFILE:
+                    red_count += 1
                     t_start = time()
                 # Step 1. Create g_a = g ∩ h⁺ and g_b = g ∩ h⁻. Remove g from
                 # 𝓐(H) and Lₖ and replace with g_a, g_b.
@@ -453,9 +461,14 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                         if DEBUG:
                             assert(u.color == COLOR_AH_BLACK) # FIXME Can there be black subfaces?
                         continue
-                    if PROFILE:
-                        step_4_hit += 1
-                    s = get_sign(a @ u.int_pt - b, eps)
+                    if u._sign_bit_n != n:
+                        if PROFILE:
+                            step_4_hit += 1
+                        s = get_sign(a @ u.int_pt - b, eps)
+                        u._sign_bit_n = n
+                        u._sign_bit = s
+                    else:
+                        s = u._sign_bit
                     if s == 1:
                         g_a.subfaces.append(u)
                         if u.color == COLOR_AH_GREY:
@@ -589,15 +602,21 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                     step_6_time += time() - t_start
                     t_start = time()
     if PROFILE:
+        print(' # red: %d' % (red_count,))
         print('step 1: %0.8f' % (step_1_time))
         print('step 2: %0.8f' % (step_2_time))
         print('step 3: %0.8f' % (step_3_time))
         print('step 4: %0.8f %d/%d' % (step_4_time, step_4_hit, step_4_total))
         print('step 5: %0.8f %d/%d' % (step_5_time, step_5_hit, step_5_total))
         print('step 6: %0.8f' % (step_6_time))
+        print('   k=0: %0.8f' % (0))
+        print('   k=1: %0.8f' % (0))
+        print('  k>=2: %0.8f' % (0))
     # Clear all colors, grey and black subface lists.
     for k in range(0, d+1):
         for f in L[k]:
             f.color = COLOR_AH_WHITE
             f._grey_subfaces.clear()
             f._black_subfaces.clear()
+
+    return I

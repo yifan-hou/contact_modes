@@ -172,6 +172,8 @@ class Node(object):
         self._grey_subfaces = []
         self._black_subfaces = []
         self._black_bit = 0
+        self._sign_bit_n = 0
+        self._sign_bit = 0
 
 class IncidenceGraph(object):
     def __init__(self, d):
