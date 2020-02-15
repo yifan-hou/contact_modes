@@ -13,4 +13,5 @@ __pycache__/
 *.blg
 *.ini
 *.pyc
-
+build/
+*.so

@@ -9,6 +9,10 @@ from pyhull.halfspace import Halfspace
 from scipy.linalg import null_space as null
 from scipy.linalg import orth
 
+from contact_modes.geometry import (increment_arrangement, initial_arrangement,
+                                    reorder_halfspaces)
+
+from .affine import proj_affine
 from .constraints import (build_normal_velocity_constraints,
                           build_tangential_velocity_constraints)
 from .helpers import (exp_comb, feasible_faces, get_lattice_mode, hat,
@@ -17,7 +21,6 @@ from .helpers import (exp_comb, feasible_faces, get_lattice_mode, hat,
 from .interior_point import int_pt_cone, interior_point_halfspace
 from .lattice import Face, FaceLattice
 from .se3 import *
-from .affine import proj_affine
 
 DEBUG = False
 
@@ -761,8 +764,16 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
             print(cs_mode)
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
+<<<<<<< HEAD
             # mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
             mask = np.hstack((cs_mode=='0', np.array([mask_c] * num_sliding_planes).T.flatten()))
+=======
+            mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
+
+            mask_0 = cs_mode == '0'
+            mask_no_s = np.hstack((mask_0, np.array([mask_c] * num_sliding_planes).T.flatten()))
+
+>>>>>>> edelsbrunner
             if all(mask_s):
 
                 L = FaceLattice()
@@ -797,18 +808,55 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
                 else:
 
                     H_proj = np.dot(H[mask], nc)
+<<<<<<< HEAD
                     H_proj_u,idu = unique_row(H_proj)
                     # if H_proj_u.shape[0] != H_proj.shape[0]:
                     #     print('AHH')
                     # print(H_proj_u)
+=======
+
+                    # H_proj_0 = np.dot(H[mask_no_s], nc)
+
+                    # print('w/o s', H_proj_0.shape)
+                    H_proj_0 = H_proj @ orth(H_proj.T)
+                    # print('proj lin', H_proj_0_orth.shape)
+
+                    n_H = H_proj_0.shape[0]
+                    d_H = H_proj_0.shape[1]
+                    print('H proj 0', H_proj_0.shape)
+                    # print(H_proj_0)
+                    # print('Constructing initial arrangement.')
+                    H0, b0, I0 = reorder_halfspaces(H_proj_0, np.zeros((n_H, 1)))
+                    # print('H0')
+                    # print(H0)
+                    print('I0', I0)
+                    I = initial_arrangement(H0[0:d_H, :], b0[0:d_H])
+                    # for k in range(I.dim(), -1, -1):
+                    #     print('# (%+3d)-faces' % k, I.num_k_faces(k))
+                    # print('# (%+3d)-faces' % I.dim(), I.num_k_faces(I.dim()))
+                    for i_H in range(d_H, n_H):
+                        print('Incrementing arrangement.')
+                        increment_arrangement(H0[i_H,None], b0[i_H,None], I)
+                    for k in range(I.dim(), -1, -1):
+                        print('# (%+3d)-faces' % k, I.num_k_faces(k))
+                        # print(I.sign_vectors(k, I0))
+
+>>>>>>> edelsbrunner
                     t_start = time()
                     V_all, Sign_all = zonotope_vertex(H_proj_u)
                     if len(V_all) == 0:
                         continue
 
+<<<<<<< HEAD
                     #print(Sign_all)
                     info['time zono'] += time() - t_start
                     Sign_all = Sign_all[:,idu]
+=======
+                    # idx = np.lexsort(np.rot90(dual))
+
+                    print('# v', len(V_all))
+
+>>>>>>> edelsbrunner
                     feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                     V = V_all[feasible_ind]
                     Sign = Sign_all[feasible_ind]
@@ -831,6 +879,16 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
                     # Hack.
                     V = V_all
                     Sign = Sign_all
+
+                    sign_cells = I.sign_vectors(I.dim(), I0)
+                    idx_sc = np.where(np.all(sign_cells[:, 0:sum(mask_s)] == 1, axis=1))[0]
+                    sign_cells = sign_cells[idx_sc]
+                    idx_sc = np.lexsort(np.rot90(sign_cells))
+                    sign_cells = sign_cells[idx_sc]
+                    print(sign_cells)
+                    print('# v', len(V_all))
+                    idx_s = np.lexsort(np.rot90(Sign))
+                    print(Sign[idx_s])
 
                     t_start = time()
                     L = vertex2lattice(V)
