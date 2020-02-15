@@ -808,55 +808,18 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
                 else:
 
                     H_proj = np.dot(H[mask], nc)
-<<<<<<< HEAD
                     H_proj_u,idu = unique_row(H_proj)
                     # if H_proj_u.shape[0] != H_proj.shape[0]:
                     #     print('AHH')
                     # print(H_proj_u)
-=======
-
-                    # H_proj_0 = np.dot(H[mask_no_s], nc)
-
-                    # print('w/o s', H_proj_0.shape)
-                    H_proj_0 = H_proj @ orth(H_proj.T)
-                    # print('proj lin', H_proj_0_orth.shape)
-
-                    n_H = H_proj_0.shape[0]
-                    d_H = H_proj_0.shape[1]
-                    print('H proj 0', H_proj_0.shape)
-                    # print(H_proj_0)
-                    # print('Constructing initial arrangement.')
-                    H0, b0, I0 = reorder_halfspaces(H_proj_0, np.zeros((n_H, 1)))
-                    # print('H0')
-                    # print(H0)
-                    print('I0', I0)
-                    I = initial_arrangement(H0[0:d_H, :], b0[0:d_H])
-                    # for k in range(I.dim(), -1, -1):
-                    #     print('# (%+3d)-faces' % k, I.num_k_faces(k))
-                    # print('# (%+3d)-faces' % I.dim(), I.num_k_faces(I.dim()))
-                    for i_H in range(d_H, n_H):
-                        print('Incrementing arrangement.')
-                        increment_arrangement(H0[i_H,None], b0[i_H,None], I)
-                    for k in range(I.dim(), -1, -1):
-                        print('# (%+3d)-faces' % k, I.num_k_faces(k))
-                        # print(I.sign_vectors(k, I0))
-
->>>>>>> edelsbrunner
                     t_start = time()
                     V_all, Sign_all = zonotope_vertex(H_proj_u)
                     if len(V_all) == 0:
                         continue
 
-<<<<<<< HEAD
                     #print(Sign_all)
                     info['time zono'] += time() - t_start
                     Sign_all = Sign_all[:,idu]
-=======
-                    # idx = np.lexsort(np.rot90(dual))
-
-                    print('# v', len(V_all))
-
->>>>>>> edelsbrunner
                     feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
                     V = V_all[feasible_ind]
                     Sign = Sign_all[feasible_ind]
