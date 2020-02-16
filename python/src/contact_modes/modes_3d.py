@@ -764,16 +764,8 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
             print(cs_mode)
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
-<<<<<<< HEAD
             # mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
             mask = np.hstack((cs_mode=='0', np.array([mask_c] * num_sliding_planes).T.flatten()))
-=======
-            mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
-
-            mask_0 = cs_mode == '0'
-            mask_no_s = np.hstack((mask_0, np.array([mask_c] * num_sliding_planes).T.flatten()))
-
->>>>>>> edelsbrunner
             if all(mask_s):
 
                 L = FaceLattice()
