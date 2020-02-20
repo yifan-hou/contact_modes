@@ -465,7 +465,8 @@ def enum_sliding_sticking_3d_proj(A, b, T, bt):
                     vd = np.dot(H, move_direc)
                     vd[abs(vd)<1e-6] = 0
                     mode_sign = np.sign(vd).T.squeeze()
-                    feasible_ind = np.where(np.all(mode_sign[:, 0:sum(mask_s)] == 1, axis=1))[0]
+                    mode_cs_sign = mode_sign[:, 0:n_pts]
+                    feasible_ind = np.all(mode_cs_sign[:, mask_s] == 1, axis=1)
                     mode_sign = mode_sign[feasible_ind]
                     L = FaceLattice()
                     L.L = []
@@ -510,15 +511,15 @@ def enum_sliding_sticking_3d_proj(A, b, T, bt):
                     V = V_all
                     Sign = Sign_all
 
-                    sign_cells = I.sign_vectors(I.dim(), I0)
-                    idx_sc = np.where(np.all(sign_cells[:, 0:sum(mask_s)] == 1, axis=1))[0]
-                    sign_cells = sign_cells[idx_sc]
-                    idx_sc = np.lexsort(np.rot90(sign_cells))
-                    sign_cells = sign_cells[idx_sc]
-                    print(sign_cells)
-                    print('# v', len(V_all))
-                    idx_s = np.lexsort(np.rot90(Sign))
-                    print(Sign[idx_s])
+                    # sign_cells = I.sign_vectors(I.dim(), I0)
+                    # idx_sc = np.where(np.all(sign_cells[:, 0:sum(mask_s)] == 1, axis=1))[0]
+                    # sign_cells = sign_cells[idx_sc]
+                    # idx_sc = np.lexsort(np.rot90(sign_cells))
+                    # sign_cells = sign_cells[idx_sc]
+                    # print(sign_cells)
+                    # print('# v', len(V_all))
+                    # idx_s = np.lexsort(np.rot90(Sign))
+                    # print(Sign[idx_s])
 
                     t_start = time()
                     L = vertex2lattice(V)
@@ -529,7 +530,7 @@ def enum_sliding_sticking_3d_proj(A, b, T, bt):
                     modes = get_lattice_mode(L,mode_sign)
 
                     print('# modes', len(modes))
-            #print(np.array(modes))
+            print(np.array(modes))
 
             num_modes+=len(modes)
             all_modes.append(modes)

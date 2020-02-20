@@ -142,13 +142,13 @@ def build_normal_velocity_constraints_2d(points, normals):
 
 def build_tangent_velocity_constraints_2d(points, normals):
     tangents = np.array([normals[1,:], -normals[0,:]])
-    T, t = velocity_constraints_2d(points)
+    T, t = velocity_constraints_2d(points, tangents)
     return T, t
 
 def velocity_constraints_2d(points, direcs):
     n_pts = points.shape[1]
     A = np.zeros((n_pts,3))
-    b = np.zeros((n_pts))
+    b = np.zeros((n_pts,1))
     for i in range(n_pts):
         p = points[:,i]
         n = direcs[:,i]
@@ -160,5 +160,5 @@ def velocity_constraints_2d(points, direcs):
         ad_invg[0:2,0:2] = inv_g[0:2,0:2]
         ad_invg[0,2] = inv_g[1,2]
         ad_invg[1,2] = -inv_g[0,2]
-        A[i,:] = np.dot(ad_invg.T,np.array([0,1,0]).reshape(-1,1))
+        A[i,:] = np.dot(ad_invg.T,np.array([0,1,0]).reshape(-1,1)).reshape(-1)
     return A,b
