@@ -237,12 +237,12 @@ def enumerate_contact_separating_3d_exponential(points, normals):
     # return np.array(sorted(modes))
     return np.array(modes)
 
-def enumerate_contact_separating_3d(system):
+def enumerate_contact_separating_3d(A, b):
     # Create solve info.
     info = dict()
 
     # Create halfspace inequalities, Ax - b <= 0.
-    A, b = build_normal_velocity_constraints(system.collider.manifolds)
+    # A, b = build_normal_velocity_constraints(system.collider.manifolds)
     # b = np.zeros(b.shape)
     if DEBUG:
         print('A')
@@ -380,334 +380,12 @@ def enumerate_contact_separating_3d(system):
     # Return mode strings.
     return cs_modes, lattice, info
 
-def enum_sliding_sticking_3d(points, normals, tangentials, num_sliding_planes):
-
-    # Create solve info.
-    info = dict()
-    # info['n'] = n_pts
-
-    cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(points, normals)
-    all_modes = []
-    n_pts = points.shape[1]
-    A, b = contacts_to_half(points, normals)
-    # Get linearized sliding sections from number of sliding modes
-    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
-    T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
-    for i in range(n_pts):
-        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
-        for j in range(num_sliding_planes):
-            T_i = np.dot(R,D[j])
-            T[i,j,0:3] = T_i
-            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
-    T *= -1
-    H = np.vstack((A, T.reshape(-1, T.shape[2])))
-    H = -H
-
-    num_modes = 0
-    for layer in cs_lattice.L:
-        for face in layer:
-            cs_mode = face.m
-            print(cs_mode)
-            mask_c = cs_mode == 'c'
-            mask_s = ~mask_c
-            mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
-            if all(mask_s):
-
-                L = FaceLattice()
-                L.L=[]
-                L.append_empty()
-                mode_sign = np.hstack((np.ones(n_pts,dtype=int),np.zeros(n_pts*num_sliding_planes,dtype=int)))
-                modes = [mode_sign]
-                L.L[0][0].m = mode_sign
-
-            else:
-
-                t_start = time()
-
-                V_all, Sign_all, z_info = zonotope_vertex(H[mask])
-                feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
-                V = V_all[feasible_ind]
-                Sign = Sign_all[feasible_ind]
-
-                t_start = time()
-
-                L = vertex2lattice(V)
-
-                # info['time lattice'] = 
-
-                mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
-                mode_sign[:,mask] = Sign
-                modes = get_lattice_mode(L,mode_sign)
-
-                print(time() - t_start)
-
-            num_modes+=len(modes)
-            all_modes.append(modes)
-            face.ss_lattice = L
-    print(num_modes)
-
-    return all_modes, cs_lattice
-
-def enum_sliding_sticking_3d_cocircuit(points, normals, tangentials, num_sliding_planes):
-
-    cs_modes, cs_lattice = enumerate_contact_separating_3d(points, normals)
-    all_modes = []
-    n_pts = points.shape[1]
-    A, b = contacts_to_half(points, normals)
-    # Get linearized sliding sections from number of sliding modes
-    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
-    T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
-    for i in range(n_pts):
-        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
-        for j in range(num_sliding_planes):
-            T_i = np.dot(R,D[j])
-            T[i,j,0:3] = T_i
-            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
-    T *= -1
-    H = np.vstack((A, T.reshape(-1, T.shape[2])))
-
-    num_modes = 0
-    for layer in cs_lattice.L:
-        for face in layer:
-            cs_mode = face.m
-            mask_c = cs_mode == 'c'
-            mask_s = ~mask_c
-            mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
-            if all(mask_s):
-
-                mode_sign = np.hstack((np.ones(n_pts,dtype=int),np.zeros(n_pts*num_sliding_planes,dtype=int)))
-                mode_sign = np.array([mode_sign])
-
-            else:
-
-                Sign_all = signed_covectors(H[mask])
-                feasible_ind = np.where(np.all(Sign_all[:, 0:sum(mask_s)] == 1, axis=1))[0]
-                Sign = Sign_all[feasible_ind]
-
-                mode_sign = np.zeros((Sign.shape[0],n_pts*(1+num_sliding_planes)))
-                mode_sign[:,mask] = Sign
-
-
-            num_modes+=mode_sign.shape[0]
-            all_modes.append(mode_sign)
-            face.ss_modes = mode_sign
-    print(num_modes)
-
-    return all_modes, cs_lattice
-
-def enumerate_all_modes_3d_exponential(points, normals, tangentials, num_sliding_plane):
-    # Check inputs dimensions.
-    assert (points.shape[1] == normals.shape[1])
-    assert (points.shape[0] == 3)
-    assert (normals.shape[0] == 3)
-    assert (tangentials.shape[0] == 3)
-    assert (tangentials.shape[2] == 2) #  two tangentials vectors: x and y
-
-    # Get dimensions.2
-    n_pts = points.shape[1]
-
-    # Create halfspace inequalities, Ax - b ≥ 0.
-    n_pts = points.shape[1]
-    A = np.zeros((n_pts, 6))
-    for i in range(n_pts):
-        A[i, 0:3] = normals[:, i].flatten()
-        A[i, 3:6] = np.dot(normals[:, i].T, hat(points[:, i])).flatten()
-    # A *= -1
-    b = np.zeros((n_pts, 1))
-    if DEBUG:
-        print('A')
-        print(A)
-    A = -A
-
-    # Get linearized sliding sections from number of sliding modes
-    #assert (num_sliding_modes % 2 == 0)
-    D = np.array([[np.cos(2*np.pi*i/(2*num_sliding_plane)),np.sin(2*np.pi*i/(2*num_sliding_plane)),0] for i in range(2*num_sliding_plane)])
-    # Get sliding mode section enumeration
-    sliding_sections = np.identity(2*num_sliding_plane,dtype = int) + np.roll(np.identity(2*num_sliding_plane,dtype = int),num_sliding_plane-1,axis=1)
-    sliding_lines = np.identity(2*num_sliding_plane,dtype = int) + np.roll(np.identity(2*num_sliding_plane,dtype = int),num_sliding_plane,axis=1)
-
-    T = np.zeros((n_pts,num_sliding_plane*2,6))
-    T_section = np.zeros((n_pts,num_sliding_plane*2,2,6))
-    T_line = np.zeros((n_pts,num_sliding_plane*2,2,6))# sliding plane normals
-    for i in range(n_pts):
-        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
-        for j in range(num_sliding_plane*2):
-            T_i = np.dot(R,D[j])
-            T[i,j,0:3] = T_i
-            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
-    for i in range(n_pts):
-        for j in range(num_sliding_plane*2):
-            T_section[i,j,:,:] = T[i,sliding_sections[j]==1]
-            T_line[i,j,:,:] = T[i,sliding_lines[j]==1]
-    T_sliding = np.concatenate((T_section,T_line),axis=1)
-    num_sliding_modes = 4*num_sliding_plane
-
-
-    # Enumerate contact modes and check for feasibility.
-    modes = []
-
-    for i in range(0, n_pts + 1):
-        for c in lexographic_combinations(n_pts, i):
-            if DEBUG:
-                print('c', c)
-            mask = np.zeros(n_pts, dtype=bool)
-            mask[c] = 1
-            if DEBUG:
-                print('mask', mask)
-            C = A[mask, :]
-            H = A[~mask, :]
-
-            # Skip case where all contacts active.
-
-            if np.sum(mask) == n_pts:
-                check_sliding = True
-                null = sp.linalg.null_space(C)
-            else:
-
-                # Project into null space.
-                if np.sum(mask) > 0:
-                    null = sp.linalg.null_space(C)
-                    H = np.dot(H, null)
-                    if DEBUG:
-                        print('projecting H into null space')
-                        print(H)
-
-
-                # Compute interior point.
-                b = np.zeros((H.shape[0], 1))
-                x = interior_point_halfspace(H, b)
-                check_sliding = 1e-5 < np.linalg.norm(np.dot(H, x))
-                if check_sliding and len(c) == 0:
-                    check_sliding = False
-                    m = np.array(['s'] * n_pts)
-                    modes.append(m.tolist())
-
-            # If point is strictly interior, then the mode string is valid.
-            if check_sliding:
-                m = np.array(['s'] * n_pts)
-                c = np.array(c)
-                m[c] = 'c'
-                #modes.append(m.tolist())
-                #continue
-                # check sliding modes
-                # sliding mode enumeration
-                sliding_modes = exp_comb(len(c), num_sliding_modes+1) # enumeration sliding sections
-                if len(c)==0:
-                    modes.append(m.tolist())
-                    continue
-                for s_mode in sliding_modes:
-                    # get sliding matrix T
-
-                    c_sliding = c[s_mode < num_sliding_plane*2]
-                    c_line = c[(s_mode >= num_sliding_plane*2) & (s_mode != num_sliding_modes)]
-                    mode_sliding = s_mode[s_mode <  num_sliding_plane*2]
-                    mode_line = s_mode[(s_mode >= num_sliding_plane*2) & (s_mode != num_sliding_modes)] - 2*num_sliding_plane
-                    c_fixed= c[s_mode == num_sliding_modes]
-                    Ts = T_sliding[c_sliding,mode_sliding,:,:].reshape(-1,6)
-                    T_fixed = np.concatenate(
-                        (T_line[c_line, mode_line, :, :].reshape(-1, 6), T[c_fixed, :, :].reshape(-1, 6)))
-                    # check interior-
-                    if not all(H.shape) :
-                        M = np.dot(Ts, null)
-                    else:
-                        Ts = np.dot(Ts, null)
-                        M = np.concatenate((H,Ts))
-                    if all(T_fixed.shape) :
-                        null_T = sp.linalg.null_space(np.dot(T_fixed,null))
-                        if not all(null_T.shape):
-                            continue
-                        else:
-                            M = np.dot(M, null_T)
-                    if not all(M.shape):
-                        continue
-
-
-                    b = np.zeros((M.shape[0], 1))
-                    x = interior_point_halfspace(-M, b)
-                    if 1e-5 < np.linalg.norm(np.dot(M, x)) and all(np.dot(M,x) > 1e-5):
-                        s_mode_str = [str(s_mode[i]) for i in range(len(s_mode))]
-                        m[c] = s_mode_str
-                        modes.append(m.tolist())
-                        if DEBUG:
-                            print('Appending mode', m.tolist())
-
-    return np.array(sorted(modes))
-
-def enumerate_all_modes_3d(points, normals, tangentials, num_sliding_modes):
-    # Check inputs dimensions.
-    assert (points.shape[1] == normals.shape[1])
-    assert (points.shape[0] == 3)
-    assert (normals.shape[0] == 3)
-    assert (tangentials.shape[0] == 3)
-    assert (tangentials.shape[2] == 2) #  two tangentials vectors: x and y
-
-    # Get dimensions.2
-    n_pts = points.shape[1]
-
-    # Create halfspace inequalities, Ax - b ≥ 0.
-    n_pts = points.shape[1]
-    A = np.zeros((n_pts, 6))
-    for i in range(n_pts):
-        A[i, 0:3] = normals[:, i].flatten()
-        A[i, 3:6] = np.dot(normals[:, i].T, hat(points[:, i])).flatten()
-
-    # Get linearized sliding sections from number of sliding modes
-    assert (num_sliding_modes % 2 == 0)
-    num_sliding_planes = int(num_sliding_modes/2)
-    D = np.array([[np.cos(np.pi*i/num_sliding_planes),np.sin(np.pi*i/num_sliding_planes),0] for i in range(num_sliding_planes)])
-    T = np.zeros((n_pts,num_sliding_planes,6)) # sliding plane normals
-    for i in range(n_pts):
-        R = np.concatenate((tangentials[:, i, :],normals[:, i].reshape(-1,1)), axis=1)
-        for j in range(num_sliding_planes):
-            T_i = np.dot(R,D[j])
-            T[i,j,0:3] = T_i
-            T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
-
-    N = -np.vstack((A,T.reshape(-1,T.shape[2])))
-    #N = A
-
-    V, Sign = zonotope_vertex(N)
-
-    L = vertex2lattice(V)
-    ind_feasible = np.where(np.all(Sign[:,0:A.shape[0]] == 1,axis=1))[0]
-    # get feasible mode out from face lattice
-    Modes, FeasibleLattice = feasible_faces(L,V,Sign,ind_feasible)
-    # filter lattice
-    Modes_str = []
-    Modes_dict = dict()
-    FilteredLattice = FaceLattice()
-    FilteredLattice.L = []
-    for layer in FeasibleLattice.L:
-        FilteredLattice.L.append([])
-        for face in layer:
-            mode_str = ['s'] * n_pts
-            mode = face.m
-            for i in range(n_pts):
-                m = mode[[i,n_pts+i*num_sliding_planes,n_pts+i*num_sliding_planes+1]]
-                if m[0] == 1:
-                    mode_str[i] = 's'
-                else:
-                    mode_str[i] = str(m[1:])
-            if not mode_str in Modes_str:
-                Modes_str.append(mode_str)
-                Modes_dict[str(mode_str)] = face
-                face.m_str = mode_str
-                face.modes = [face.m]
-                FilteredLattice.L[-1].append(face)
-            else:
-                Modes_dict[str(mode_str)].verts += face.verts
-                Modes_dict[str(mode_str)].parents += face.parents
-                Modes_dict[str(mode_str)].modes += [face.m]
-                #layer.remove(face)
-
-    return Modes_str, FilteredLattice
-
-def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
+def enum_sliding_sticking_3d_proj(A, b, T, bt):
     info = dict()
     info['time zono'] = 0
     info['time lattice'] = 0
 
-    cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(system)
+    cs_modes, cs_lattice, cs_info = enumerate_contact_separating_3d(A, b)
     all_modes = []
     #
     # manifolds = system.collider.manifolds
@@ -731,9 +409,10 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
     #         tangents[:, i] = g_oc_m[1:3, 0:1]
     # print(points)
     # print(normals)
-    A, b = build_normal_velocity_constraints(system.collider.manifolds)
-    n_pts = len(system.collider.manifolds)
-
+    # A, b = build_normal_velocity_constraints(system.collider.manifolds)
+    # T, bt = build_tangential_velocity_constraints(system.collider.manifolds, num_sliding_planes)
+    n_pts = A.shape[0]
+    num_sliding_planes = int(T.shape[0] / n_pts)
     # A_, b_ = contacts_to_half(points, normals)
     # print('A')
     # print(A)
@@ -750,11 +429,7 @@ def enum_sliding_sticking_3d_proj(system, num_sliding_planes):
     #         T[i,j,0:3] = T_i
     #         T[i,j,3:6] = np.dot(T_i, hat(points[:, i]))
     # T *= -1
-    T, bt = build_tangential_velocity_constraints(system.collider.manifolds, num_sliding_planes)
-    # print('T')
-    # print(T)
-    # print('T_')
-    # print(T_)
+
     H = np.vstack((A, T.reshape(-1, T.shape[-1])))
 
     num_modes = 0

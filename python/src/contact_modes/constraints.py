@@ -135,3 +135,30 @@ def build_tangential_velocity_constraints(manifolds, num_sliding_planes):
     b = np.array([[m.dist]*num_sliding_planes for m in manifolds]).reshape(-1)
     # Create halfspace inequalities, Ax - b ≤ 0.
     return A, b
+
+def build_normal_velocity_constraints_2d(points, normals):
+    A, b =  velocity_constraints_2d(points,normals)
+    return A,b
+
+def build_tangent_velocity_constraints_2d(points, normals):
+    tangents = np.array([normals[1,:], -normals[0,:]])
+    T, t = velocity_constraints_2d(points)
+    return T, t
+
+def velocity_constraints_2d(points, direcs):
+    n_pts = points.shape[1]
+    A = np.zeros((n_pts,3))
+    b = np.zeros((n_pts))
+    for i in range(n_pts):
+        p = points[:,i]
+        n = direcs[:,i]
+        g = np.array([[n[1],n[0],p[0]],[-n[0],n[1],p[1]],[0,0,1]])
+        inv_g = np.identity(3)
+        inv_g[0:2,0:2]  = g[0:2,0:2].T
+        inv_g[0:2,2] = np.dot(-g[0:2,0:2].T, p)
+        ad_invg = np.identity(3)
+        ad_invg[0:2,0:2] = inv_g[0:2,0:2]
+        ad_invg[0,2] = inv_g[1,2]
+        ad_invg[1,2] = -inv_g[0,2]
+        A[i,:] = np.dot(ad_invg.T,np.array([0,1,0]).reshape(-1,1))
+    return A,b
