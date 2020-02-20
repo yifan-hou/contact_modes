@@ -37,7 +37,7 @@ class Planning2DDemo(contact_modes.viewer.Application):
         
         # Create scene.
         self.system = contact_modes.box_case(1)
-        # self.box = contact_modes.shape.Box()
+        self.box = contact_modes.shape.Box2D()
 
         # Initialize renderer.
         self.renderer = contact_modes.viewer.OITRenderer(self.window)
@@ -55,6 +55,7 @@ class Planning2DDemo(contact_modes.viewer.Application):
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_MULTISAMPLE)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         # Step.
         self.step()
@@ -102,7 +103,9 @@ class Planning2DDemo(contact_modes.viewer.Application):
         # ----------------------------------------------------------------------
         # 2. Draw scene
         # ----------------------------------------------------------------------
-        self.system.draw(shader)
+        # self.system.draw(shader)
+        self.box.draw(shader)
+        self.draw_grid(shader)
 
     def draw_menu(self):
         if imgui.begin_main_menu_bar():
