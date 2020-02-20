@@ -6,3 +6,4 @@ from .octopus import *
 from .chain import *
 from .proxy import *
 from .system import *
+from .body_2d import *

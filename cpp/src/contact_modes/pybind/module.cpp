@@ -5,6 +5,7 @@ namespace py = pybind11;
 
 // Pybind11 exports defined in other files.
 void exportGeometry(py::module& m);
+void exportCollision(py::module& m);
 
 
 PYBIND11_MODULE(_contact_modes, m) {
@@ -12,4 +13,5 @@ PYBIND11_MODULE(_contact_modes, m) {
 
     // Call exports.
     exportGeometry(m);
+    exportCollision(m);
 }

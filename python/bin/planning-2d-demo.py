@@ -14,6 +14,7 @@ import contact_modes.dynamics
 import contact_modes.geometry
 import contact_modes.shape
 import contact_modes.viewer
+from contact_modes.planning_2d_cases import *
 from contact_modes.viewer.backend import *
 
 
@@ -36,8 +37,8 @@ class Planning2DDemo(contact_modes.viewer.Application):
         self.init_gui()
         
         # Create scene.
-        self.system = contact_modes.box_case(1)
-        self.box = contact_modes.shape.Box2D()
+        self.system = box_ground()
+        # self.box = contact_modes.shape.Box2D()
 
         # Initialize renderer.
         self.renderer = contact_modes.viewer.OITRenderer(self.window)
@@ -103,8 +104,8 @@ class Planning2DDemo(contact_modes.viewer.Application):
         # ----------------------------------------------------------------------
         # 2. Draw scene
         # ----------------------------------------------------------------------
-        # self.system.draw(shader)
-        self.box.draw(shader)
+        self.system.draw(shader)
+        # self.box.draw(shader)
         self.draw_grid(shader)
 
     def draw_menu(self):
@@ -148,12 +149,12 @@ class Planning2DDemo(contact_modes.viewer.Application):
         
         changed, new_color = imgui.color_edit4('object', *self.object_color)
         if changed or self.load_scene:
-            [body.set_color(np.array(new_color)) for body in self.system.bodies]
+            [body.get_shape().set_color(np.array(new_color)) for body in self.system.bodies]
             self.object_color = new_color
 
         changed, new_color = imgui.color_edit4('obs', *self.obstacle_color)
         if changed or self.load_scene:
-            [o.set_color(np.array(new_color)) for o in self.system.obstacles]
+            [o.get_shape().set_color(np.array(new_color)) for o in self.system.obstacles]
             self.obstacle_color = new_color
 
         changed, new_pos = imgui.slider_float3('light', *self.light_pos, -10.0, 10.0)
