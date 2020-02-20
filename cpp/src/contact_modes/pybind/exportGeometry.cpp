@@ -4,6 +4,8 @@
 
 #include <contact_modes/geometry/incidence_graph.hpp>
 #include <contact_modes/geometry/arrangements.hpp>
+#include <contact_modes/collision/collide_2d.hpp>
+#include <contact_modes/collision/manifold_2d.hpp>
 
 
 namespace py = pybind11;
@@ -25,4 +27,15 @@ void exportGeometry(py::module& m) {
         .def("get_node", &IncidenceGraph::get_node);
 
     m.def("initial_arrangement", &initial_arrangement);
+}
+
+void exportCollision(py::module& m) {
+
+    py::class_<Manifold2D, Manifold2DPtr>(m, "Manifold2D")
+        .def_readonly("pts_A", &Manifold2D::pts_A)
+        .def_readonly("pts_B", &Manifold2D::pts_B)
+        .def_readonly("normal", &Manifold2D::normal)
+        .def_readonly("dists", &Manifold2D::dists);
+
+    m.def("collide_2d", &collide_2d);
 }
