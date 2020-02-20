@@ -16,8 +16,6 @@ import contact_modes.shape
 import contact_modes.viewer
 from contact_modes.viewer.backend import *
 
-import multi_sim
-
 
 class Planning2DDemo(contact_modes.viewer.Application):
     def __init__(self):
@@ -38,8 +36,8 @@ class Planning2DDemo(contact_modes.viewer.Application):
         self.init_gui()
         
         # Create scene.
-        self.system = multi_sim.box_slide_2d()
-        # self.box = contact_modes.shape.Box()
+        self.system = contact_modes.box_case(1)
+        self.box = contact_modes.shape.Box2D()
 
         # Initialize renderer.
         self.renderer = contact_modes.viewer.OITRenderer(self.window)
@@ -57,6 +55,7 @@ class Planning2DDemo(contact_modes.viewer.Application):
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_MULTISAMPLE)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         # Step.
         self.step()
@@ -89,8 +88,9 @@ class Planning2DDemo(contact_modes.viewer.Application):
 
         width = self.window.width
         height = self.window.height
-        projection = glm.perspective(glm.radians(50.0), width/height, 0.1, 100.0)
-        shader.set_mat4('projection', np.asarray(projection))
+        aspect_ratio = width/height
+        ortho = glm.ortho(-2*aspect_ratio, 2*aspect_ratio, -2, 2, -100, 100)
+        shader.set_mat4('projection', np.asarray(ortho))
 
         # lighting
         lightPos = np.array(self.light_pos)
@@ -103,7 +103,9 @@ class Planning2DDemo(contact_modes.viewer.Application):
         # ----------------------------------------------------------------------
         # 2. Draw scene
         # ----------------------------------------------------------------------
-        self.system.draw(shader)
+        # self.system.draw(shader)
+        self.box.draw(shader)
+        self.draw_grid(shader)
 
     def draw_menu(self):
         if imgui.begin_main_menu_bar():

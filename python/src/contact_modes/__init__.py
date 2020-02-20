@@ -10,3 +10,4 @@ from .se3 import *
 from .so3 import *
 from .exp import *
 from .constraints import *
+from ._contact_modes import *

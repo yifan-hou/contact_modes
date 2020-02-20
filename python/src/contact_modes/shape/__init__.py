@@ -14,3 +14,5 @@ from .link import *
 from .chain import *
 from .ellipse import *
 from .frame import *
+from .shape_2d import *
+from .polygon_2d import *
