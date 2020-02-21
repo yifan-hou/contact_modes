@@ -8,9 +8,12 @@ from contact_modes.shape import Polygon2D, Box2D
 def box_ground():
     box = Body2D('box')
     box.set_shape(Box2D())
+    box.set_collision_shape(Box2D(1.1, 1.1))
+    box.set_pose([0., 0., 0.])
     ground = Static2D('ground')
     ground.set_shape(Box2D(5))
-    ground.set_pose([0, -1, 0])
+    ground.set_collision_shape(Box2D(5.1, 1.1))
+    ground.set_pose([0., -1, 0.])
 
     collider = CollisionManager2D()
     collider.add_pair(box, ground)

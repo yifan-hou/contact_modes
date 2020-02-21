@@ -70,32 +70,23 @@ class Polygon2D(Shape2D):
         glBindVertexArray(0)
 
     def draw(self, shader):
-        model = SE3.exp([self.q[0], self.q[1], 0, 0, 0, self.q[2]])
-        shader.set_mat4('model', model)
+        shader.use()
+        rotate = SE3.exp([0, 0, 0, 0, 0, self.q[2]]).matrix()
+        translate = SE3.exp([self.q[0], self.q[1], 0, 0, 0, 0]).matrix()
+        shader.set_mat4('model', (translate @ rotate).T)
 
         glBindVertexArray(self.vao)
-        glDrawArrays(GL_TRIANGLE_FAN, 0, self.num_vertices())
+        if self.draw_outline:
+            shader.set_vec3('lightColor', np.array([0.0, 0.0, 0.0], 'f'))
+            glDrawArrays(GL_LINE_LOOP, 0, self.num_vertices())
+            shader.set_vec3('lightColor', np.array([1.0, 1.0, 1.0], 'f'))
+        if self.draw_filled:
+            glDrawArrays(GL_TRIANGLE_FAN, 0, self.num_vertices())
         glBindVertexArray(0)
 
 class Box2D(Polygon2D):
     def __init__(self, width=1, height=1):
-        points = np.array([[1, 1, -1, -1], [1, -1, 1, -1]], float)
+        w = width/2
+        h = height/2
+        points = np.array([[w, w, -w, -w], [h, -h, h, -h]], float)
         super(Box2D, self).__init__(points)
-
-        self.width = width
-        self.height = height
-
-    def set_width(self, width):
-        self.width = width
-
-    def set_height(self, height):
-        self.height = height
-    
-    def draw(self, shader):
-        model = SE3.exp([self.q[0], self.q[1], 0, 0, 0, self.q[2]]).matrix()
-        scale = np.diag([self.width/2, self.height/2, 1, 1])
-        shader.set_mat4('model', model @ scale)
-
-        glBindVertexArray(self.vao)
-        glDrawArrays(GL_TRIANGLE_FAN, 0, self.num_vertices())
-        glBindVertexArray(0)

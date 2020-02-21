@@ -20,7 +20,7 @@ class Window(object):
             raise RuntimeError('Error: Failed to initialize GLFW.')
 
         # MSAA.
-        glfw.window_hint(glfw.SAMPLES, 4)
+        glfw.window_hint(glfw.SAMPLES, 16)
 
         # glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         # glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)

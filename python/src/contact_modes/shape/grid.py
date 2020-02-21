@@ -58,6 +58,9 @@ class Grid(Shape):
         # normals point upwards
         normals[2,:] = 1.0
         # flatten
+        vertices = np.flip(vertices, 1)
+        colors = np.flip(colors, 1)
+        
         vertices = vertices.T.flatten()
         normals = normals.T.flatten()
         colors = colors.T.flatten()

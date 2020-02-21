@@ -41,8 +41,8 @@ class Planning2DDemo(contact_modes.viewer.Application):
         # self.box = contact_modes.shape.Box2D()
 
         # Initialize renderer.
-        self.renderer = contact_modes.viewer.OITRenderer(self.window)
-        # self.renderer = contact_modes.viewer.BasicLightingRenderer(self.window)
+        # self.renderer = contact_modes.viewer.OITRenderer(self.window)
+        self.renderer = contact_modes.viewer.BasicLightingRenderer(self.window)
         self.renderer.init_opengl()
         self.renderer.set_draw_func(self.draw_scene)
 
@@ -104,8 +104,13 @@ class Planning2DDemo(contact_modes.viewer.Application):
         # ----------------------------------------------------------------------
         # 2. Draw scene
         # ----------------------------------------------------------------------
+        # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        glLineWidth(2)
         self.system.draw(shader)
-        # self.box.draw(shader)
+        # glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
+        self.system.collider.draw(shader)
+        
         self.draw_grid(shader)
 
     def draw_menu(self):
@@ -166,7 +171,21 @@ class Planning2DDemo(contact_modes.viewer.Application):
         imgui.end()
 
     def on_key_press_p2d(self, win, key, scancode, action, mods):
-        pass
+        g = self.system.bodies[0].get_pose()
+        if key  == glfw.KEY_W and action == glfw.PRESS:
+            g[1] += 0.05
+        if key  == glfw.KEY_S and action == glfw.PRESS:
+            g[1] -= 0.05
+        if key  == glfw.KEY_A and action == glfw.PRESS:
+            g[0] -= 0.05
+        if key  == glfw.KEY_D and action == glfw.PRESS:
+            g[0] += 0.05
+        if key  == glfw.KEY_Q and action == glfw.PRESS:
+            g[2] -= 0.05
+        if key  == glfw.KEY_E and action == glfw.PRESS:
+            g[2] += 0.05
+        self.system.bodies[0].set_pose(g)
+        self.system.collider.collide()
 
 viewer = contact_modes.viewer.Viewer()
 viewer.add_application(Planning2DDemo())
