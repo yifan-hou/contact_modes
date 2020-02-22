@@ -71,6 +71,14 @@ class Polygon2D(Shape2D):
 
         glBindVertexArray(0)
 
+    def set_color(self, color):
+        color = color.astype('float32')
+        glBindVertexArray(self.vao)
+        glBindBuffer(GL_ARRAY_BUFFER, self.color_vbo)
+        for i in range(self.num_vertices()):
+            glBufferSubData(GL_ARRAY_BUFFER, i*4*4, 4*4, color)
+        glBindVertexArray(0)
+
     def draw(self, shader):
         shader.use()
         rotate = cm.SE3.exp([0, 0, 0, 0, 0, self.q[2]]).matrix()

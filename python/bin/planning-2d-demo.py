@@ -18,7 +18,6 @@ from contact_modes.planning_2d_cases import *
 from contact_modes.viewer.backend import *
 
 
-
 class Planning2DDemo(contact_modes.viewer.Application):
     def __init__(self):
         super().__init__()
@@ -42,11 +41,9 @@ class Planning2DDemo(contact_modes.viewer.Application):
         self.init_gui()
         
         # Create scene.
-        self.system = box_ground()
-        # self.box = contact_modes.shape.Box2D()
+        self.system = contact_modes.planning_2d_cases.box_to_shelf()
 
         # Initialize renderer.
-        # self.renderer = contact_modes.viewer.OITRenderer(self.window)
         self.renderer = contact_modes.viewer.BasicLightingRenderer(self.window)
         self.renderer.init_opengl()
         self.renderer.set_draw_func(self.draw_scene)
@@ -92,10 +89,6 @@ class Planning2DDemo(contact_modes.viewer.Application):
         view = self.camera.get_view()
         shader.set_mat4('view', np.asarray(view))
 
-        width = self.window.width
-        height = self.window.height
-        aspect_ratio = width/height
-        ortho = glm.ortho(-2*aspect_ratio, 2*aspect_ratio, -2, 2, -100, 100)
         ortho = self.camera.get_projection()
         shader.set_mat4('projection', np.asarray(ortho))
 
@@ -110,10 +103,8 @@ class Planning2DDemo(contact_modes.viewer.Application):
         # ----------------------------------------------------------------------
         # 2. Draw scene
         # ----------------------------------------------------------------------
-        # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         glLineWidth(2)
         self.system.draw(shader)
-        # glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         self.system.collider.draw(shader)
         
