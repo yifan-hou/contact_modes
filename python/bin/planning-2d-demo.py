@@ -31,6 +31,10 @@ class Planning2DDemo(contact_modes.viewer.Application):
         window.set_on_draw(self.draw)
         window.set_on_key_press(self.on_key_press_p2d)
 
+        width = self.window.width
+        height = self.window.height
+        self.camera = contact_modes.viewer.OrthoCamera(width/height)
+
     def init_win_p2d(self):
         super().init_win()
 
@@ -92,6 +96,7 @@ class Planning2DDemo(contact_modes.viewer.Application):
         height = self.window.height
         aspect_ratio = width/height
         ortho = glm.ortho(-2*aspect_ratio, 2*aspect_ratio, -2, 2, -100, 100)
+        ortho = self.camera.get_projection()
         shader.set_mat4('projection', np.asarray(ortho))
 
         # lighting
