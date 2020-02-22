@@ -18,6 +18,7 @@ from contact_modes.planning_2d_cases import *
 from contact_modes.viewer.backend import *
 
 
+
 class Planning2DDemo(contact_modes.viewer.Application):
     def __init__(self):
         super().__init__()
@@ -177,13 +178,13 @@ class Planning2DDemo(contact_modes.viewer.Application):
         if key  == glfw.KEY_S and action == glfw.PRESS:
             g[1] -= 0.05
         if key  == glfw.KEY_A and action == glfw.PRESS:
-            g[0] -= 0.05
+            g[0] -= 0.1
         if key  == glfw.KEY_D and action == glfw.PRESS:
-            g[0] += 0.05
+            g[0] += 0.1
         if key  == glfw.KEY_Q and action == glfw.PRESS:
-            g[2] -= 0.05
+            g[2] -= np.pi/12
         if key  == glfw.KEY_E and action == glfw.PRESS:
-            g[2] += 0.05
+            g[2] += np.pi/12
         self.system.bodies[0].set_pose(g)
         self.system.collider.collide()
 

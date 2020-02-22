@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.spatial import ConvexHull
 
-from contact_modes import SE3, get_color
+# from contact_modes import SE2, SE3, get_color
+import contact_modes as cm
+# from contact_modes import SE2, SE3, get_color
 from contact_modes.viewer.backend import *
 
 from .halfedgemesh import HalfedgeMesh, reorient
@@ -41,7 +43,7 @@ class Polygon2D(Shape2D):
         for i in range(n_verts):
             vertices[0:2,i] = self.vertices[:,i]
             normals[2,i] = 1.0
-            colors[:,i] = get_color('clay')
+            colors[:,i] = cm.get_color('clay')
         vertices = vertices.T.flatten()
         normals = normals.T.flatten()
         colors = colors.T.flatten()
@@ -71,8 +73,8 @@ class Polygon2D(Shape2D):
 
     def draw(self, shader):
         shader.use()
-        rotate = SE3.exp([0, 0, 0, 0, 0, self.q[2]]).matrix()
-        translate = SE3.exp([self.q[0], self.q[1], 0, 0, 0, 0]).matrix()
+        rotate = cm.SE3.exp([0, 0, 0, 0, 0, self.q[2]]).matrix()
+        translate = cm.SE3.exp([self.q[0], self.q[1], 0, 0, 0, 0]).matrix()
         shader.set_mat4('model', (translate @ rotate).T)
 
         glBindVertexArray(self.vao)
@@ -90,3 +92,24 @@ class Box2D(Polygon2D):
         h = height/2
         points = np.array([[w, w, -w, -w], [h, -h, h, -h]], float)
         super(Box2D, self).__init__(points)
+        self.width = width
+        self.height = height
+
+    def closest_point(self, pt):
+        pt = np.array(pt).reshape((2,1))
+        # transform point into body frame
+        x = self.get_pose()
+        g = cm.SE2.exp(x)
+        pt = cm.SE2.transform_point_by_inverse(g, pt)
+        # threshold to find nearest point
+        w = self.width/2
+        h = self.height/2
+        x = pt[0,0]
+        y = pt[1,0]
+        x = x if np.abs(x) <= w else np.sign(x) * w
+        y = y if np.abs(y) <= h else np.sign(y) * h
+        pt[0] = x
+        pt[1] = y
+        # transform point back into world frame
+        pt = cm.SE2.transform_point(g, pt)
+        return pt

@@ -1732,12 +1732,18 @@ static void c2KeepDeep(c2v* seg, c2h h, c2Manifold* m)
 	{
 		c2v p = seg[i];
 		float d = c2Dist(h, p);
+        #if 0
 		if (d <= 0)
 		{
 			m->contact_points[cp] = p;
 			m->depths[cp] = d;
 			++cp;
 		}
+        #else
+        m->contact_points[cp] = p;
+        m->depths[cp] = d;
+        ++cp;
+        #endif
 	}
 	m->count = cp;
 	m->n = h.n;
@@ -1901,19 +1907,27 @@ void c2PolytoPolyManifold(const c2Poly* A, const c2x* ax_ptr, const c2Poly* B, c
 	c2x bx = bx_ptr ? *bx_ptr : c2xIdentity();
 	int ea, eb;
 	float sa, sb;
-	if ((sa = c2CheckFaces(A, ax, B, bx, &ea)) >= 0) return;
-	if ((sb = c2CheckFaces(B, bx, A, ax, &eb)) >= 0) return;
+    sa = c2CheckFaces(A, ax, B, bx, &ea);
+	sb = c2CheckFaces(B, bx, A, ax, &eb);
+
+    // printf("sa: %+0.5f\n", sa);
+    // printf("sb: %+0.5f\n", sb);
+
+	// if ((sa = c2CheckFaces(A, ax, B, bx, &ea)) >= 0) return;
+	// if ((sb = c2CheckFaces(B, bx, A, ax, &eb)) >= 0) return;
 
 	const c2Poly* rp,* ip;
 	c2x rx, ix;
-	int re;
+	int re, ie;
 	float kRelTol = 0.95f, kAbsTol = 0.01f;
 	int flip;
+    // printf("sa * kRelTol > sb + kAbsTol: %+0.5f > %+0.5f\n", sa * kRelTol, sb + kAbsTol);
 	if (sa * kRelTol > sb + kAbsTol)
 	{
 		rp = A; rx = ax;
 		ip = B; ix = bx;
 		re = ea;
+        ie = eb;
 		flip = 0;
 	}
 	else
@@ -1921,14 +1935,43 @@ void c2PolytoPolyManifold(const c2Poly* A, const c2x* ax_ptr, const c2Poly* B, c
 		rp = B; rx = bx;
 		ip = A; ix = ax;
 		re = eb;
+        ie = ea;
 		flip = 1;
 	}
 
 	c2v incident[2];
 	c2Incident(incident, ip, ix, rp, rx, re);
 	c2h rh;
-	if (!c2SidePlanes(incident, rx, rp, re, &rh)) return;
-	c2KeepDeep(incident, rh, m);
+	if (!c2SidePlanes(incident, rx, rp, re, &rh)) {
+        int i_min, r_min;
+        c2v n;
+        double d_min = FLT_MAX;
+        for (int ri = 0; ri < 2; ri++) {
+            const c2v& rv = rp->verts[(re + ri) % rp->count];
+            for (int ii = 0; ii < ip->count; ii++) {
+                const c2v& iv = ip->verts[ii];
+                double d = c2Len(c2Sub(rv, iv));
+                if (d < d_min) {
+                    d_min = d;
+                    r_min = (re + ri) % rp->count;
+                    i_min = ii;
+                    n = c2Sub(iv, rv);
+                    if (c2Len(n) < 1e-5) {
+                        const c2v& n1 = rp->norms[(re + ri) % rp->count];
+                        const c2v& n2 = rp->norms[(re + ri + rp->count - 1) % rp->count];
+                        n = c2Add(n1, n2);
+                    } 
+                    n = c2Norm(n);
+                }
+            }
+        }
+        m->count = 1;
+        m->contact_points[0] = ip->verts[i_min];
+        m->depths[0] = d_min;
+        m->n = n;
+    } else {
+        c2KeepDeep(incident, rh, m);
+    }
 	if (flip) m->n = c2Neg(m->n);
 
     m->flip = flip;

@@ -6,6 +6,7 @@ from .affine import *
 from .lattice import *
 from .util import *
 from .modes_cases import *
+from .se2 import *
 from .se3 import *
 from .so3 import *
 from .exp import *

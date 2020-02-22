@@ -57,17 +57,61 @@ class CollisionManager2D(object):
         for i in range(n_pairs):
             body_A = self.pairs[i][0]
             body_B = self.pairs[i][1]
-            manifold = CollisionManifold2D()
-            V_A = [v for v in body_A.get_collision_shape().vertices.T]
-            V_B = [v for v in body_B.get_collision_shape().vertices.T]
+
+            s_A = body_A.get_shape()
+            c_A = body_A.get_collision_shape()
+
+            s_B = body_B.get_shape()
+            c_B = body_B.get_collision_shape()
+
+            V_A = [v for v in c_A.vertices.T]
+            V_B = [v for v in c_B.vertices.T]
             q_A = body_A.get_pose()
             q_B = body_B.get_pose()
             m = collide_2d(V_A, V_B, q_A, q_B)
-            manifold.pts_A = np.array(m.pts_A).T
-            manifold.pts_B = np.array(m.pts_B).T
-            manifold.normal = np.array(m.normal)
-            manifold.dists = np.array(m.dists)
-            manifolds.append(manifold)
+
+            n_contacts = len(m.dists)
+
+            for k in range(n_contacts):
+                manifold = CollisionManifold2D()
+
+                a = s_A.closest_point(m.pts_A[k])
+                # a = s_B.closest_point(a)
+                # a = s_A.closest_point(a)
+
+                b = s_B.closest_point(m.pts_B[k])
+                # b = s_A.closest_point(b)
+                # b = s_B.closest_point(b)
+
+                # manifold.pts_A = s_A.closest_point(m.pts_A[k])
+                # manifold.pts_B = s_B.closest_point(m.pts_B[k])
+
+                # manifold.pts_A = a
+                # manifold.pts_B = b
+
+                manifold.pts_A = m.pts_A[k].reshape((2,1))
+                manifold.pts_B = m.pts_B[k].reshape((2,1))
+
+                manifold.normal = np.array(m.normal).reshape((2,1))
+                manifold.dists = [m.dists[k]]
+                manifold.shape_A = body_A
+                manifold.shape_B = body_B
+                manifolds.append(manifold)
+                # print(manifold)
+
+            # for j in range(n_contacts):
+            #     manifold.pts_A[:,j,None] = s_A.closest_point(m.pts_A[j])
+            #     manifold.pts_B[:,j,None] = s_B.closest_point(m.pts_B[j])
+            # # manifold.pts_A = np.array(m.pts_A).T
+            # # manifold.pts_B = np.array(m.pts_B).T
+            # manifold.normal = np.array(m.normal)
+            # manifold.dists = np.array(m.dists)
+            # manifold.shape_A = body_A
+            # manifold.shape_B = body_B
+            # manifolds.append(manifold)
+
+            # print(manifold)
+
             # print('A', m.pts_A)
             # print('B', m.pts_B)
             # print('n', m.normal)

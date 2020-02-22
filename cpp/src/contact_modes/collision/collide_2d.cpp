@@ -4,7 +4,8 @@
 #include <math.h>
 #include <iostream>
 
-// int DEBUG=0;
+#define DEBUG
+
 
 Manifold2DPtr collide_2d(const std::vector<Eigen::Vector2d>& verts_A,
                          const std::vector<Eigen::Vector2d>& verts_B,
@@ -39,24 +40,31 @@ Manifold2DPtr collide_2d(const std::vector<Eigen::Vector2d>& verts_A,
     manifold->dists.resize(m.count);
     for (int i = 0; i < m.count; i++) {
         manifold->dists[i] = m.depths[i];
-        if (1) {
+        
+        #ifdef DEBUG
             std::cout << "contact: " << "[" << m.contact_points[i].x << ", " << m.contact_points[i].y << "]" << std::endl;
             std::cout << " normal: " << "[" << m.n.x << ", " << m.n.y << "]" << std::endl;
             std::cout << "  depth: " << m.depths[i] << std::endl;
-        }
+        #endif
 
-        // std::cout << m.depths[i] << std::endl;
         Eigen::Vector2d& a = manifold->pts_A[i];
         Eigen::Vector2d& b = manifold->pts_B[i];
-        a.x() = m.contact_points[i].x;
-        b.x() = m.contact_points[i].x + m.depths[i] * m.n.x;
-        a.y() = m.contact_points[i].y;
-        b.y() = m.contact_points[i].y + m.depths[i] * m.n.y;
 
-        // manifold->pts_A[i].x() = (m.contact_points[i].x- xi_A(0))*cos(xi_A(2)) + (m.contact_points[i].y- xi_A(1))*sin(xi_A(2));
-        // manifold->pts_A[i].y() = (m.contact_points[i].y- xi_A(1))*cos(xi_A(2)) + (-m.contact_points[i].x + xi_A(0))*sin(xi_A(2));
-        // manifold->pts_B[i].x() = (m.contact_points[i].x- xi_B(0))*cos(xi_B(2)) + (m.contact_points[i].y- xi_B(1))*sin(xi_B(2));
-        // manifold->pts_B[i].y() = (m.contact_points[i].y- xi_B(1))*cos(xi_B(2)) + (-m.contact_points[i].x + xi_B(0))*sin(xi_B(2));
+        #ifdef DEBUG
+            std::cout << "   flip: " << m.flip << std::endl;
+        #endif
+
+        if (!m.flip) {
+            b.x() = m.contact_points[i].x;
+            a.x() = m.contact_points[i].x - m.depths[i] * m.n.x;
+            b.y() = m.contact_points[i].y;
+            a.y() = m.contact_points[i].y - m.depths[i] * m.n.y;
+        } else {
+            a.x() = m.contact_points[i].x;
+            b.x() = m.contact_points[i].x + m.depths[i] * m.n.x;
+            a.y() = m.contact_points[i].y;
+            b.y() = m.contact_points[i].y + m.depths[i] * m.n.y;
+        }
     }
     manifold->normal.x() = m.n.x;
     manifold->normal.y() = m.n.y;
