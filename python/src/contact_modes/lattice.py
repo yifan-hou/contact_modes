@@ -119,65 +119,66 @@ class FaceLattice(object):
         for i in range(n_facets):
             V.append(tuple(np.where(M[:,i])[0]))
 
-        # Create lattice.
+        # Create top and bottom elements of lattice.
         L = [dict() for i in range(d+2)]
         L[0][()] = Face((), 
                         -1, 
                         v=[len(F[i]) for i in range(n_verts)], 
                         f=(range(n_facets)))
+        L[d+1][0] = Face(tuple(range(n_verts)), d)
 
         # Main loop.
-        verts = tuple(range(n_verts))
-        for k in range(0, d+1):
-            Q = L[k].values()
+        if d > 0:
+            verts = tuple(range(n_verts))
+            for k in range(0, d+1):
+                Q = L[k].values()
+                for H in Q:
+                    V_H = difference_sorted(verts, H.verts)
+                    color = [0] * n_verts
+                    for v in V_H:
+                        # Closure of H + v in O(n) time, hopefully.
+                        if False:
+                            G_f = intersect_sorted(H.f, F[v])
+                            G_v = H.v.copy()
+                            for w in difference_sorted(H.f, G_f):
+                                for u in V[w]:
+                                    G_v[u] -= 1
+                            G_v_max = np.amax(G_v)
+                            if G_v_max == 0:
+                                continue
+                            G = tuple(np.argwhere(G_v == G_v_max).flatten().tolist())
+                        else:
+                            G_v = []
+                            G_f = ()
+                            G = closure(H.verts + (v,), V, F)
+                        if DEBUG:
+                            G0 = closure(H.verts + (v,), V, F)
+                            print('G', G)
+                            print('G0', G0)
+                            assert(G0 == G)
+                        if len(G) == 0:
+                            continue
+                        color[v] = 1
+                        W = difference_sorted(G, H.verts)
+                        for w in W:
+                            if w == v:
+                                continue
+                            if color[w] >= 0:
+                                color[v] = -1
+                                break
+                        if color[v] == 1:
+                            if not L[k+1].get(G):
+                                if DEBUG:
+                                    assert(H.d + 1 == k)
+                                L[k+1][G] = Face(G, H.d + 1, G_v, G_f)
+                            H.parents.append(L[k+1][G])
+                            L[k+1][G].children.append(H)
+            
+            # Add arcs to P.
+            Q = L[d].values()
             for H in Q:
-                V_H = difference_sorted(verts, H.verts)
-                color = [0] * n_verts
-                for v in V_H:
-                    # Closure of H + v in O(n) time, hopefully.
-                    if False:
-                        G_f = intersect_sorted(H.f, F[v])
-                        G_v = H.v.copy()
-                        for w in difference_sorted(H.f, G_f):
-                            for u in V[w]:
-                                G_v[u] -= 1
-                        G_v_max = np.amax(G_v)
-                        if G_v_max == 0:
-                            continue
-                        G = tuple(np.argwhere(G_v == G_v_max).flatten().tolist())
-                    else:
-                        G_v = []
-                        G_f = ()
-                        G = closure(H.verts + (v,), V, F)
-                    if DEBUG:
-                        G0 = closure(H.verts + (v,), V, F)
-                        print('G', G)
-                        print('G0', G0)
-                        assert(G0 == G)
-                    if len(G) == 0:
-                        continue
-                    color[v] = 1
-                    W = difference_sorted(G, H.verts)
-                    for w in W:
-                        if w == v:
-                            continue
-                        if color[w] >= 0:
-                            color[v] = -1
-                            break
-                    if color[v] == 1:
-                        if not L[k+1].get(G):
-                            if DEBUG:
-                                assert(H.d + 1 == k)
-                            L[k+1][G] = Face(G, H.d + 1, G_v, G_f)
-                        H.parents.append(L[k+1][G])
-                        L[k+1][G].children.append(H)
-        
-        # Add arcs to P.
-        L[d+1][0] = Face(tuple(range(n_verts)), d)
-        Q = L[d].values()
-        for H in Q:
-            H.parents.append(L[d+1][0])
-            L[d+1][0].children.append(H)
+                H.parents.append(L[d+1][0])
+                L[d+1][0].children.append(H)
         
         # Flip lattice to match our convention.
         self.L = [[] for i in range(d+2)]

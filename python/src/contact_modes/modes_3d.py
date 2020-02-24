@@ -342,40 +342,59 @@ def enumerate_contact_separating_3d(A, b):
         print('dual unique')
         print(dual_unique)
 
-    # Compute dual convex hull.
+    # Handle various cases.
     dual = [list(dual_unique[i]) for i in range(len(dual_unique))]
+    if len(dual_unique) == 1:
+        d = 0
+        M = np.array([[]])
+    elif len(dual_unique[0]) == 1:
+        d = 1
+        M = np.zeros((len(dual), 2), int)
+        i_min = np.argmin(np.array(dual).flatten())
+        i_max = np.argmax(np.array(dual).flatten())
+        M[i_min,0] = 1
+        M[i_max,1] = 1
+    else:
+        d = len(dual[0])
 
-    t_start = time()
-    ret = pyhull.qconvex('Fv', dual)
-    info['time conv'] = time() - t_start
+        # Compute dual convex hull.
+        t_start = time()
+        ret = pyhull.qconvex('Fv', dual)
+        info['time conv'] = time() - t_start
+
+        if DEBUG:
+            print(np.array(ret))
+
+        # Build facet-vertex incidence matrix.
+        n_facets = int(ret[0])
+        M = np.zeros((len(dual), n_facets), int)
+        for i in range(1, len(ret)):
+            vert_set = [int(x) for x in ret[i].split(' ')][1:]
+            for v in vert_set:
+                M[v,i-1] = 1
 
     if DEBUG:
         print('dual')
         print(np.array(dual))
-        print(np.array(ret))
 
-    # Build facet-vertex incidence matrix.
-    n_facets = int(ret[0])
-    M = np.zeros((len(dual), n_facets), int)
-    for i in range(1, len(ret)):
-        vert_set = [int(x) for x in ret[i].split(' ')][1:]
-        for v in vert_set:
-            M[v,i-1] = 1
     if DEBUG:
         print('M')
         print(M)
 
     # Build face lattice.
     t_start = time()
-    lattice = FaceLattice(M, len(dual[0]))
+    lattice = FaceLattice(M, d)
     info['time lattice'] = time() - t_start
+
+    # Build mode strings.
+    cs_modes = lattice.csmodes(mask, dual_map)
+
+    if DEBUG:
+        print(cs_modes)
 
     info['# 0 faces'] = lattice.num_k_faces(0)
     info['# d-1 faces'] = lattice.num_k_faces(info['d']-1)
     info['# faces'] = lattice.num_faces()
-
-    # Build mode strings.
-    cs_modes = lattice.csmodes(mask, dual_map)
 
     # Return mode strings.
     return cs_modes, lattice, info
