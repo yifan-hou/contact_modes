@@ -2,13 +2,15 @@
 
 
 Node::Node(int k) {
-    this->_color = 0;
     this->rank = k;
+    this->_color = 0;
     this->_black_bit = 0;
-    this->_sv_key.clear();
+    this->_key.clear();
 }
 
-IncidenceGraph::IncidenceGraph(int d) {
+IncidenceGraph::IncidenceGraph(int d) 
+    : _num_nodes_created(0)
+{
     this->_lattice.resize(d + 3);
     for (int i = 0; i < d + 3; i++) {
         this->_lattice[i].clear();
@@ -16,19 +18,6 @@ IncidenceGraph::IncidenceGraph(int d) {
 }
 
 IncidenceGraph::~IncidenceGraph() {
-    for (int i = 0; i < this->_lattice.size(); i++) {
-        auto iter = this->_lattice[i].begin();
-        auto end = this->_lattice[i].end();
-        while (iter != end) {
-            NodePtr g = iter->second;
-            g->subfaces.clear();
-            g->superfaces.clear();
-            g->_grey_subfaces.clear();
-            g->_black_subfaces.clear();
-            iter++;
-        }
-        this->_lattice[i].clear();
-    }
 }
 
 int IncidenceGraph::dim() {
@@ -39,7 +28,7 @@ int IncidenceGraph::num_incidences() {
     return 0;
 }
 
-void IncidenceGraph::add_halfspace(const Eigen::VectorXd& a, double d) {
+void IncidenceGraph::add_hyperplane(const Eigen::VectorXd& a, double d) {
     int n = this->A.rows();
     int m = this->A.cols();
     Eigen::MatrixXd A(n + 1, m);
@@ -50,37 +39,44 @@ void IncidenceGraph::add_halfspace(const Eigen::VectorXd& a, double d) {
     this->b = b;
 }
 
-void IncidenceGraph::add_node(const NodePtr& node) {
-    this->rank(node->rank).insert({node->_sv_key, node});
+NodePtr IncidenceGraph::make_node(int k) {
+    NodePtr node = std::make_shared<Node>(k);
+    node->_id = this->_num_nodes_created++;
+    node->_graph = shared_from_this();
+    return node;
 }
 
-void IncidenceGraph::remove_node(const NodePtr& node) {
+void IncidenceGraph::add_node(NodePtr node) {
+    this->rank(node->rank).insert({node->_key, node->_id});
+}
+
+void IncidenceGraph::remove_node(NodePtr node) {
     // Remove arcs.
-    for (NodePtr f : node->subfaces) {
-        f->superfaces.erase(node);
+    for (int f_id : node->subfaces) {
+        this->_nodes[f_id]->superfaces.erase(node->_id);
     }
-    for (NodePtr g : node->superfaces) {
-        g->subfaces.erase(node);
+    for (int g_id : node->superfaces) {
+        this->_nodes[g_id]->subfaces.erase(node->_id);
         if (node->_color == COLOR_AH_GREY) {
-            g->_grey_subfaces.erase(node);
+            this->_nodes[g_id]->_grey_subfaces.erase(node->_id);
         }
         if (node->_color == COLOR_AH_BLACK) {
-            g->_black_subfaces.erase(node);
+            this->_nodes[g_id]->_black_subfaces.erase(node->_id);
         }
     }
     // Remove node.
-    this->rank(node->rank).erase(node->_sv_key);
+    this->rank(node->rank).erase(node->_key);
 }
 
-NodePtr IncidenceGraph::get_node(const std::string& sv_key, int k) {
-    auto iter = rank(k).find(sv_key);
+NodePtr IncidenceGraph::get_node(const std::string& key, int k) {
+    auto iter = rank(k).find(key);
     if (iter == rank(k).end()) {
         return nullptr;
     } else {
-        return iter->second;
+        return this->_nodes[iter->second];
     }
 }
 
-std::map<std::string, NodePtr>& IncidenceGraph::rank(int k) {
+Rank& IncidenceGraph::rank(int k) {
     return this->_lattice[k+1];
 }

@@ -32,8 +32,10 @@ int get_sign(NodePtr f, const Eigen::VectorXd& a, double b, double eps) {
 
 void get_vector(NodePtr e, Eigen::VectorXd& v_e) {
     assert(e->rank == 1);
+    IncidenceGraphPtr I = e->_graph;
     v_e.setZero();
-    for (NodePtr u : e->subfaces) {
+    for (int u_id : e->subfaces) {
+        NodePtr u = I->_nodes[u_id];
         v_e += u->interior_point;
     }
     if (e->subfaces.size() == 2) {

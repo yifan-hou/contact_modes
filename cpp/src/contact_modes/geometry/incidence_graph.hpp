@@ -10,6 +10,9 @@
 class Node;
 typedef std::shared_ptr<Node> NodePtr;
 
+class IncidenceGraph;
+typedef std::shared_ptr<IncidenceGraph> IncidenceGraphPtr;
+
 enum {
     COLOR_AH_WHITE   = 0,
     COLOR_AH_PINK    = 1,
@@ -22,30 +25,33 @@ enum {
 
 class Node {
 public:
-    int             rank;
-    Eigen::VectorXd interior_point;
-    Eigen::VectorXi position;
-    std::set<int>   superfaces;
-    std::set<int>   subfaces;
-    int             _id;
-    int             _color;
-    std::set<int>   _grey_subfaces;
-    std::set<int>   _black_subfaces;
-    std::string     _key;
-    bool            _black_bit;
-    bool            _sign_bit_n;
-    bool            _sign_bit;
+    int                 rank;
+    Eigen::VectorXd     interior_point;
+    Eigen::VectorXi     position;
+    std::set<int>       superfaces;
+    std::set<int>       subfaces;
+    int                 _id;
+    int                 _color;
+    std::set<int>       _grey_subfaces;
+    std::set<int>       _black_subfaces;
+    std::string         _key;
+    bool                _black_bit;
+    bool                _sign_bit_n;
+    bool                _sign_bit;
+    IncidenceGraphPtr   _graph;
+
     Node(int k);
 };
 
 typedef std::map<std::string, int> Rank;
 
-class IncidenceGraph {
+class IncidenceGraph : public std::enable_shared_from_this<IncidenceGraph> {
 public:
     Eigen::MatrixXd A;
     Eigen::VectorXd b;
     std::vector<NodePtr> _nodes;
     std::vector<Rank>    _lattice;
+    int                  _num_nodes_created;
 
     IncidenceGraph(int d);
     ~IncidenceGraph();
@@ -59,11 +65,10 @@ public:
 
     void update_positions();
 
-    void    add_node(const NodePtr& node);
-    void remove_node(const NodePtr& node);
-    NodePtr get_node(const std::string& key, int k);
+    NodePtr make_node(int k);
+    void     add_node(NodePtr node);
+    void  remove_node(NodePtr node);
+    NodePtr  get_node(const std::string& key, int k);
 
-    std::map<std::string, NodePtr>& rank(int k);
+    Rank& rank(int k);
 };
-
-typedef std::shared_ptr<IncidenceGraph> IncidenceGraphPtr;
