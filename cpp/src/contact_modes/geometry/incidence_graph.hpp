@@ -22,38 +22,46 @@ enum {
 
 class Node {
 public:
-    // 
-    int rank;
+    int             rank;
     Eigen::VectorXd interior_point;
-    std::set<NodePtr> superfaces;
-    std::set<NodePtr> subfaces;
-    // 
-    int _color;
-    std::set<NodePtr> _grey_subfaces;
-    std::set<NodePtr> _black_subfaces;
-    std::string _sv_key;
-    int _black_bit;
-
+    Eigen::VectorXi position;
+    std::set<int>   superfaces;
+    std::set<int>   subfaces;
+    int             _id;
+    int             _color;
+    std::set<int>   _grey_subfaces;
+    std::set<int>   _black_subfaces;
+    std::string     _key;
+    bool            _black_bit;
+    bool            _sign_bit_n;
+    bool            _sign_bit;
     Node(int k);
 };
 
+typedef std::map<std::string, int> Rank;
+
 class IncidenceGraph {
 public:
-    std::vector<std::map<std::string, NodePtr> > _lattice;
     Eigen::MatrixXd A;
     Eigen::VectorXd b;
+    std::vector<NodePtr> _nodes;
+    std::vector<Rank>    _lattice;
 
     IncidenceGraph(int d);
     ~IncidenceGraph();
 
+    void set_hyperplanes(const Eigen::MatrixXd& A, const Eigen::VectorXd& b);
+    void add_hyperplane (const Eigen::VectorXd& a, double b);
+
     int dim();
+    int num_k_faces();
     int num_incidences();
 
-    void add_halfspace(const Eigen::VectorXd& a, double b);
+    void update_positions();
 
-    void add_node(const NodePtr& node);
+    void    add_node(const NodePtr& node);
     void remove_node(const NodePtr& node);
-    NodePtr get_node(const std::string& sv_key, int k);
+    NodePtr get_node(const std::string& key, int k);
 
     std::map<std::string, NodePtr>& rank(int k);
 };
