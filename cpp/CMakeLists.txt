@@ -45,15 +45,9 @@ if(LINUX)
 
 endif()
 
-find_package(Eigen3 3.3.7 REQUIRED)
+find_package(Eigen3 3.3 REQUIRED)
 find_package(pybind11 REQUIRED)
-# find_package(OpenCL REQUIRED)
-# find_package(ASSIMP REQUIRED)
-
 # find_package(PythonLibs 3.6 REQUIRED)
-
-# find_package(PkgConfig REQUIRED)
-# pkg_search_module(GLFW REQUIRED glfw3)
 
 include_directories(
     $(CONTACT_MODES_SOURCE_DIR)/src
@@ -69,7 +63,7 @@ add_subdirectory(src/contact_modes)
 option(PACKAGE_TESTS "Build tests" ON)
 if(PACKAGE_TESTS)
     enable_testing()
-    # add_subdirectory(test)
+    add_subdirectory(test)
 endif()
 
 # add_subdirectory(apps)

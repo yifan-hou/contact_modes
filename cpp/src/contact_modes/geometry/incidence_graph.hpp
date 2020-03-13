@@ -23,11 +23,20 @@ enum {
     COLOR_AH_GREEN   = 6,
 };
 
+typedef Eigen::VectorXi Position;
+typedef std::vector<Position> Positions;
+typedef std::string SignVector;
+typedef std::vector<SignVector> SignVectors;
+
+int  get_sign(double x, double eps);
+void get_sign(const Eigen::VectorXd& v, Eigen::VectorXi& sv, double eps);
+
 class Node {
 public:
     int                 rank;
     Eigen::VectorXd     interior_point;
-    Eigen::VectorXi     position;
+    Position            position;
+    SignVector          sign_vector;
     std::set<int>       superfaces;
     std::set<int>       subfaces;
     int                 _id;
@@ -41,6 +50,11 @@ public:
     IncidenceGraphPtr   _graph;
 
     Node(int k);
+
+    IncidenceGraphPtr graph() { return _graph; }
+
+    void update_position(double eps);
+    void update_sign_vector(double eps);
 };
 
 typedef std::map<std::string, int> Rank;
@@ -63,8 +77,13 @@ public:
     int num_k_faces();
     int num_incidences();
 
-    void update_positions();
+    void update_positions(double eps);
+    Positions get_positions();
 
+    void update_sign_vectors(double eps);
+    SignVectors get_sign_vectors();
+
+    NodePtr      node(int id) { return _nodes[id]; }
     NodePtr make_node(int k);
     void     add_node(NodePtr node);
     void  remove_node(NodePtr node);

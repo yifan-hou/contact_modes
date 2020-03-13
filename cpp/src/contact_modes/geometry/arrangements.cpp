@@ -4,27 +4,8 @@
 // #define DEBUG
 // #define PROFILE
 
-int DEBUG = 0;
-int PROFILE = 0;
-
-int get_sign(double v, double eps) {
-    assert(eps > 0);
-    if (v > eps) {
-        return 1;
-    } else if (v < -eps) {
-        return -1;
-    } else {
-        return 0;
-    }
-}
-
-void get_sign(const Eigen::VectorXd& v, Eigen::VectorXi& sv, double eps) {
-    eps = abs(eps);
-    sv.resize(v.size());
-    for (int i = 0; i < v.size(); i++) {
-        sv[i] = get_sign(v[i], eps);
-    }
-}
+static int DEBUG=0;
+static int PROFILE=0;
 
 int get_sign(NodePtr f, const Eigen::VectorXd& a, double b, double eps) {
     return get_sign(a.dot(f->interior_point) - b, eps);
@@ -59,10 +40,11 @@ int get_color_vertex(NodePtr v, const Eigen::VectorXd& a, double b, double eps) 
 
 int get_color_edge(NodePtr e, const Eigen::VectorXd& a, double b, double eps) {
     assert(e->rank == 1);
+    IncidenceGraphPtr I = e->_graph;
     if (e->subfaces.size() == 2) {
         auto it = e->subfaces.begin();
-        NodePtr v0 = *it++;
-        NodePtr v1 = *it;
+        NodePtr v0 = I->node(*it++);
+        NodePtr v1 = I->node(*it);
         assert(v0 != v1);
         int s0 = get_sign(v0, a, b, eps);
         int s1 = get_sign(v1, a, b, eps);
@@ -78,7 +60,7 @@ int get_color_edge(NodePtr e, const Eigen::VectorXd& a, double b, double eps) {
             assert(false);
         }
     } else if (e->subfaces.size() == 1) {
-        NodePtr v0 = *e->subfaces.begin();
+        NodePtr v0 = I->node(*e->subfaces.begin());
         int s0 = get_sign(v0, a, b, eps);
         Eigen::VectorXd v_e(e->interior_point.size());
         int s_e = get_sign(a.dot(v_e), eps);
@@ -120,7 +102,7 @@ IncidenceGraphPtr initial_arrangement(
     I->A = A;
     I->b = b;
     // d+1 face
-    NodePtr one = std::make_shared<Node>(d+1);
+    NodePtr one = I->make_node(d+1);
     I->add_node(one);
     // d faces
     int num_d_faces = 1 << d;
@@ -138,21 +120,25 @@ IncidenceGraphPtr initial_arrangement(
             std::cout << sv << std::endl;
         }
         // Create cell.
-        NodePtr f = std::make_shared<Node>(d);
-        f->_sv_key = sv;
-        f->superfaces.insert(one);
-        one->subfaces.insert(f);
+        NodePtr f = I->make_node(d);
+        f->_key = sv;
+        f->superfaces.insert(one->_id);
+        one->subfaces.insert(f->_id);
         I->add_node(f);
     }
     // k faces, 0 <= k <= d-1
     for (int k = d-1; k >= 0; k--) {
-        // std::cout << "k " << k << std::endl;
+        if (DEBUG) {
+            std::cout << "k " << k << std::endl;
+        }
         auto iter = I->rank(k + 1).begin();
-        auto end = I->rank(k + 1).end();
+        auto end  = I->rank(k + 1).end();
         while (iter != end) {
-            NodePtr g = iter->second;
-            // std::cout << "g " << g->_sv_key << std::endl;
-            sv = g->_sv_key;
+            NodePtr g = I->node(iter->second);
+            if (DEBUG) {
+                std::cout << "g " << g->_key << std::endl;
+            }
+            sv = g->_key;
             assert(sv.size() == d);
             for (int i = 0; i < d; i++) {
                 if (sv[i] == '0') {
@@ -162,22 +148,22 @@ IncidenceGraphPtr initial_arrangement(
                 sv[i] = '0';
                 NodePtr f = I->get_node(sv, k);
                 if (!f) {
-                    f = std::make_shared<Node>(k);
-                    f->_sv_key = sv;
+                    f = I->make_node(k);
+                    f->_key = sv;
                     I->add_node(f);
                 }
-                f->superfaces.insert(g);
-                g->subfaces.insert(f);
+                f->superfaces.insert(g->_id);
+                g->subfaces.insert(f->_id);
                 sv[i] = tmp;
             }
             iter++;
         }
     }
     // -1 face
-    NodePtr zero = std::make_shared<Node>(-1);
+    NodePtr zero = I->make_node(-1);
     NodePtr v = I->get_node(std::string(d, '0'), 0);
-    zero->superfaces.insert(v);
-    v->subfaces.insert(zero);
+    zero->superfaces.insert(v->_id);
+    v->subfaces.insert(zero->_id);
     I->add_node(zero);
 
     // Compute interior point for 0 face.
@@ -186,11 +172,13 @@ IncidenceGraphPtr initial_arrangement(
     // Compute interior point for 1 faces.
     {
         auto iter = I->rank(1).begin();
-        auto end = I->rank(1).end();
+        auto  end = I->rank(1).end();
         while (iter != end) {
-            NodePtr e = iter->second;
-            int s0 = e->_sv_key.find('+');
-            int s1 = e->_sv_key.find('-');
+            NodePtr e = I->node(iter->second);
+
+            int s0 = e->_key.find('+');
+            int s1 = e->_key.find('-');
+
             if (s0 >= 0) {
                 e->interior_point = v->interior_point + I->A.row(s0).transpose();
             }
@@ -202,21 +190,17 @@ IncidenceGraphPtr initial_arrangement(
         }
     }
 
-    #ifdef EIGEN_VECTORIZE
-    std::cout << "VECTORIZED" << std::endl;
-    #endif
-
     // Compute interior point for k faces.
     for (int k = 2; k < d + 1; k++) {
         auto iter = I->rank(k).begin();
         auto end = I->rank(k).end();
         
         while (iter != end) {
-            NodePtr f = iter->second;
+            NodePtr f = I->node(iter->second);
             f->interior_point.setZero(d);
             int i = 1;
             for (auto u : f->subfaces) {
-                f->interior_point += u->interior_point;
+                f->interior_point += I->node(u)->interior_point;
             }
             // std::cout << f->subfaces.size() << std::endl;
             f->interior_point /= f->subfaces.size();

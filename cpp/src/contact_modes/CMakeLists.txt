@@ -5,6 +5,8 @@ set(CONTACT_MODES_SOURCE
     # Geometry
     geometry/arrangements.cpp
     geometry/incidence_graph.cpp
+    geometry/linear_algebra.cpp
+
     collision/collide_2d.cpp
 
     # Util

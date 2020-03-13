@@ -30,3 +30,4 @@ endmacro()
 # add_cuda_benchmark(bench_bvh bench_bvh.cu)
 
 add_benchmark(profile_arrangements profile_arrangements.cpp)
+add_benchmark(bench_subspace bench_subspace.cpp)
