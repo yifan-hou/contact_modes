@@ -1,8 +1,10 @@
 #include <contact_modes/geometry/incidence_graph.hpp>
+#include <contact_modes/geometry/linear_algebra.hpp>
 #include <iostream>
 
+static int DEBUG=1;
 
-int get_sign(double v, double eps) {
+int get_position(double v, double eps) {
     assert(eps > 0);
     if (v > eps) {
         return 1;
@@ -13,11 +15,92 @@ int get_sign(double v, double eps) {
     }
 }
 
-void get_sign(const Eigen::VectorXd& v, Eigen::VectorXi& sv, double eps) {
+char get_sign(double v, double eps) {
+    assert(eps > 0);
+    if (v > eps) {
+        return '+';
+    } else if (v < -eps) {
+        return '-';
+    } else {
+        return '0';
+    }
+}
+
+void get_position(const Eigen::VectorXd& v, Eigen::VectorXi& pos, double eps) {
+    eps = abs(eps);
+    pos.resize(v.size());
+    for (int i = 0; i < v.size(); i++) {
+        pos[i] = get_position(v[i], eps);
+    }
+}
+
+Eigen::VectorXi get_position(const Eigen::VectorXd& v, double eps) {
+    Eigen::VectorXi position;
+    get_position(v, position, eps);
+    return position;
+}
+
+void get_sign_vector(const Eigen::VectorXd& v, std::string& sv, double eps) {
     eps = abs(eps);
     sv.resize(v.size());
     for (int i = 0; i < v.size(); i++) {
         sv[i] = get_sign(v[i], eps);
+    }
+}
+
+std::string get_sign_vector(const Eigen::VectorXd& v, double eps) {
+    std::string sv;
+    get_sign_vector(v, sv, eps);
+    return sv;
+}
+
+void arg_where(const std::string& sv, char s, Eigen::VectorXi& idx) {
+    int cnt = 0;
+    for (int i = 0; i < sv.size(); i++) {
+        cnt += sv[i] == s;
+    }
+    idx.resize(cnt);
+    int k = 0;
+    for (int i = 0; i < sv.size(); i++) {
+        if (sv[i] == s) {
+            idx[k++] = i;
+        }
+    }
+}
+
+void arg_equal(const std::string& a, 
+               const std::string& b, 
+               Eigen::VectorXi& idx) 
+{
+    assert(a.size() == b.size());
+    int cnt = 0;
+    for (int i = 0; i < a.size(); i++) {
+        cnt += a[i] == b[i];
+    }
+    idx.resize(cnt);
+    int k = 0;
+    for (int i = 0; i < a.size(); i++) {
+        if (a[i] == b[i]) {
+            idx[k++] = i;
+        }
+    }
+}
+
+void arg_not_equal(const std::string& a, 
+                   const std::string& b, 
+                   Eigen::VectorXi& idx)
+{
+    assert(a.size() == b.size());
+    int cnt = 0;
+    for (int i = 0; i < a.size(); i++) {
+        cnt += a[i] != b[i];
+    }
+    idx.resize(cnt);
+    int k = 0;
+    for (int i = 0; i < a.size(); i++) {
+        if (a[i] != b[i]) {
+            idx[k++] = i;
+        }
     }
 }
 
@@ -28,12 +111,118 @@ Node::Node(int k) {
     this->_key.clear();
 }
 
+void Node::update_interior_point(double eps) {
+    if (this->rank == -1 || this->rank == this->graph()->dim() + 1) {
+        return;
+    }
+
+    // Case: Vertex
+    else if (this->rank == 0) {
+        // Solve linear equations for unique intersection point.
+        Eigen::VectorXi idx;
+        arg_where(this->_key, '0', idx);
+        Eigen::MatrixXd A0;
+        Eigen::VectorXd b0;
+        get_rows(this->graph()->A, idx, A0);
+        get_rows(this->graph()->b, idx, b0);
+        Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr;
+        qr.setThreshold(eps);
+        qr.compute(A0);
+        this->interior_point = qr.solve(b0);
+    } 
+
+    // Case: Edge
+    else if (this->rank == 1) {
+
+        // Case: 2 vertices: Average interior points of vertices.
+        if (this->subfaces.size() == 2) {
+            auto iter = this->subfaces.begin();
+            int i0 = *iter++;
+            int i1 = *iter;
+            NodePtr v0 = this->graph()->node(i0);
+            NodePtr v1 = this->graph()->node(i1);
+            this->interior_point = (v0->interior_point + v1->interior_point) / 2.0;
+        } 
+
+        // Case: 1 vertex: Pick an interior point along the unbounded edge
+        // (ray).
+        else if (this->subfaces.size() == 1) {
+            // Get vertex.
+            NodePtr v = this->graph()->node(*this->subfaces.begin());
+            // Get edge key up to vertex key length.
+            std::string e_sv = this->_key.substr(0, v->_key.size());
+            if (DEBUG) {
+                assert(v->_key.size() <= this->_key.size());
+            }
+            // Compute edge direction.
+            Eigen::VectorXi id0;
+            arg_where(this->_key, '0', id0);
+            Eigen::MatrixXd A0 = get_rows(this->graph()->A, id0);
+            Eigen::MatrixXd kernel = kernel_basis(A0, eps);
+            if (DEBUG) {
+                assert(kernel.cols() == 1);
+            }
+            // Get vertex key.
+            std::string v_sv = v->_key;
+            if (DEBUG) {
+                // std::cout << e_sv << std::endl;
+                // std::cout << v_sv << std::endl;
+            }
+            // Find an index where edge and vertex keys disagree.
+            Eigen::VectorXi idx;
+            arg_not_equal(e_sv, v_sv, idx);
+            int i = idx[0];
+            if (DEBUG) {
+                assert(e_sv[i] != '0');
+                assert(v_sv[i] == '0');
+            }
+            // Determine ray direction.
+            Eigen::MatrixXd A_i = this->graph()->A.row(i);
+            Eigen::VectorXd b_i = this->graph()->b.row(i);
+            double dot = (A_i * (v->interior_point + kernel) - b_i).sum();
+            double sgn = e_sv[i] == '+' ? 1 : -1;
+            if (dot * sgn > 0) {
+                this->interior_point = v->interior_point + kernel;
+            } else {
+                this->interior_point = v->interior_point - kernel;
+            }
+        } else {
+            assert(false);
+        }
+    } 
+
+    // Case: k-face with k >= 2: Average interior points of vertices.
+    else {
+        this->interior_point.resize(this->graph()->A.cols());
+        this->interior_point.setZero();
+        auto iter = this->subfaces.begin();
+        auto  end = this->subfaces.end();
+        while (iter != end) {
+            int idx = *iter++;
+            NodePtr f = this->graph()->node(idx);
+            this->interior_point += f->interior_point;
+        }
+        this->interior_point /= this->subfaces.size();
+    }
+    if (DEBUG) {
+        // Assert sign vector matches key.
+        this->update_sign_vector(eps);
+        bool match = this->_key == this->sign_vector.substr(0, this->_key.size());
+        if (!match) {
+            std::cout << "rank: " << this->rank << "\n"
+                      << " key: " << this->_key << "\n"
+                      << "  sv: " << this->sign_vector << std::endl;
+        }
+        assert(match);
+    }
+}
+
 void Node::update_position(double eps) {
     if (this->rank == -1 || this->rank == this->_graph->dim() + 1) {
         return;
     } else {
         Eigen::VectorXd res = _graph->A * this->interior_point - _graph->b;
-        get_sign(res, this->position, eps);
+        get_position(res, this->position, eps);
     }
     // if (DEBUG) {
     //     std::cout << "rank: " << this->rank << std::endl;

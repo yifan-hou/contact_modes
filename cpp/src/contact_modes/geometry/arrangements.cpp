@@ -1,12 +1,12 @@
 #include <contact_modes/geometry/arrangements.hpp>
+#include <chrono>
 #include <iostream>
 
-// #define DEBUG
-// #define PROFILE
 
 static int DEBUG=0;
-static int PROFILE=0;
+static int PROFILE=1;
 
+// TODO Replace me
 int get_sign(NodePtr f, const Eigen::VectorXd& a, double b, double eps) {
     return get_sign(a.dot(f->interior_point) - b, eps);
 }
@@ -87,6 +87,14 @@ IncidenceGraphPtr initial_arrangement(
     const Eigen::MatrixXd& A, 
     const Eigen::VectorXd& b, 
     double eps) {
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> start;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_total;
+    if (PROFILE) {
+        start = std::chrono::high_resolution_clock::now();
+        start_total = std::chrono::high_resolution_clock::now();
+    }
+    
     // Assert we are given d linearly independent hyperplanes.
     int n = A.rows();
     int d = A.cols();
@@ -96,6 +104,16 @@ IncidenceGraphPtr initial_arrangement(
         std::cout << "rank(A) " << qr.rank() << std::endl;
     }
     assert(qr.rank() == d);
+
+    if (PROFILE) {
+        auto end = std::chrono::high_resolution_clock::now();
+        std::cout << "  init: " << n << "x" << n << std::endl;
+        std::cout << "  rank: " << 
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
+        << " ms" << std::endl;
+
+        start = std::chrono::high_resolution_clock::now();
+    }
 
     // Build faces from top to bottom.
     IncidenceGraphPtr I = std::make_shared<IncidenceGraph>(d);
@@ -166,8 +184,17 @@ IncidenceGraphPtr initial_arrangement(
     v->subfaces.insert(zero->_id);
     I->add_node(zero);
 
+    if (PROFILE) {
+        auto end = std::chrono::high_resolution_clock::now();
+        std::cout << " faces: " << 
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
+        << " ms" << std::endl;
+
+        start = std::chrono::high_resolution_clock::now();
+    }
+    
     // Compute interior point for 0 face.
-    v->interior_point = qr.solve(b);
+    v->update_interior_point(eps);
 
     // Compute interior point for 1 faces.
     {
@@ -175,17 +202,7 @@ IncidenceGraphPtr initial_arrangement(
         auto  end = I->rank(1).end();
         while (iter != end) {
             NodePtr e = I->node(iter->second);
-
-            int s0 = e->_key.find('+');
-            int s1 = e->_key.find('-');
-
-            if (s0 >= 0) {
-                e->interior_point = v->interior_point + I->A.row(s0).transpose();
-            }
-            if (s1 >= 0) {
-                e->interior_point = v->interior_point - I->A.row(s1).transpose();
-            }
-            assert((s0+1)*(s1+1) == 0);
+            e->update_interior_point(eps);
             iter++;
         }
     }
@@ -194,25 +211,29 @@ IncidenceGraphPtr initial_arrangement(
     for (int k = 2; k < d + 1; k++) {
         auto iter = I->rank(k).begin();
         auto end = I->rank(k).end();
-        
         while (iter != end) {
             NodePtr f = I->node(iter->second);
-            f->interior_point.setZero(d);
-            int i = 1;
-            for (auto u : f->subfaces) {
-                f->interior_point += I->node(u)->interior_point;
-            }
-            // std::cout << f->subfaces.size() << std::endl;
-            f->interior_point /= f->subfaces.size();
+            f->update_interior_point(eps);
             iter++;
         }
+    }
+
+    if (PROFILE) {
+        auto end = std::chrono::high_resolution_clock::now();
+        std::cout << "int pt: " << 
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
+        << " ms" << std::endl;
+
+        std::cout << " total: " << 
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start_total).count() / 1e6
+        << " ms" << std::endl;
     }
 
     return I;
 }
 
-void increment_arrangement(
-    const Eigen::VectorXd& a, double b, 
-    IncidenceGraphPtr I, double eps) {
+void increment_arrangement(const Eigen::VectorXd& a, double b, 
+                           IncidenceGraphPtr I, double eps) {
     // 
+    
 }

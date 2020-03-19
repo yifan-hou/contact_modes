@@ -31,7 +31,7 @@ if(LINUX)
     # Debug configuration
     if(BUILD_DEBUG)
         set(CMAKE_BUILD_TYPE Debug)
-        # set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g")
     else(BUILD_DEBUG)
         set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -O3")
         set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fopenmp")

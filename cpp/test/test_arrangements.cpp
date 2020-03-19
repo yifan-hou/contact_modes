@@ -4,15 +4,15 @@
 
 
 TEST(ARRANGEMENTS, INITIAL) {
-    int n = 4;
-    int d = 4;
-    Eigen::MatrixXd A(n,d);
-    Eigen::VectorXd b(n);
-    A.setRandom();
-    b.setRandom();
+    for (int n = 1; n < 10; n++) {
+        Eigen::MatrixXd A(n,n);
+        Eigen::VectorXd b(n);
+        A.setRandom();
+        b.setRandom();
 
-    IncidenceGraphPtr I = initial_arrangement(A, b, 1e-8);
-    I->update_sign_vectors(1e-8);
+        IncidenceGraphPtr I = initial_arrangement(A, b, 1e-8);
+        I->update_sign_vectors(1e-8);
+    }
 }
 
 int main(int argc, char **argv) {

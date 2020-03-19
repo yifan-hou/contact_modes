@@ -31,3 +31,4 @@ endmacro()
 
 add_benchmark(profile_arrangements profile_arrangements.cpp)
 add_benchmark(bench_subspace bench_subspace.cpp)
+add_benchmark(bench_arrangements bench_arrangements.cpp)

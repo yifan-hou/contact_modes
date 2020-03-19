@@ -3,11 +3,10 @@
 
 static int DEBUG=0;
 
-void get_rows(
-    const Eigen::MatrixXd& A, 
-    const Eigen::VectorXi& idx, 
-    Eigen::MatrixXd& out) {
-    // 
+void get_rows(const Eigen::MatrixXd& A, 
+              const Eigen::VectorXi& idx, 
+              Eigen::MatrixXd& out)
+{
     int n = idx.size();
     int c = A.cols();
     out.resize(n, c);
@@ -16,17 +15,45 @@ void get_rows(
     }
 }
 
-void get_cols(
-    const Eigen::MatrixXd& A, 
-    const Eigen::VectorXi& idx, 
-    Eigen::MatrixXd& out) {
-    // 
+void get_cols(const Eigen::MatrixXd& A, 
+              const Eigen::VectorXi& idx, 
+              Eigen::MatrixXd& out)
+{
     int n = idx.size();
     int r = A.rows();
     out.resize(r, n);
     for (int i = 0; i < n; i++) {
         out.col(i) = A.col(idx[i]);
     }
+}
+
+Eigen::MatrixXd get_rows(const Eigen::MatrixXd& A, const Eigen::VectorXi& idx) {
+    Eigen::MatrixXd out;
+    get_rows(A, idx, out);
+    return out;
+}
+
+Eigen::MatrixXd get_cols(const Eigen::MatrixXd& A, const Eigen::VectorXi& idx) {
+    Eigen::MatrixXd out;
+    get_cols(A, idx, out);
+    return out;
+}
+
+void get_rows(const Eigen::VectorXd& A, 
+              const Eigen::VectorXi& idx, 
+              Eigen::VectorXd& out)
+{
+    int n = idx.size();
+    out.resize(n);
+    for (int i = 0; i < n; i++) {
+        out[i] = A[idx[i]];
+    }
+}
+
+Eigen::VectorXd get_rows(const Eigen::VectorXd& A, const Eigen::VectorXi& idx) {
+    Eigen::VectorXd out;
+    get_rows(A, idx, out);
+    return out;
 }
 
 void image_basis(const Eigen::MatrixXd& A, Eigen::MatrixXd& image, double eps) {

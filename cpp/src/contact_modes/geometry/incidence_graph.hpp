@@ -28,8 +28,17 @@ typedef std::vector<Position> Positions;
 typedef std::string SignVector;
 typedef std::vector<SignVector> SignVectors;
 
-int  get_sign(double x, double eps);
-void get_sign(const Eigen::VectorXd& v, Eigen::VectorXi& sv, double eps);
+int  get_position(double x, double eps);
+char get_sign(double x, double eps);
+void get_position(const Eigen::VectorXd& v, Eigen::VectorXi& pos, double eps);
+Eigen::VectorXi get_position(const Eigen::VectorXd& v, double eps);
+void get_sign_vector(const Eigen::VectorXd& v, std::string& sv, double eps);
+std::string get_sign_vector(const Eigen::VectorXd& v, double eps);
+void arg_where(const std::string& sv, char s, Eigen::VectorXi& idx);
+void arg_equal(const std::string& a, const std::string& b, Eigen::VectorXi& idx);
+void arg_not_equal(const std::string& a, const std::string& b, Eigen::VectorXi& idx);
+// bool less_than(const Eigen::VectorXi& a, const Eigen::VectorXi& b);
+// bool less_than(const std::string& a, const std::string& b);
 
 class Node {
 public:
@@ -53,6 +62,7 @@ public:
 
     IncidenceGraphPtr graph() { return _graph; }
 
+    void update_interior_point(double eps);
     void update_position(double eps);
     void update_sign_vector(double eps);
 };
