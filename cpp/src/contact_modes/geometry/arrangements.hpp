@@ -6,5 +6,5 @@ IncidenceGraphPtr initial_arrangement(const Eigen::MatrixXd& A,
                                       const Eigen::VectorXd& b, 
                                       double eps);
 
-void increment_arrangement(const Eigen::VectorXd& a, double b, 
+void increment_arrangement(Eigen::VectorXd a, double b, 
                            IncidenceGraphPtr I, double eps);

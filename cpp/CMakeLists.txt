@@ -10,7 +10,7 @@ if(LINUX)
   # GCC configuration
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 
-    set(GCC_CXX_FLAGS "-std=c++17 -fPIC -march=native") #-m64
+    set(GCC_CXX_FLAGS "-std=c++17 -fPIC -march=native -fno-omit-frame-pointer") #-m64
 
     # X11 Dependencies
     # if(NOT BUILD_LIBCMU462)
@@ -31,10 +31,10 @@ if(LINUX)
     # Debug configuration
     if(BUILD_DEBUG)
         set(CMAKE_BUILD_TYPE Debug)
-        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -O3")
     else(BUILD_DEBUG)
-        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -O3")
-        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fopenmp")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -O2 -fno-omit-frame-pointer")
+        # set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fopenmp")
     endif(BUILD_DEBUG)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_CXX_FLAGS} ")

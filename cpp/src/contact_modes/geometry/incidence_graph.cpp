@@ -2,7 +2,20 @@
 #include <contact_modes/geometry/linear_algebra.hpp>
 #include <iostream>
 
-static int DEBUG=1;
+static int DEBUG=0;
+
+std::string get_color_ah_string(int color) {
+    switch (color) {
+        case COLOR_AH_WHITE:    return "WHITE";
+        case COLOR_AH_PINK:     return "PINK";
+        case COLOR_AH_RED:      return "RED";
+        case COLOR_AH_CRIMSON:  return "CRIMSON";
+        case COLOR_AH_GREY:     return "GREY";
+        case COLOR_AH_BLACK:    return "BLACK";
+        case COLOR_AH_GREEN:    return "GREEN";
+        default:                return "INVALID";
+    }
+}
 
 int get_position(double v, double eps) {
     assert(eps > 0);
@@ -106,9 +119,20 @@ void arg_not_equal(const std::string& a,
 
 Node::Node(int k) {
     this->rank = k;
-    this->_color = 0;
-    this->_black_bit = 0;
+    this->interior_point.resize(0);
+    this->position.resize(0);
+    this->sign_vector.clear();
+    this->subfaces.clear();
+    this->superfaces.clear();
+    this->_id = 0;
+    this->_color = COLOR_AH_WHITE;
+    this->_grey_subfaces.clear();
+    this->_black_subfaces.clear();
     this->_key.clear();
+    this->_black_bit = false;
+    this->_sign_bit_n = 0;
+    this->_sign_bit = 0;
+    this->_graph = nullptr;
 }
 
 void Node::update_interior_point(double eps) {
@@ -189,7 +213,7 @@ void Node::update_interior_point(double eps) {
         } else {
             assert(false);
         }
-    } 
+    }
 
     // Case: k-face with k >= 2: Average interior points of vertices.
     else {
@@ -199,7 +223,7 @@ void Node::update_interior_point(double eps) {
         auto  end = this->subfaces.end();
         while (iter != end) {
             int idx = *iter++;
-            NodePtr f = this->graph()->node(idx);
+            NodePtr f = _graph->node(idx);
             this->interior_point += f->interior_point;
         }
         this->interior_point /= this->subfaces.size();
@@ -277,6 +301,12 @@ void IncidenceGraph::add_hyperplane(const Eigen::VectorXd& a, double d) {
     b << this->b, d;
     this->A = A;
     this->b = b;
+    // if (DEBUG) {
+    //     std::cout << "a\n" << a << std::endl;
+    //     std::cout << "A\n" << this->A << std::endl;
+    //     std::cout << "b\n" << d << std::endl;
+    //     std::cout << "b\n" << this->b << std::endl;
+    // }
 }
 
 void IncidenceGraph::update_positions(double eps) {

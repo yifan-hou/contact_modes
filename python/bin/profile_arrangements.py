@@ -8,7 +8,7 @@ import contact_modes._contact_modes as _cm
 np.set_printoptions(suppress=True, precision=5, linewidth=250, sign=' ')
 np.random.seed(0)
 
-d = 5
+d = 11
 
 A = np.eye(d)
 b = np.zeros((d,1))
@@ -28,7 +28,7 @@ print('initial', time() - t_start)
 # for i in range(3, 15):
 #     print(i, num_incidences_simple(i))
 
-for i in range(20):
+for i in range(1):
 
     a = np.random.rand(1,d)
     b = np.random.rand(1,1)

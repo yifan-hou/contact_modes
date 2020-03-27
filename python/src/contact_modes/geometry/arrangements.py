@@ -301,6 +301,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
             for g in f.superfaces:
                 if g.color != COLOR_AH_WHITE and g.color != COLOR_AH_GREEN:
                     continue
+
                 if f.color == COLOR_AH_PINK:
                     if DEBUG and k == d:
                         # print('f  ', f._sv_key.astype(float))
@@ -330,8 +331,10 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                         g.color = COLOR_AH_RED
                     else:
                         g.color = COLOR_AH_PINK
+                
                 elif f.color == COLOR_AH_RED:
                     g.color = COLOR_AH_RED
+
                 elif f.color == COLOR_AH_CRIMSON:
                     crimson = True
                     for f_g in g.subfaces:
@@ -342,6 +345,7 @@ def increment_arrangement(a, b, I, eps=np.finfo(np.float32).eps):
                         g.color = COLOR_AH_CRIMSON
                     else:
                         g.color = COLOR_AH_PINK
+                
                 else:
                     # print('f sv', f._sv_key.astype(float))
                     # print('f rank', f.rank)

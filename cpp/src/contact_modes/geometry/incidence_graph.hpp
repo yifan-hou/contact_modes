@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <unordered_set>
 #include <string>
 
 
@@ -14,14 +15,16 @@ class IncidenceGraph;
 typedef std::shared_ptr<IncidenceGraph> IncidenceGraphPtr;
 
 enum {
-    COLOR_AH_WHITE   = 0,
-    COLOR_AH_PINK    = 1,
-    COLOR_AH_RED     = 2,
-    COLOR_AH_CRIMSON = 3,
-    COLOR_AH_GREY    = 4,
-    COLOR_AH_BLACK   = 5,
-    COLOR_AH_GREEN   = 6,
+    COLOR_AH_WHITE   = 0,   // if cl(f) ∩ h = ∅
+    COLOR_AH_PINK    = 1,   // if cl(f) ∩ h ≠ ∅, f ∩ h = ∅
+    COLOR_AH_RED     = 2,   // if f ∩ h ≠ ∅, f ⊈ h
+    COLOR_AH_CRIMSON = 3,   // if f ⊆ h
+    COLOR_AH_GREY    = 4,   // if cl(f) ∩ h ≠ ∅, f ∩ h = ∅
+    COLOR_AH_BLACK   = 5,   // if f ⊆ h
+    COLOR_AH_GREEN   = 6,   // if some subface is non-white
 };
+
+std::string get_color_ah_string(int color);
 
 typedef Eigen::VectorXi Position;
 typedef std::vector<Position> Positions;
@@ -54,8 +57,8 @@ public:
     std::set<int>       _black_subfaces;
     std::string         _key;
     bool                _black_bit;
-    bool                _sign_bit_n;
-    bool                _sign_bit;
+    int                 _sign_bit_n;
+    int                 _sign_bit;
     IncidenceGraphPtr   _graph;
 
     Node(int k);
