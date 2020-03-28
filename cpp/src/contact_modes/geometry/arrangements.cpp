@@ -104,7 +104,7 @@ IncidenceGraphPtr initial_arrangement(
     assert(n == d);
     Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr(A);
     if (DEBUG) {
-        std::cout << "rank(A) " << qr.rank() << std::endl;
+        // std::cout << "rank(A) " << qr.rank() << std::endl;
     }
     assert(qr.rank() == d);
 
@@ -138,7 +138,7 @@ IncidenceGraphPtr initial_arrangement(
             }
         }
         if (DEBUG) {
-            std::cout << sv << std::endl;
+            // std::cout << sv << std::endl;
         }
         // Create cell.
         NodePtr f = I->make_node(d);
@@ -150,14 +150,14 @@ IncidenceGraphPtr initial_arrangement(
     // k faces, 0 <= k <= d-1
     for (int k = d-1; k >= 0; k--) {
         if (DEBUG) {
-            std::cout << "k " << k << std::endl;
+            // std::cout << "k " << k << std::endl;
         }
         auto iter = I->rank(k + 1).begin();
         auto end  = I->rank(k + 1).end();
         while (iter != end) {
             NodePtr g = I->node(iter->second);
             if (DEBUG) {
-                std::cout << "g " << g->_key << std::endl;
+                // std::cout << "g " << g->_key << std::endl;
             }
             sv = g->_key;
             assert(sv.size() == d);
