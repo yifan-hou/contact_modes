@@ -53,8 +53,10 @@ public:
     std::set<int>       subfaces;
     int                 _id;
     int                 _color;
-    std::set<int>       _grey_subfaces;
-    std::set<int>       _black_subfaces;
+    // std::set<int>       _grey_subfaces;
+    // std::set<int>       _black_subfaces;
+    std::vector<int>    _grey_subfaces;
+    std::vector<int>    _black_subfaces;
     std::string         _key;
     bool                _black_bit;
     int                 _sign_bit_n;

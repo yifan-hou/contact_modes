@@ -145,6 +145,9 @@ void Node::update_interior_point(double eps) {
         // Solve linear equations for unique intersection point.
         Eigen::VectorXi idx;
         arg_where(this->_key, '0', idx);
+        if (DEBUG) {
+            assert(idx.size() == _graph->A.cols());
+        }
         Eigen::MatrixXd A0;
         Eigen::VectorXd b0;
         get_rows(this->graph()->A, idx, A0);
@@ -166,7 +169,7 @@ void Node::update_interior_point(double eps) {
             NodePtr v0 = this->graph()->node(i0);
             NodePtr v1 = this->graph()->node(i1);
             this->interior_point = (v0->interior_point + v1->interior_point) / 2.0;
-        } 
+        }
 
         // Case: 1 vertex: Pick an interior point along the unbounded edge
         // (ray).
@@ -359,12 +362,23 @@ void IncidenceGraph::remove_node(NodePtr node) {
         this->_nodes[f_id]->superfaces.erase(node->_id);
     }
     for (int g_id : node->superfaces) {
-        this->_nodes[g_id]->subfaces.erase(node->_id);
-        if (node->_color == COLOR_AH_GREY) {
-            this->_nodes[g_id]->_grey_subfaces.erase(node->_id);
-        }
-        if (node->_color == COLOR_AH_BLACK) {
-            this->_nodes[g_id]->_black_subfaces.erase(node->_id);
+        NodePtr& g = this->_nodes[g_id];
+        int r = g->subfaces.erase(node->_id);
+        // Check that we never have to remove g/f from its parents grey or black
+        // subface vectors. Only relevant during a call to increment_arrangement
+        if (DEBUG) {
+            if (r > 0) {
+                if (node->_color == COLOR_AH_GREY) {
+                    const std::vector<int>& grey = g->_grey_subfaces;
+                    int c = std::count(grey.begin(), grey.end(), node->_id);
+                    assert(c == 0);
+                }
+                else if (node->_color == COLOR_AH_BLACK) {
+                    const std::vector<int>& black = g->_black_subfaces;
+                    int c = std::count(black.begin(), black.end(), node->_id);
+                    assert(c == 0);
+                }
+            }
         }
     }
     // Remove node.

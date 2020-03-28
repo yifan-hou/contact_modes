@@ -250,7 +250,8 @@ void increment_arrangement(Eigen::VectorXd a, double b,
     std::chrono::time_point<std::chrono::high_resolution_clock> start;
     std::chrono::time_point<std::chrono::high_resolution_clock> start_total;
     if (PROFILE) {
-        std::cout << "phase 1" << std::endl;
+        std::cout << "   incr: " << I->A.rows() << "x" << I->A.cols() << std::endl;
+        std::cout << "phase 1: " << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
     int n = I->A.rows();
@@ -332,10 +333,10 @@ void increment_arrangement(Eigen::VectorXd a, double b,
 
     if (PROFILE) {
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
+        std::cout << "  total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
         << " ms" << std::endl;
         start = std::chrono::high_resolution_clock::now();
-        std::cout << "phase 2" << std::endl;
+        std::cout << "phase 2: " << std::endl;
     }
     // Add some 2 face incident upon e₀ to Q and mark it green.
     NodePtr f = I->node(*e0->superfaces.begin());
@@ -455,10 +456,10 @@ void increment_arrangement(Eigen::VectorXd a, double b,
 
     if (PROFILE) {
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
+        std::cout << "  total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
         << " ms" << std::endl;
         start = std::chrono::high_resolution_clock::now();
-        std::cout << "phase 3" << std::endl;
+        std::cout << "phase 3:" << std::endl;
     }
 
     for (int k = 0; k < d + 1; k++) {
@@ -472,7 +473,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 // Add to grey subfaces of superfaces.
                 for (int i_u : g->superfaces) {
                     NodePtr u = I->node(i_u);
-                    u->_grey_subfaces.insert(g->_id);
+                    u->_grey_subfaces.push_back(g->_id);
                 }
                 break; }
 
@@ -481,7 +482,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 // Add to black subfaces of superfaces.
                 for (int i_u : g->superfaces) {
                     NodePtr u = I->node(i_u);
-                    u->_black_subfaces.insert(g->_id);
+                    u->_black_subfaces.push_back(g->_id);
                 }
                 break; }
                 
@@ -536,8 +537,8 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     g_b->superfaces.insert(r->_id);
                     r->subfaces.insert(g_a->_id);
                     r->subfaces.insert(g_b->_id);
-                    r->_grey_subfaces.insert(g_a->_id);
-                    r->_grey_subfaces.insert(g_b->_id);
+                    r->_grey_subfaces.push_back(g_a->_id);
+                    r->_grey_subfaces.push_back(g_b->_id);
                 }
 
                 if (PROFILE) {
@@ -567,13 +568,13 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     if (s == 1) {
                         g_a->subfaces.insert(u->_id);
                         if (u->_color == COLOR_AH_GREY) {
-                            g_a->_grey_subfaces.insert(u->_id);
+                            g_a->_grey_subfaces.push_back(u->_id);
                         }
                         u->superfaces.insert(g_a->_id);
                     } else if (s == -1) {
                         g_b->subfaces.insert(u->_id);
                         if (u->_color == COLOR_AH_GREY) {
-                            g_b->_grey_subfaces.insert(u->_id);
+                            g_b->_grey_subfaces.push_back(u->_id);
                         }
                         u->superfaces.insert(g_b->_id);
                     } else {
@@ -649,7 +650,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
 
     if (PROFILE) {
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
+        std::cout << "  total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
         << " ms" << std::endl;
         start = std::chrono::high_resolution_clock::now();
     }
