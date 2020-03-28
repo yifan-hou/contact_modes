@@ -65,6 +65,7 @@ int get_color_edge(NodePtr e, const Eigen::VectorXd& a, double b, double eps) {
         NodePtr v0 = I->node(*e->subfaces.begin());
         int s0 = get_position(v0, a, b, eps);
         Eigen::VectorXd v_e(e->interior_point.size());
+        get_vector(e, v_e);
         int s_e = get_position(a.dot(v_e), eps);
         if (s0 == 0 && s_e == 0) {
             return COLOR_AH_CRIMSON;
