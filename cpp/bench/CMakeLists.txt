@@ -1,4 +1,4 @@
-set(CMAKE_EXE_LINKER_FLAGS "-Wl,-no-as-needed ")
+# set(CMAKE_EXE_LINKER_FLAGS "-Wl,-no-as-needed -pg")
 
 macro(add_benchmark TESTNAME)
 add_executable(${TESTNAME} ${ARGN})

@@ -8,7 +8,7 @@ int main() {
     srand(0);
 
     // // Benchmark initial arrangements.
-    // for (int n = 5; n < 10; n++) {
+    // for (int n = 5; n < 14; n++) {
     //     Eigen::MatrixXd A(n,n);
     //     Eigen::VectorXd b(n);
 
@@ -20,7 +20,7 @@ int main() {
     // }
 
     // Benchmark increment arrangements.
-    for (int j = 0; j < 10; j++)
+    for (int j = 0; j < 1; j++)
     {
         srand(0);
 

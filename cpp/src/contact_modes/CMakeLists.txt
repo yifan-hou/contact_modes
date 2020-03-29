@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.2)
 
+# set(CMAKE_SHARED_LINKER_FLAGS "-pg")
+
 # Source files.
 set(CONTACT_MODES_SOURCE
     # Geometry
@@ -31,3 +33,4 @@ set_target_properties(_contact_modes
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../python/src/contact_modes"
     )
+

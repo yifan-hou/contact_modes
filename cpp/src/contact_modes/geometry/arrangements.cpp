@@ -144,7 +144,7 @@ IncidenceGraphPtr initial_arrangement(
         NodePtr f = I->make_node(d);
         f->_key = sv;
         f->superfaces.insert(one->_id);
-        one->subfaces.insert(f->_id);
+        one->subfaces.push_back(f->_id);
         I->add_node(f);
     }
     // k faces, 0 <= k <= d-1
@@ -174,7 +174,7 @@ IncidenceGraphPtr initial_arrangement(
                     I->add_node(f);
                 }
                 f->superfaces.insert(g->_id);
-                g->subfaces.insert(f->_id);
+                g->subfaces.push_back(f->_id);
                 sv[i] = tmp;
             }
             iter++;
@@ -184,7 +184,7 @@ IncidenceGraphPtr initial_arrangement(
     NodePtr zero = I->make_node(-1);
     NodePtr v = I->get_node(std::string(d, '0'), 0);
     zero->superfaces.insert(v->_id);
-    v->subfaces.insert(zero->_id);
+    v->subfaces.push_back(zero->_id);
     I->add_node(zero);
 
     if (PROFILE) {
@@ -454,6 +454,16 @@ void increment_arrangement(Eigen::VectorXd a, double b,
     // Phase 3: Update all marked faces.
     // =========================================================================
 
+    double time_step_1 = 0;
+    double time_step_2 = 0;
+    double time_step_3 = 0, time_step_3_copy = 0, time_step_3_ins = 0;
+    double time_step_4 = 0;
+    double time_step_5 = 0;
+    double time_step_6 = 0;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_step;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_1;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_2;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_3;
     if (PROFILE) {
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "  total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
@@ -487,28 +497,32 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 break; }
                 
                 case COLOR_AH_RED: {
+
+                if (PROFILE) {
+                    start_step = std::chrono::high_resolution_clock::now();
+                }
                 // Step 1. Create g_a = g ∩ h⁺ and g_b = g ∩ h⁻. Remove g from
                 // 𝓐(H) and Lₖ and replace with g_a, g_b.
                 g->update_sign_vector(eps);
-                NodePtr g_a = std::make_shared<Node>(k);
+                I->remove_node(g);              // Remove g and re-add as g_a with new key.
+                NodePtr g_a = g;
                 g_a->_color = COLOR_AH_GREY;
                 g_a->_key = g->sign_vector;
                 g_a->_key.back() = '+';
-                g_a->_id = g->_id;
                 g_a->_graph = I;
                 I->_nodes[g_a->_id] = g_a;
                 NodePtr g_b = I->make_node(k);
                 g_b->_color = COLOR_AH_GREY;
                 g_b->_key = g->sign_vector;
                 g_b->_key.back() = '-';
-                I->remove_node(g);
                 I->add_node(g_a);
                 I->add_node(g_b);
-                L[k][i] = g_a;
                 L[k].push_back(g_b);
                 
                 if (PROFILE) {
-
+                    auto end_step = std::chrono::high_resolution_clock::now();
+                    time_step_1 += std::chrono::duration_cast<std::chrono::nanoseconds>(end_step - start_step).count() / 1e6;
+                    start_step = std::chrono::high_resolution_clock::now();
                 }
                 // Step 2. Create the black face f = g ∩ h, connect it to g_a
                 // and g_b, and put f into 𝓐(H) and Lₖ₋₁.
@@ -517,7 +531,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 f->_key = g->sign_vector;
                 f->_key.back() = '0';
                 f->superfaces = {g_a->_id, g_b->_id};
-                g_a->subfaces = {f->_id};
+                std::vector<int> g_a_subfaces = {f->_id};
                 g_b->subfaces = {f->_id};
                 g_a->_black_subfaces = {f->_id};
                 g_b->_black_subfaces = {f->_id};
@@ -525,24 +539,38 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 I->add_node(f);
 
                 if (PROFILE) {
-
+                    auto end_step = std::chrono::high_resolution_clock::now();
+                    time_step_2 += std::chrono::duration_cast<std::chrono::nanoseconds>(end_step - start_step).count() / 1e6;
+                    start_step = std::chrono::high_resolution_clock::now();
                 }
                 // Step 3. Connect each red superface of g with g_a and g_b.
+                if (PROFILE) {
+                    start_1 = std::chrono::high_resolution_clock::now();
+                }
+                g_b->superfaces = g->superfaces;
+                if (PROFILE) {
+                    auto end = std::chrono::high_resolution_clock::now();
+                    time_step_3_copy += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start_1).count() / 1e6;
+                    start_1 = std::chrono::high_resolution_clock::now();
+                }
                 for (int i_r : g->superfaces) {
                     NodePtr r = I->node(i_r);
                     if (DEBUG) {
                         assert(r->_color == COLOR_AH_RED || r->rank == d+1);
                     }
-                    g_a->superfaces.insert(r->_id);
-                    g_b->superfaces.insert(r->_id);
-                    r->subfaces.insert(g_a->_id);
-                    r->subfaces.insert(g_b->_id);
+                    r->subfaces.push_back(g_b->_id);
                     r->_grey_subfaces.push_back(g_a->_id);
                     r->_grey_subfaces.push_back(g_b->_id);
                 }
+                if (PROFILE) {
+                    auto end = std::chrono::high_resolution_clock::now();
+                    time_step_3_ins += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start_1).count() / 1e6;
+                }
 
                 if (PROFILE) {
-
+                    auto end_step = std::chrono::high_resolution_clock::now();
+                    time_step_3 += std::chrono::duration_cast<std::chrono::nanoseconds>(end_step - start_step).count() / 1e6;
+                    start_step = std::chrono::high_resolution_clock::now();
                 }
                 // Step 4. Connect each white or grey subface of g with g_a if
                 // it is in h⁺, and with g_b, otherwise.
@@ -566,33 +594,36 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                         s = u->_sign_bit;
                     }
                     if (s == 1) {
-                        g_a->subfaces.insert(u->_id);
+                        g_a_subfaces.push_back(u->_id);
                         if (u->_color == COLOR_AH_GREY) {
                             g_a->_grey_subfaces.push_back(u->_id);
                         }
-                        u->superfaces.insert(g_a->_id);
                     } else if (s == -1) {
-                        g_b->subfaces.insert(u->_id);
+                        g_b->subfaces.push_back(u->_id);
                         if (u->_color == COLOR_AH_GREY) {
                             g_b->_grey_subfaces.push_back(u->_id);
                         }
+                        u->superfaces.erase(g_a->_id);
                         u->superfaces.insert(g_b->_id);
                     } else {
                         assert(false);
                     }
                 }
+                g_a->subfaces = g_a_subfaces;
 
                 if (PROFILE) {
-
+                    auto end_step = std::chrono::high_resolution_clock::now();
+                    time_step_4 += std::chrono::duration_cast<std::chrono::nanoseconds>(end_step - start_step).count() / 1e6;
+                    start_step = std::chrono::high_resolution_clock::now();
                 }
                 // Step 5. If k = 1, connect f with the -1 face, and connect f
                 // with the black subfaces of the grey subfaces of g, otherwise.
                 if (k == 1) {
                     NodePtr zero = I->node(I->rank(-1).begin()->second);
-                    f->subfaces.insert(zero->_id);
+                    f->subfaces.push_back(zero->_id);
                     zero->superfaces.insert(f->_id);
                 } else {
-                    std::list<int> V;
+                    std::set<int> V;
                     V.clear();
                     for (int i_u : g->_grey_subfaces) {
                         NodePtr u = I->node(i_u);
@@ -601,12 +632,13 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                             if (PROFILE) {
                                 // TODO
                             }
-                            if (v->_black_bit == 0) {
-                                V.push_back(v->_id);
-                                v->_black_bit = 1;
-                            } else {
-                                v->_black_bit = 0;
-                            }
+                            // if (v->_black_bit == 0) {
+                            //     V.insert(v->_id);
+                            //     v->_black_bit = 1;
+                            // } else {
+                            //     v->_black_bit = 0;
+                            // }
+                            V.insert(v->_id);
                         }
                     }
                     if (PROFILE) {
@@ -614,13 +646,15 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     }
                     for (int i_v : V) {
                         NodePtr v = I->node(i_v);
-                        f->subfaces.insert(v->_id);
+                        f->subfaces.push_back(v->_id);
                         v->superfaces.insert(f->_id);
                     }
                 }
 
                 if (PROFILE) {
-                    // TODO
+                    auto end_step = std::chrono::high_resolution_clock::now();
+                    time_step_5 += std::chrono::duration_cast<std::chrono::nanoseconds>(end_step - start_step).count() / 1e6;
+                    start_step = std::chrono::high_resolution_clock::now();
                 }
                 // Step 6. Update the interior points for f, g_a, and g_b.
                 f->update_interior_point(eps);
@@ -628,7 +662,9 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 g_b->update_interior_point(eps);
 
                 if (PROFILE) {
-                    // TODO
+                    auto end_step = std::chrono::high_resolution_clock::now();
+                    time_step_6 += std::chrono::duration_cast<std::chrono::nanoseconds>(end_step - start_step).count() / 1e6;
+                    start_step = std::chrono::high_resolution_clock::now();
                 }
 
                 break; }
@@ -652,7 +688,15 @@ void increment_arrangement(Eigen::VectorXd a, double b,
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "  total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
         << " ms" << std::endl;
-        start = std::chrono::high_resolution_clock::now();
+        std::cout << " step 1: " << time_step_1 << " ms" << std::endl;
+        std::cout << " step 2: " << time_step_2 << " ms" << std::endl;
+        std::cout << " step 3: " << time_step_3 << " ms" << std::endl;
+        std::cout << " copy 3: " << time_step_3_copy << " ms" << std::endl;
+        std::cout << "  ins 3: " << time_step_3_ins << " ms" << std::endl;
+        std::cout << " step 4: " << time_step_4 << " ms" << std::endl;
+        std::cout << " step 5: " << time_step_5 << " ms" << std::endl;
+        std::cout << " step 6: " << time_step_6 << " ms" << std::endl;
+        std::cout << "    sum: " << time_step_1 + time_step_2 + time_step_3 + time_step_4 + time_step_5 + time_step_6 << " ms" << std::endl;
     }
     
 }

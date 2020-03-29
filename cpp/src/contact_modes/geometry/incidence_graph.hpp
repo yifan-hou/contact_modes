@@ -50,7 +50,9 @@ public:
     Position            position;
     SignVector          sign_vector;
     std::set<int>       superfaces;
-    std::set<int>       subfaces;
+    std::vector<int>    subfaces;
+    // std::unordered_set<int>       superfaces;
+    // std::unordered_set<int>       subfaces;
     int                 _id;
     int                 _color;
     // std::set<int>       _grey_subfaces;

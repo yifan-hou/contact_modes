@@ -34,7 +34,8 @@ if(LINUX)
         set(CMAKE_BUILD_TYPE Debug)
         set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -O2 -fno-omit-frame-pointer")
     else(BUILD_DEBUG)
-        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -ggdb -O2 -fno-omit-frame-pointer -shared-libgcc")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -O2 -fno-omit-frame-pointer")
+        # set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -pg -no-pie")# -O2 -fno-omit-frame-pointer -shared-libgcc -fprofile-arcs -ftest-coverage")
         # set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fopenmp")
     endif(BUILD_DEBUG)
 
@@ -45,7 +46,6 @@ if(LINUX)
   endif()
 
 endif()
-
 
 
 find_package(Eigen3 3.3 REQUIRED)
