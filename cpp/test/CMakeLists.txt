@@ -29,3 +29,4 @@ macro(package_add_cu_test TESTNAME)
 endmacro()
 
 package_add_test(test_arrangements test_arrangements.cpp)
+package_add_test(test_incidence_graph test_incidence_graph.cpp)

@@ -117,13 +117,119 @@ void arg_not_equal(const std::string& a,
     }
 }
 
+Arc::Arc() {
+    dst_id = -1;
+    src_id = -1;
+    _dst_arc_idx = -1;
+    _src_arc_idx = -1;
+    _next = -1;
+    _prev = -1;
+}
+
+ArcList::ArcList() {
+    arcs.clear();
+    _begin = -1;
+    _size = 0;
+    _empty_indices.clear();
+}
+
+void ArcList::add_arc(NodePtr& src, NodePtr& dst) {
+    // Get corresponding arc-list of destination node.
+    ArcList* other;
+    if (src->rank > dst->rank) {
+        other = &dst->superfaces;
+    } else if (src->rank < dst->rank) {
+        other = &dst->subfaces;
+    } else {
+        assert(false);
+    }
+    // Create arcs.
+    int src_idx = this->_next_empty_index();
+    int dst_idx = other->_next_empty_index();
+    Arc arc_src;
+    arc_src.dst_id = dst->_id;
+    arc_src.src_id = src->_id;
+    arc_src._dst_arc_idx = dst_idx;
+    arc_src._src_arc_idx = src_idx;
+    Arc arc_dst;
+    arc_dst.dst_id = src->_id;
+    arc_dst.src_id = dst->_id;
+    arc_dst._dst_arc_idx = src_idx;
+    arc_dst._src_arc_idx = dst_idx;
+    // Add arcs.
+    this->_add_arc(arc_src, src_idx);
+    other->_add_arc(arc_dst, dst_idx);
+}
+
+int ArcList::_next_empty_index() {
+    if (!_empty_indices.empty()) {
+        int index = _empty_indices.front();
+        _empty_indices.pop_front();
+        return index;
+    } else if (_size == arcs.size()) {
+        return arcs.size();
+    } else {
+        assert(false);
+    }
+}
+
+void ArcList::_add_arc(Arc& arc, int index) {
+    _size += 1;
+    if (arcs.size() <= index) {
+        arcs.resize(index + 1);
+    }
+    arcs[index] = arc;
+    // Push arc on the front of the list.
+    if (_size == 1) {
+        _begin = index;
+    } else if (_size > 0) {
+        arcs[_begin]._prev = index;
+        arc._next = _begin;
+        _begin = index;
+    } else {
+        assert(false);
+    }
+}
+
+void ArcList::remove_arc(const Arc& arc_src, NodePtr& src) {
+    // Get corresponding arc-list of destination node.
+    NodePtr dst = src->_graph->node(arc_src.dst_id);
+    ArcList* other;
+    if (src->rank > dst->rank) {
+        other = &dst->superfaces;
+    } else if (src->rank < dst->rank) {
+        other = &dst->subfaces;
+    } else {
+        assert(false);
+    }
+    // Get destination arc.
+    const Arc& arc_dst = other->arcs[arc_src._dst_arc_idx];
+    // Remove arcs.
+    this->_remove_arc(arc_src, src);
+    other->_remove_arc(arc_dst, dst);
+}
+
+void ArcList::_remove_arc(const Arc& arc, NodePtr& src) {
+    _size -= 1;
+    _empty_indices.push_back(arc._src_arc_idx);
+    if (arc._prev >= 0) {
+        Arc& prev = arcs[arc._prev];
+        prev._next = arc._next;
+    }
+    if (arc._next >= 0) {
+        Arc& next = arcs[arc._next];
+        next._prev = arc._prev;
+    }
+    if (_begin == arc._src_arc_idx) {
+        _begin = arc._next;
+    }
+}
+
 Node::Node(int k) {
     this->rank = k;
     this->interior_point.resize(0);
     this->position.resize(0);
     this->sign_vector.clear();
-    this->subfaces.clear();
-    this->superfaces.clear();
     this->_id = 0;
     this->_color = COLOR_AH_WHITE;
     this->_grey_subfaces.clear();

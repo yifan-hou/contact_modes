@@ -2,6 +2,7 @@
 #include <Eigen/Dense>
 #include <memory>
 #include <vector>
+#include <list>
 #include <map>
 #include <set>
 #include <unordered_set>
@@ -43,23 +44,69 @@ void arg_not_equal(const std::string& a, const std::string& b, Eigen::VectorXi& 
 // bool less_than(const Eigen::VectorXi& a, const Eigen::VectorXi& b);
 // bool less_than(const std::string& a, const std::string& b);
 
+class Arc {
+public:
+    int dst_id;
+    int src_id;
+    int _dst_arc_idx;
+    int _src_arc_idx;
+    int _next;
+    int _prev;
+
+    Arc();
+};
+
+class ArcListIterator;
+
+class ArcList {
+public:
+    std::vector<Arc> arcs;
+    int              _begin;
+    int              _size;
+    std::list<int>   _empty_indices;
+
+    ArcList();
+    void add_arc(NodePtr& src, NodePtr& dst);
+    void remove_arc(const Arc& arc, NodePtr& src);
+
+    int size() { return _size; }
+    ArcListIterator begin();
+    ArcListIterator end();
+
+protected:
+    int _next_empty_index();
+    void _add_arc(Arc& arc, int index);
+    void _remove_arc(const Arc& arc, NodePtr& src);
+};
+
+class ArcListIterator {
+public:
+    Arc* arc;
+    ArcList* arc_list;
+
+    ArcListIterator(Arc* arc, ArcList* arc_list);
+
+    ArcListIterator& operator++();
+    ArcListIterator  operator++(int n);
+    bool operator==(ArcListIterator other);
+    bool operator!=(ArcListIterator other);
+    int  operator*();
+};
+
 class Node {
 public:
     int                 rank;
     Eigen::VectorXd     interior_point;
     Position            position;
     SignVector          sign_vector;
-    std::set<int>       superfaces;
-    std::vector<int>    subfaces;
-    // std::unordered_set<int>       superfaces;
-    // std::unordered_set<int>       subfaces;
+    ArcList             superfaces;
+    ArcList             subfaces;
     int                 _id;
     int                 _color;
-    // std::set<int>       _grey_subfaces;
-    // std::set<int>       _black_subfaces;
     std::vector<int>    _grey_subfaces;
     std::vector<int>    _black_subfaces;
     std::string         _key;
+    std::string         _target_sign_vector;
     bool                _black_bit;
     int                 _sign_bit_n;
     int                 _sign_bit;
@@ -74,7 +121,7 @@ public:
     void update_sign_vector(double eps);
 };
 
-typedef std::map<std::string, int> Rank;
+typedef std::vector<int> Rank;
 
 class IncidenceGraph : public std::enable_shared_from_this<IncidenceGraph> {
 public:

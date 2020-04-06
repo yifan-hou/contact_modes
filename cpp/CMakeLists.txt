@@ -11,32 +11,21 @@ if(LINUX)
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 
     # set(GCC_CXX_FLAGS "-std=c++17 -fPIC -march=native -fno-omit-frame-pointer") #-m64
-    set(GCC_CXX_FLAGS "-std=c++11") #-m64
+    set(GCC_CXX_FLAGS "-std=c++17") #-m64
 
-    # X11 Dependencies
-    # if(NOT BUILD_LIBCMU462)
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXi")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXxf86vm")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXinerama")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXcursor")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXfixes")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXrandr")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXext")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXrender")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lX11")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lpthread")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lxcb")
-    #   set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -lXau")
-    # endif()
+    # For compatibility with TCMALLOC from gperftools.
+    set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-malloc")
+    set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-calloc")
+    set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-realloc")
+    set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-free")
+    set(CMAKE_SHARED_LINKER_FLAGS "-ltcmalloc_minimal")
 
     # Debug configuration
     if(BUILD_DEBUG)
         set(CMAKE_BUILD_TYPE Debug)
         set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -O2 -fno-omit-frame-pointer")
     else(BUILD_DEBUG)
-        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -O2 -fno-omit-frame-pointer")
-        # set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -pg -no-pie")# -O2 -fno-omit-frame-pointer -shared-libgcc -fprofile-arcs -ftest-coverage")
-        # set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fopenmp")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -fno-omit-frame-pointer")
     endif(BUILD_DEBUG)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_CXX_FLAGS}")

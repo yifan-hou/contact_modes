@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
 
-# set(CMAKE_SHARED_LINKER_FLAGS "-pg")
-
 # Source files.
 set(CONTACT_MODES_SOURCE
     # Geometry
