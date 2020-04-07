@@ -56,7 +56,7 @@ add_subdirectory(src/contact_modes)
 option(PACKAGE_TESTS "Build tests" ON)
 if(PACKAGE_TESTS)
     enable_testing()
-    add_subdirectory(test)
+    # add_subdirectory(test)
 endif()
 
 # add_subdirectory(apps)

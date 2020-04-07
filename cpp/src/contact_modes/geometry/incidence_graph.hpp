@@ -81,16 +81,33 @@ protected:
 
 class ArcListIterator {
 public:
+    using value_type = int;
+    using reference = int;
+    using iterator_category = std::input_iterator_tag;
+    using pointer = int*;
+    using difference_type = void;
+
     Arc* arc;
     ArcList* arc_list;
 
-    ArcListIterator(Arc* arc, ArcList* arc_list);
+    class postinc_return {
+    public:
+        int value;
+        postinc_return(int value_) { value = value_; }
+        int operator*() { return value; }
+    };
+
+    ArcListIterator(ArcList* arc_list, Arc* arc);
 
     ArcListIterator& operator++();
-    ArcListIterator  operator++(int n);
+    postinc_return  operator++(int n);
     bool operator==(ArcListIterator other);
     bool operator!=(ArcListIterator other);
-    int  operator*();
+    int  operator*() const;
+    int* operator->() const;
+
+    friend bool operator==(const ArcListIterator& lhs, const ArcListIterator& rhs);
+    friend bool operator!=(const ArcListIterator& lhs, const ArcListIterator& rhs);
 };
 
 class Node {

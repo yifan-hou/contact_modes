@@ -225,6 +225,51 @@ void ArcList::_remove_arc(const Arc& arc, NodePtr& src) {
     }
 }
 
+ArcListIterator ArcList::begin() {
+    return ArcListIterator(this, &arcs[_begin]);
+}
+
+ArcListIterator ArcList::end() {
+    return ArcListIterator(this, nullptr);
+}
+
+ArcListIterator::ArcListIterator(ArcList* arc_list, Arc* arc) {
+    this->arc = arc;
+    this->arc_list = arc_list;
+}
+
+ArcListIterator& ArcListIterator::operator++() {
+    
+}
+
+ArcListIterator  ArcListIterator::operator++(int n) {
+
+}
+
+bool ArcListIterator::operator==(ArcListIterator other) {
+
+}
+
+bool ArcListIterator::operator!=(ArcListIterator other) {
+
+}
+
+int  ArcListIterator::operator*() const {
+    return arc->dst_id;
+}
+
+int* ArcListIterator::operator->() const {
+
+}
+
+bool operator==(const ArcListIterator& lhs, const ArcListIterator& rhs) {
+    return lhs.arc == rhs.arc && lhs.arc_list == rhs.arc_list;
+}
+
+bool operator!=(const ArcListIterator& lhs, const ArcListIterator& rhs) {
+    return !(lhs == rhs);
+}
+
 Node::Node(int k) {
     this->rank = k;
     this->interior_point.resize(0);
