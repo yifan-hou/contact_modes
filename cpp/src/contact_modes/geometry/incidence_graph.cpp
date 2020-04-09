@@ -133,19 +133,22 @@ ArcList::ArcList() {
     _empty_indices.clear();
 }
 
-void ArcList::add_arc(NodePtr& src, NodePtr& dst) {
-    // Get corresponding arc-list of destination node.
-    ArcList* other;
+void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst) {
+    // Get corresponding arc-list of source and destination nodes.
+    ArcList* src_list;
+    ArcList* dst_list;
     if (src->rank > dst->rank) {
-        other = &dst->superfaces;
+        src_list = &src->subfaces;
+        dst_list = &dst->superfaces;
     } else if (src->rank < dst->rank) {
-        other = &dst->subfaces;
+        src_list = &src->superfaces;
+        dst_list = &dst->subfaces;
     } else {
         assert(false);
     }
     // Create arcs.
-    int src_idx = this->_next_empty_index();
-    int dst_idx = other->_next_empty_index();
+    int src_idx = src_list->_next_empty_index();
+    int dst_idx = dst_list->_next_empty_index();
     Arc arc_src;
     arc_src.dst_id = dst->_id;
     arc_src.src_id = src->_id;
@@ -157,8 +160,8 @@ void ArcList::add_arc(NodePtr& src, NodePtr& dst) {
     arc_dst._dst_arc_idx = src_idx;
     arc_dst._src_arc_idx = dst_idx;
     // Add arcs.
-    this->_add_arc(arc_src, src_idx);
-    other->_add_arc(arc_dst, dst_idx);
+    src_list->_add_arc(arc_src, src_idx);
+    dst_list->_add_arc(arc_dst, dst_idx);
 }
 
 int ArcList::_next_empty_index() {
@@ -191,22 +194,26 @@ void ArcList::_add_arc(Arc& arc, int index) {
     }
 }
 
-void ArcList::remove_arc(const Arc& arc_src, NodePtr& src) {
+void IncidenceGraph::remove_arc(const Arc& arc_src) {
     // Get corresponding arc-list of destination node.
-    NodePtr dst = src->_graph->node(arc_src.dst_id);
-    ArcList* other;
+    NodePtr src = node(arc_src.src_id);
+    NodePtr dst = node(arc_src.dst_id);
+    ArcList* src_list;
+    ArcList* dst_list;
     if (src->rank > dst->rank) {
-        other = &dst->superfaces;
+        src_list = &src->subfaces;
+        dst_list = &dst->superfaces;
     } else if (src->rank < dst->rank) {
-        other = &dst->subfaces;
+        src_list = &src->superfaces;
+        dst_list = &dst->subfaces;
     } else {
         assert(false);
     }
     // Get destination arc.
-    const Arc& arc_dst = other->arcs[arc_src._dst_arc_idx];
+    const Arc& arc_dst = dst_list->arcs[arc_src._dst_arc_idx];
     // Remove arcs.
-    this->_remove_arc(arc_src, src);
-    other->_remove_arc(arc_dst, dst);
+    src_list->_remove_arc(arc_src, src);
+    dst_list->_remove_arc(arc_dst, dst);
 }
 
 void ArcList::_remove_arc(const Arc& arc, NodePtr& src) {
@@ -239,19 +246,20 @@ ArcListIterator::ArcListIterator(ArcList* arc_list, Arc* arc) {
 }
 
 ArcListIterator& ArcListIterator::operator++() {
-    
+    if (!arc) {
+        throw std::runtime_error("Increment a past-the-end iterator");
+    } else if (arc->_next == -1) {
+        arc = nullptr;
+    } else {
+        this->arc = &arc_list->arcs[arc->_next];
+    }
+    return *this;
 }
 
-ArcListIterator  ArcListIterator::operator++(int n) {
-
-}
-
-bool ArcListIterator::operator==(ArcListIterator other) {
-
-}
-
-bool ArcListIterator::operator!=(ArcListIterator other) {
-
+ArcListIterator::postinc_return ArcListIterator::operator++(int n) {
+    postinc_return tmp(**this);
+    ++*this;
+    return tmp;
 }
 
 int  ArcListIterator::operator*() const {
@@ -259,7 +267,7 @@ int  ArcListIterator::operator*() const {
 }
 
 int* ArcListIterator::operator->() const {
-
+    return &arc->dst_id;
 }
 
 bool operator==(const ArcListIterator& lhs, const ArcListIterator& rhs) {
@@ -368,8 +376,8 @@ void Node::update_interior_point(double eps) {
             std::cout << "      edge: " << this->_key << std::endl;
             std::cout << "# subfaces: " << this->subfaces.size() << std::endl;
             std::cout << "  subfaces: ";
-            for (int i = 0; i < subfaces.size(); i++) {
-                std::cout << subfaces[i] << " ";    
+            for (int i_f : subfaces) {
+                std::cout << i_f << " ";
             }
             std::cout << std::endl;
             assert(false);
@@ -510,46 +518,15 @@ NodePtr IncidenceGraph::make_node(int k) {
     return node;
 }
 
-void IncidenceGraph::add_node(NodePtr node) {
-    this->rank(node->rank).insert({node->_key, node->_id});
+void IncidenceGraph::add_node_to_rank(NodePtr node) {
+    this->rank(node->rank).push_back(node->_id);
 }
 
 void IncidenceGraph::remove_node(NodePtr node) {
-    // Remove arcs.
-    // for (int f_id : node->subfaces) {
-    //     this->_nodes[f_id]->superfaces.erase(node->_id);
-    // }
-    // for (int g_id : node->superfaces) {
-    //     NodePtr& g = this->_nodes[g_id];
-    //     int r = g->subfaces.erase(node->_id);
-    //     // Check that we never have to remove g/f from its parents grey or black
-    //     // subface vectors. Only relevant during a call to increment_arrangement
-    //     if (DEBUG) {
-    //         if (r > 0) {
-    //             if (node->_color == COLOR_AH_GREY) {
-    //                 const std::vector<int>& grey = g->_grey_subfaces;
-    //                 int c = std::count(grey.begin(), grey.end(), node->_id);
-    //                 assert(c == 0);
-    //             }
-    //             else if (node->_color == COLOR_AH_BLACK) {
-    //                 const std::vector<int>& black = g->_black_subfaces;
-    //                 int c = std::count(black.begin(), black.end(), node->_id);
-    //                 assert(c == 0);
-    //             }
-    //         }
-    //     }
-    // }
     // Remove node.
-    this->rank(node->rank).erase(node->_key);
-}
-
-NodePtr IncidenceGraph::get_node(const std::string& key, int k) {
-    auto iter = rank(k).find(key);
-    if (iter == rank(k).end()) {
-        return nullptr;
-    } else {
-        return this->_nodes[iter->second];
-    }
+    auto r = rank(node->rank);
+    auto p = std::find(r.begin(), r.end(), node->_id);
+    r.erase(p);
 }
 
 Rank& IncidenceGraph::rank(int k) {

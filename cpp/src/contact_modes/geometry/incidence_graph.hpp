@@ -47,7 +47,7 @@ void arg_not_equal(const std::string& a, const std::string& b, Eigen::VectorXi& 
 class Arc {
 public:
     int dst_id;
-    int src_id;
+    int src_id; // TODO unnecessary
     int _dst_arc_idx;
     int _src_arc_idx;
     int _next;
@@ -66,12 +66,12 @@ public:
     std::list<int>   _empty_indices;
 
     ArcList();
-    void add_arc(NodePtr& src, NodePtr& dst);
-    void remove_arc(const Arc& arc, NodePtr& src);
 
     int size() { return _size; }
     ArcListIterator begin();
     ArcListIterator end();
+
+    friend IncidenceGraph;
 
 protected:
     int _next_empty_index();
@@ -100,9 +100,9 @@ public:
     ArcListIterator(ArcList* arc_list, Arc* arc);
 
     ArcListIterator& operator++();
-    postinc_return  operator++(int n);
-    bool operator==(ArcListIterator other);
-    bool operator!=(ArcListIterator other);
+    postinc_return   operator++(int n);
+    // bool operator==(ArcListIterator other);
+    // bool operator!=(ArcListIterator other);
     int  operator*() const;
     int* operator->() const;
 
@@ -122,8 +122,7 @@ public:
     int                 _color;
     std::vector<int>    _grey_subfaces;
     std::vector<int>    _black_subfaces;
-    std::string         _key;
-    std::string         _target_sign_vector;
+    std::string         _key; // target sign vector
     bool                _black_bit;
     int                 _sign_bit_n;
     int                 _sign_bit;
@@ -166,9 +165,11 @@ public:
 
     NodePtr      node(int id) { return _nodes[id]; }
     NodePtr make_node(int k);
-    void     add_node(NodePtr node);
+    void     add_node_to_rank(NodePtr node);
     void  remove_node(NodePtr node);
-    NodePtr  get_node(const std::string& key, int k);
+
+    void add_arc(NodePtr& src, NodePtr& dst);   // O(1) add
+    void remove_arc(const Arc& arc);            // O(1) remove
 
     Rank& rank(int k);
 };

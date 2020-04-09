@@ -28,7 +28,6 @@ void exportGeometry(py::module& m) {
         .def_readonly("b", &IncidenceGraph::b)
         .def("dim", &IncidenceGraph::dim)
         .def("rank", &IncidenceGraph::rank)
-        .def("get_node", &IncidenceGraph::get_node)
         .def("get_positions", &IncidenceGraph::get_positions)
         .def("get_sign_vectors", &IncidenceGraph::get_sign_vectors)
         .def("update_positions", &IncidenceGraph::update_positions)
