@@ -60,14 +60,15 @@ public:
 
 class ArcListIterator;
 
+typedef std::vector<Arc> Arcs;
+
 class ArcList {
 public:
-    int16_t          _begin;
-    int16_t          _size;
-    int16_t          _empty_size;
-    std::vector<Arc> arcs;
-    // std::list<int>   _empty_indices;
-    std::vector<int> _empty_indices;
+    int16_t _begin;
+    int16_t _begin_empty;
+    int16_t _size;
+    int16_t _capacity;
+    Arcs    arcs;
 
     ArcList();
 
@@ -80,7 +81,7 @@ public:
 protected:
     int _next_empty_index();
     void _add_arc(Arc& arc, int index);
-    void _remove_arc(const Arc& arc, NodePtr& src);
+    void _remove_arc(Arc& arc, NodePtr& src);
 };
 
 class ArcListIterator {
@@ -173,7 +174,7 @@ public:
     void  remove_node(NodePtr node);
 
     void add_arc(NodePtr& src, NodePtr& dst);   // O(1) add
-    void remove_arc(const Arc& arc);            // O(1) remove
+    void remove_arc(Arc& arc);                  // O(1) remove
 
     Rank& rank(int k);
 };

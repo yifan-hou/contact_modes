@@ -129,9 +129,9 @@ Arc::Arc() {
 ArcList::ArcList() {
     arcs.clear();
     _begin = -1;
+    _begin_empty = -1;
     _size = 0;
-    _empty_indices.clear();
-    _empty_size = 0;
+    _capacity = 0;
 }
 
 void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst) {
@@ -166,42 +166,32 @@ void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst) {
 }
 
 int ArcList::_next_empty_index() {
-    if (_size == arcs.size()) {
-        return arcs.size();
-    } else if (!_empty_indices.empty()) {
-        // int index = _empty_indices.front();
-        // _empty_indices.pop_front();
-        // return index;
-        int index = _empty_indices[--_empty_size];
-        return index;
+    if (_begin_empty != -1) {
+        int tmp = _begin_empty;
+        _begin_empty = arcs[_begin_empty]._next;
+        return tmp;
     } else {
-        assert(false);
-        return -1;
+        return _size;
     }
 }
 
 void ArcList::_add_arc(Arc& arc, int index) {
-    _size += 1;
-    // Push arc on the front of the list.
-    if (_size == 1) {
-        _begin = index;
-    } else if (_size > 0) {
+    if (_begin >= 0) {
         arcs[_begin]._prev = index;
         arc._next = _begin;
-        _begin = index;
-    } else {
-        assert(false);
     }
-    if (arcs.size() == index) {
+    _begin = index;
+
+    if (index == _capacity) {
         arcs.push_back(arc);
+        _capacity++;
     } else {
         arcs[index] = arc;
     }
-    // std::cout << "add" << std::endl;
-    // std::cout << arc << std::endl;
+    _size += 1;
 }
 
-void IncidenceGraph::remove_arc(const Arc& arc_src) {
+void IncidenceGraph::remove_arc(Arc& arc_src) {
     // Get corresponding arc-list of destination node.
     NodePtr src = node(arc_src.src_id);
     NodePtr dst = node(arc_src.dst_id);
@@ -217,21 +207,15 @@ void IncidenceGraph::remove_arc(const Arc& arc_src) {
         assert(false);
     }
     // Get destination arc.
-    const Arc& arc_dst = dst_list->arcs[arc_src._dst_arc_idx];
+    Arc& arc_dst = dst_list->arcs[arc_src._dst_arc_idx];
     // Remove arcs.
     src_list->_remove_arc(arc_src, src);
     dst_list->_remove_arc(arc_dst, dst);
 }
 
-void ArcList::_remove_arc(const Arc& arc, NodePtr& src) {
+void ArcList::_remove_arc(Arc& arc, NodePtr& src) {
     _size -= 1;
-    // _empty_indices.push_back(arc._src_arc_idx);
-    if (_empty_size < _empty_indices.size()) {
-        _empty_indices[_empty_size++] = arc._src_arc_idx;
-    } else {
-        _empty_indices.push_back(arc._src_arc_idx);
-        _empty_size++;
-    }
+    // Connect previous and next arcs.
     if (arc._prev >= 0) {
         Arc& prev = arcs[arc._prev];
         prev._next = arc._next;
@@ -240,8 +224,18 @@ void ArcList::_remove_arc(const Arc& arc, NodePtr& src) {
         Arc& next = arcs[arc._next];
         next._prev = arc._prev;
     }
+    // Update beginning index.
     if (_begin == arc._src_arc_idx) {
         _begin = arc._next;
+    }
+    // Push onto empty list.
+    if (_begin_empty == -1) {
+        arc._next = -1;
+        _begin_empty = arc._src_arc_idx;
+    } else {
+        arcs[_begin_empty]._prev = arc._src_arc_idx;
+        arc._next = _begin_empty;
+        _begin_empty = arc._src_arc_idx;
     }
 }
 

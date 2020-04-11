@@ -528,7 +528,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 I->add_node_to_rank(g_b);
                 L[k].push_back(g_b);
 
-                if (true) {
+                if (g->rank < 3 || DEBUG) {
                     g->update_sign_vector(eps);
                     g_a->_key = g->sign_vector;
                     g_a->_key.back() = '+';
@@ -552,7 +552,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 L[k-1].push_back(f);
                 I->add_node_to_rank(f);
 
-                if (true) {
+                if (f->rank < 2 || DEBUG) {
                     f->_key = g->sign_vector;
                     f->_key.back() = '0';
                 }
