@@ -521,19 +521,20 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 }
                 // Step 1. Create g_a = g ∩ h⁺ and g_b = g ∩ h⁻. Remove g from
                 // 𝓐(H) and Lₖ and replace with g_a, g_b.
-                g->update_sign_vector(eps);
                 NodePtr g_a = g;
                 g_a->_color = COLOR_AH_GREY;
-                g_a->_key = g->sign_vector;
-                g_a->_key.back() = '+';
-                g_a->_graph = I;
-                I->_nodes[g_a->_id] = g_a;
                 NodePtr g_b = I->make_node(k);
                 g_b->_color = COLOR_AH_GREY;
-                g_b->_key = g->sign_vector;
-                g_b->_key.back() = '-';
                 I->add_node_to_rank(g_b);
                 L[k].push_back(g_b);
+
+                if (true) {
+                    g->update_sign_vector(eps);
+                    g_a->_key = g->sign_vector;
+                    g_a->_key.back() = '+';
+                    g_b->_key = g->sign_vector;
+                    g_b->_key.back() = '-';
+                }
 
                 if (PROFILE) {
                     auto end_step = std::chrono::high_resolution_clock::now();
@@ -544,14 +545,17 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 // and g_b, and put f into 𝓐(H) and Lₖ₋₁.
                 NodePtr f = I->make_node(k-1);
                 f->_color = COLOR_AH_BLACK;
-                f->_key = g->sign_vector;
-                f->_key.back() = '0';
                 I->add_arc(f, g_a);
                 I->add_arc(f, g_b);
                 g_a->_black_subfaces = {f->_id};
                 g_b->_black_subfaces = {f->_id};
                 L[k-1].push_back(f);
                 I->add_node_to_rank(f);
+
+                if (true) {
+                    f->_key = g->sign_vector;
+                    f->_key.back() = '0';
+                }
 
                 if (PROFILE) {
                     auto end_step = std::chrono::high_resolution_clock::now();
@@ -580,11 +584,16 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 ArcListIterator end  = g->subfaces.end();
                 while (iter != end) {
                     int i_u = *iter;
+                    if (DEBUG) {
+                        std::cout << i_u << std::endl;
+                        // std::cout << *iter.arc << std::endl;
+                    }
                     NodePtr u = I->node(i_u);
                     if (u->_color != COLOR_AH_WHITE && u->_color != COLOR_AH_GREY) {
                         if (DEBUG) {
                             assert(u->_color == COLOR_AH_BLACK);
                         }
+                        iter++;
                         continue;
                     }
                     int s;

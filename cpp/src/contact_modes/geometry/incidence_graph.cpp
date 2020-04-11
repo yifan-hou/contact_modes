@@ -131,6 +131,7 @@ ArcList::ArcList() {
     _begin = -1;
     _size = 0;
     _empty_indices.clear();
+    _empty_size = 0;
 }
 
 void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst) {
@@ -165,23 +166,22 @@ void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst) {
 }
 
 int ArcList::_next_empty_index() {
-    if (!_empty_indices.empty()) {
-        int index = _empty_indices.front();
-        _empty_indices.pop_front();
-        return index;
-    } else if (_size == arcs.size()) {
+    if (_size == arcs.size()) {
         return arcs.size();
+    } else if (!_empty_indices.empty()) {
+        // int index = _empty_indices.front();
+        // _empty_indices.pop_front();
+        // return index;
+        int index = _empty_indices[--_empty_size];
+        return index;
     } else {
         assert(false);
+        return -1;
     }
 }
 
 void ArcList::_add_arc(Arc& arc, int index) {
     _size += 1;
-    if (arcs.size() <= index) {
-        arcs.resize(index + 1);
-    }
-    arcs[index] = arc;
     // Push arc on the front of the list.
     if (_size == 1) {
         _begin = index;
@@ -192,6 +192,13 @@ void ArcList::_add_arc(Arc& arc, int index) {
     } else {
         assert(false);
     }
+    if (arcs.size() == index) {
+        arcs.push_back(arc);
+    } else {
+        arcs[index] = arc;
+    }
+    // std::cout << "add" << std::endl;
+    // std::cout << arc << std::endl;
 }
 
 void IncidenceGraph::remove_arc(const Arc& arc_src) {
@@ -218,7 +225,13 @@ void IncidenceGraph::remove_arc(const Arc& arc_src) {
 
 void ArcList::_remove_arc(const Arc& arc, NodePtr& src) {
     _size -= 1;
-    _empty_indices.push_back(arc._src_arc_idx);
+    // _empty_indices.push_back(arc._src_arc_idx);
+    if (_empty_size < _empty_indices.size()) {
+        _empty_indices[_empty_size++] = arc._src_arc_idx;
+    } else {
+        _empty_indices.push_back(arc._src_arc_idx);
+        _empty_size++;
+    }
     if (arc._prev >= 0) {
         Arc& prev = arcs[arc._prev];
         prev._next = arc._next;
@@ -246,20 +259,20 @@ ArcListIterator::ArcListIterator(ArcList* arc_list, Arc* arc) {
 }
 
 ArcListIterator& ArcListIterator::operator++() {
-    if (!arc) {
+    if (!this->arc) {
         throw std::runtime_error("Increment a past-the-end iterator");
     } else if (arc->_next == -1) {
-        arc = nullptr;
+        this->arc = nullptr;
     } else {
         this->arc = &arc_list->arcs[arc->_next];
     }
     return *this;
 }
 
-ArcListIterator::postinc_return ArcListIterator::operator++(int n) {
-    postinc_return tmp(**this);
-    ++*this;
-    return tmp;
+ArcListIterator ArcListIterator::operator++(int n) {
+    ArcListIterator retval = *this; 
+    ++(*this); 
+    return retval;
 }
 
 int  ArcListIterator::operator*() const {
@@ -270,12 +283,30 @@ int* ArcListIterator::operator->() const {
     return &arc->dst_id;
 }
 
+// bool ArcListIterator::operator==(const ArcListIterator& other) const {
+//     return this->arc == other.arc && this->arc_list == other.arc_list;
+// }
+
+// bool ArcListIterator::operator!=(const ArcListIterator& other) const {
+//     return !(*this == other);
+// }
+
 bool operator==(const ArcListIterator& lhs, const ArcListIterator& rhs) {
     return lhs.arc == rhs.arc && lhs.arc_list == rhs.arc_list;
 }
 
 bool operator!=(const ArcListIterator& lhs, const ArcListIterator& rhs) {
     return !(lhs == rhs);
+}
+
+std::ostream& operator<<(std::ostream& out, const Arc& arc) {
+    out << "arc: dst = " << arc.dst_id << std::endl
+        << "     src = " << arc.src_id << std::endl
+        << " dst idx = " << arc._dst_arc_idx << std::endl
+        << " src idx = " << arc._src_arc_idx << std::endl
+        << "    next = " << arc._next << std::endl
+        << "    prev = " << arc._prev;
+    return out;
 }
 
 Node::Node(int k) {

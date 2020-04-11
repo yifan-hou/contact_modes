@@ -48,22 +48,26 @@ class Arc {
 public:
     int dst_id;
     int src_id; // TODO unnecessary
-    int _dst_arc_idx;
-    int _src_arc_idx;
-    int _next;
-    int _prev;
+    int16_t _dst_arc_idx;
+    int16_t _src_arc_idx;
+    int16_t _next;
+    int16_t _prev;
 
     Arc();
+
+    friend std::ostream& operator<<(std::ostream& out, const Arc& arc);
 };
 
 class ArcListIterator;
 
 class ArcList {
 public:
+    int16_t          _begin;
+    int16_t          _size;
+    int16_t          _empty_size;
     std::vector<Arc> arcs;
-    int              _begin;
-    int              _size;
-    std::list<int>   _empty_indices;
+    // std::list<int>   _empty_indices;
+    std::vector<int> _empty_indices;
 
     ArcList();
 
@@ -100,9 +104,9 @@ public:
     ArcListIterator(ArcList* arc_list, Arc* arc);
 
     ArcListIterator& operator++();
-    postinc_return   operator++(int n);
-    // bool operator==(ArcListIterator other);
-    // bool operator!=(ArcListIterator other);
+    ArcListIterator  operator++(int);
+    // bool operator==(const ArcListIterator& other) const;
+    // bool operator!=(const ArcListIterator& other) const;
     int  operator*() const;
     int* operator->() const;
 
@@ -112,21 +116,21 @@ public:
 
 class Node {
 public:
-    int                 rank;
-    Eigen::VectorXd     interior_point;
-    Position            position;
-    SignVector          sign_vector;
-    ArcList             superfaces;
-    ArcList             subfaces;
     int                 _id;
-    int                 _color;
+    int8_t              rank;
+    int8_t              _color;
+    int8_t              _black_bit;
+    int8_t              _sign_bit;
+    int                 _sign_bit_n;
     std::vector<int>    _grey_subfaces;
     std::vector<int>    _black_subfaces;
     std::string         _key; // target sign vector
-    bool                _black_bit;
-    int                 _sign_bit_n;
-    int                 _sign_bit;
     IncidenceGraphPtr   _graph;
+    ArcList             superfaces;
+    ArcList             subfaces;
+    Eigen::VectorXd     interior_point;
+    Position            position;
+    SignVector          sign_vector;
 
     Node(int k);
 
