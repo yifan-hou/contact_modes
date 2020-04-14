@@ -20,9 +20,9 @@ int main() {
     // }
 
     // Benchmark increment arrangements.
-    for (int j = 0; j < 20; j++)
+    for (int j = 0; j < 5; j++)
     {
-        srand(0);
+        srand(1);
 
         int n = 12;
         int d = 11;

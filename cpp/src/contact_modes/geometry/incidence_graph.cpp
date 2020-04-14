@@ -40,7 +40,7 @@ char get_sign(double v, double eps) {
 }
 
 void get_position(const Eigen::VectorXd& v, Eigen::VectorXi& pos, double eps) {
-    eps = abs(eps);
+    eps = std::abs(eps);
     pos.resize(v.size());
     for (int i = 0; i < v.size(); i++) {
         pos[i] = get_position(v[i], eps);
@@ -114,6 +114,52 @@ void arg_not_equal(const std::string& a,
         if (a[i] != b[i]) {
             idx[k++] = i;
         }
+    }
+}
+
+int partial_order(const std::string& lhs, const std::string& rhs) {
+    if (lhs.size() != rhs.size()) {
+        return INCOMPARABLE;
+    }
+    int less = 0;
+    int greater = 0;
+    int equal = 0;
+    for (int i = 0; i < lhs.size(); i++) {
+        if (lhs[i] == '+' && rhs[i] == '-') {
+            return INCOMPARABLE;
+        }
+        else if (lhs[i] == '-' && rhs[i] == '+') {
+            return INCOMPARABLE;
+        }
+        else if (lhs[i] == '0') {
+            if (rhs[i] == '0') {
+                equal += 1;
+            }
+            else {
+                less += 1;
+            }
+        }
+        else if (rhs[i] == '0') {
+            if (lhs[i] == '0') {
+                equal += 1;
+            } else {
+                greater += 1;
+            }
+        }
+        else {
+            equal += 1;
+        }
+        if (less > 0 && greater > 0) {
+            return INCOMPARABLE;
+        }
+    }
+    if (less > 0) {
+        return STRICTLY_LESS;
+    }
+    else if (greater > 0) {
+        return STRICTLY_GREATER;
+    } else {
+        return EQUAL;
     }
 }
 
@@ -192,9 +238,10 @@ void ArcList::_add_arc(Arc& arc, int index) {
 }
 
 void IncidenceGraph::remove_arc(Arc& arc_src) {
+    NodePtr src = std::move(_nodes[arc_src.src_id]);
+    NodePtr dst = std::move(_nodes[arc_src.dst_id]);
+
     // Get corresponding arc-list of destination node.
-    NodePtr src = node(arc_src.src_id);
-    NodePtr dst = node(arc_src.dst_id);
     ArcList* src_list;
     ArcList* dst_list;
     if (src->rank > dst->rank) {
@@ -211,6 +258,9 @@ void IncidenceGraph::remove_arc(Arc& arc_src) {
     // Remove arcs.
     src_list->_remove_arc(arc_src, src);
     dst_list->_remove_arc(arc_dst, dst);
+
+    _nodes[arc_src.src_id] = std::move(src);
+    _nodes[arc_src.dst_id] = std::move(dst);
 }
 
 void ArcList::_remove_arc(Arc& arc, NodePtr& src) {
@@ -240,6 +290,9 @@ void ArcList::_remove_arc(Arc& arc, NodePtr& src) {
 }
 
 ArcListIterator ArcList::begin() {
+    if (_begin == -1) {
+        return end();
+    }
     return ArcListIterator(this, &arcs[_begin]);
 }
 
@@ -317,6 +370,36 @@ Node::Node(int k) {
     this->_sign_bit_n = 0;
     this->_sign_bit = 0;
     this->_graph = nullptr;
+}
+
+std::ostream& operator<<(std::ostream& out, Node& node) {
+    out << "node: " << node._id << "\n"
+        << "rank: " << (int) node.rank << "\n"
+        << "  sv: " << node.sign_vector << "\n"
+        << " sub: ";
+    bool first = true;
+    for (int i : node.subfaces) {
+        NodePtr f = node._graph->node(i);
+        if (first) {
+            out << f->sign_vector << std::endl;
+            first = false;
+        } else {
+            out << "      " << f->sign_vector << std::endl;
+        }
+    }
+    out << " sup: ";
+    first = true;
+    for (int i : node.superfaces) {
+        NodePtr f = node._graph->node(i);
+        if (first) {
+            out << f->sign_vector;
+            first = false;
+        } else {
+            out << std::endl << "      " << f->sign_vector;
+        }
+    }
+        
+    return out;
 }
 
 void Node::update_interior_point(double eps) {
@@ -423,11 +506,33 @@ void Node::update_interior_point(double eps) {
         this->interior_point /= this->subfaces.size();
     }
     if (DEBUG) {
+        this->update_sign_vector(eps);
+
+        // Assert subfaces obey partial order.
+        for (int i : this->subfaces) {
+            NodePtr f = _graph->node(i);
+            if (f->rank == -1 || f->rank == _graph->A.cols()) {
+                continue;
+            }
+            f->update_sign_vector(eps);
+            int order = partial_order(f->sign_vector, this->sign_vector);
+            if (!(order & LESS_THAN_EQUAL)) {
+                // Print sign vectors of subfaces.
+                // std::cout << "sv:\n" << this->sign_vector << std::endl;
+                // std::cout << "subfaces:" << std::endl;
+                // for (int i : this->subfaces) {
+                //     NodePtr f = _graph->node(i);
+                //     std::cout << f->sign_vector << " " << f->_id << std::endl;
+                // }
+                assert(false);
+            }
+        }
+
         // Assert sign vector matches key.
         this->update_sign_vector(eps);
         bool match = this->_key == this->sign_vector.substr(0, this->_key.size());
         if (!match) {
-            std::cout << "rank: " << this->rank << "\n"
+            std::cout << "rank: " << (int) this->rank << "\n"
                       << " key: " << this->_key << "\n"
                       << "  sv: " << this->sign_vector << std::endl;
         }
@@ -535,12 +640,19 @@ SignVectors IncidenceGraph::get_sign_vectors() {
     return S;
 }
 
-NodePtr IncidenceGraph::make_node(int k) {
+inline bool
+is_aligned(const void * ptr, std::uintptr_t alignment) noexcept {
+    auto iptr = reinterpret_cast<std::uintptr_t>(ptr);
+    return !(iptr % alignment);
+}
+
+NodePtr& IncidenceGraph::make_node(int k) {
+    // NodePtr node(new Node(k));
     NodePtr node = std::make_shared<Node>(k);
     node->_id = this->_nodes.size();
     node->_graph = shared_from_this();
     this->_nodes.push_back(node);
-    return node;
+    return this->_nodes[node->_id];
 }
 
 void IncidenceGraph::add_node_to_rank(NodePtr node) {

@@ -42,7 +42,17 @@ void arg_where(const std::string& sv, char s, Eigen::VectorXi& idx);
 void arg_equal(const std::string& a, const std::string& b, Eigen::VectorXi& idx);
 void arg_not_equal(const std::string& a, const std::string& b, Eigen::VectorXi& idx);
 // bool less_than(const Eigen::VectorXi& a, const Eigen::VectorXi& b);
-// bool less_than(const std::string& a, const std::string& b);
+
+enum {
+    STRICTLY_LESS       = 1,
+    STRICTLY_GREATER    = 2,
+    EQUAL               = 4,
+    LESS_THAN_EQUAL     = 5,
+    GREATER_THAN_EQUAL  = 6,
+    INCOMPARABLE        = 8
+};
+
+int partial_order(const std::string& lhs, const std::string& rhs);
 
 class Arc {
 public:
@@ -117,12 +127,13 @@ public:
 
 class Node {
 public:
-    int                 _id;
     int8_t              rank;
     int8_t              _color;
     int8_t              _black_bit;
     int8_t              _sign_bit;
     int                 _sign_bit_n;
+    int                 _id;
+    int32_t             _pad[200];
     std::vector<int>    _grey_subfaces;
     std::vector<int>    _black_subfaces;
     std::string         _key; // target sign vector
@@ -140,6 +151,8 @@ public:
     void update_interior_point(double eps);
     void update_position(double eps);
     void update_sign_vector(double eps);
+
+    friend std::ostream& operator<<(std::ostream& out, Node& node);
 };
 
 typedef std::vector<int> Rank;
@@ -168,10 +181,10 @@ public:
     void update_sign_vectors(double eps);
     SignVectors get_sign_vectors();
 
-    NodePtr      node(int id) { return _nodes[id]; }
-    NodePtr make_node(int k);
-    void     add_node_to_rank(NodePtr node);
-    void  remove_node(NodePtr node);
+    NodePtr&      node(int id) { return _nodes[id]; }
+    NodePtr& make_node(int k);
+    void      add_node_to_rank(NodePtr node);
+    void   remove_node(NodePtr node);
 
     void add_arc(NodePtr& src, NodePtr& dst);   // O(1) add
     void remove_arc(Arc& arc);                  // O(1) remove

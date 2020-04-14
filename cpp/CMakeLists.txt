@@ -7,32 +7,50 @@ set(CMAKE_MODULE_PATH ${contact_modes_cmake_dir} ${CMAKE_MODULE_PATH})
 set(LINUX UNIX AND NOT APPLE)
 if(LINUX)
 
-  # GCC configuration
-  if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+    set(CMAKE_C_COMPILER    icc )
+    set(CMAKE_CXX_COMPILER  icpc)
+    set(${CMAKE_CXX_COMPILER_ID} "Intel")
 
-    # set(GCC_CXX_FLAGS "-std=c++17 -fPIC -march=native -fno-omit-frame-pointer") #-m64
-    set(GCC_CXX_FLAGS "-std=c++17") #-m64
+    # GCC configuration
+    if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+        # set(GCC_CXX_FLAGS "-std=c++17 -fPIC -march=native -fno-omit-frame-pointer") #-m64
+        set(GCC_CXX_FLAGS "-std=c++17") #-m64
+        # For compatibility with TCMALLOC from gperftools.
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-malloc")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-calloc")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-realloc")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-free")
+        set(CMAKE_SHARED_LINKER_FLAGS "-ltcmalloc_minimal")
+        # Debug configuration
+        if(BUILD_DEBUG)
+            set(CMAKE_BUILD_TYPE Debug)
+            set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -O2 -fno-omit-frame-pointer")
+        else(BUILD_DEBUG)
+            set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -fno-omit-frame-pointer")
+        endif(BUILD_DEBUG)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_CXX_FLAGS}")
+        # set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --expt-relaxed-constexpr")
+    endif()
 
-    # For compatibility with TCMALLOC from gperftools.
-    set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-malloc")
-    set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-calloc")
-    set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-realloc")
-    set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fno-builtin-free")
-    set(CMAKE_SHARED_LINKER_FLAGS "-ltcmalloc_minimal")
-
-    # Debug configuration
-    if(BUILD_DEBUG)
-        set(CMAKE_BUILD_TYPE Debug)
-        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -O2 -fno-omit-frame-pointer")
-    else(BUILD_DEBUG)
-        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g -fno-omit-frame-pointer")
-    endif(BUILD_DEBUG)
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_CXX_FLAGS}")
-
-    # set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --expt-relaxed-constexpr")
-    
-  endif()
+    # Intel C++ Compiler configuration
+    if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+        set(ICC_CXX_FLAGS "-std=c++17")
+        # set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -prof-gen-sampling")
+        # set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -prof-gen -prof-dir/tmp/profiled")
+        # set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -prof-use -ipo -prof-dir/tmp/profiled")
+        set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -fno-builtin-malloc")
+        set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -fno-builtin-calloc")
+        set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -fno-builtin-realloc")
+        set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -fno-builtin-free")
+        set(CMAKE_SHARED_LINKER_FLAGS "-ltcmalloc_minimal")
+        if(BUILD_DEBUG)
+            set(CMAKE_BUILD_TYPE Debug)
+            set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -g -O2")
+        else(BUILD_DEBUG)
+            set(ICC_CXX_FLAGS "${ICC_CXX_FLAGS} -g -O2 -fno-omit-frame-pointer")
+        endif(BUILD_DEBUG)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ICC_CXX_FLAGS}")
+    endif()
 
 endif()
 
