@@ -579,7 +579,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     if (DEBUG) {
                         assert(r->_color == COLOR_AH_RED || r->rank == d+1);
                     }
-                    I->add_arc(r, g_b);
+                    I->add_arc(g_b, r);
                     r->_grey_subfaces.push_back(g_a->_id);
                     r->_grey_subfaces.push_back(g_b->_id);
                 }
@@ -594,7 +594,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 ArcListIterator iter = g->subfaces.begin();
                 ArcListIterator end  = g->subfaces.end();
                 while (iter != end) {
-                    Arc& arc = *iter.arc;
+                    Arc* arc = iter.arc;
                     int  i_u = *iter++;
                     if (DEBUG) {
                         // std::cout << i_u << std::endl;
@@ -629,8 +629,9 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                         if (u->_color == COLOR_AH_GREY) {
                             g_b->_grey_subfaces.push_back(u->_id);
                         }
-                        I->remove_arc(arc);
-                        I->add_arc(g_b, u);
+                        g->subfaces._remove_arc(arc);
+                        u->superfaces._remove_arc(arc->_dst_arc);
+                        I->add_arc(u, g_b, arc, arc->_dst_arc);
                         if (DEBUG) {
                             std::cout << "add " << u->sign_vector << " to g_b" << std::endl;
                         }
@@ -648,7 +649,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 // with the black subfaces of the grey subfaces of g, otherwise.
                 if (k == 1) {
                     NodePtr zero = I->node(I->rank(-1)[0]);
-                    I->add_arc(f, zero);
+                    I->add_arc(zero, f);
                 } else {
                     std::vector<int> V;
                     V.clear();
@@ -671,7 +672,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     for (int i_v : V) {
                         NodePtr& v = I->_nodes[i_v];
                         v->_black_bit = 0;
-                        I->add_arc(f, v);
+                        I->add_arc(v, f);
                     }
                 }
 

@@ -7,6 +7,7 @@
 #include <set>
 #include <unordered_set>
 #include <string>
+#include <boost/pool/object_pool.hpp>
 
 
 class Node;
@@ -54,14 +55,12 @@ enum {
 
 int partial_order(const std::string& lhs, const std::string& rhs);
 
-class Arc {
-public:
-    int dst_id;
-    int src_id; // TODO unnecessary
-    int16_t _dst_arc_idx;
-    int16_t _src_arc_idx;
-    int16_t _next;
-    int16_t _prev;
+struct Arc {
+    int  dst_id;
+    int  src_id;
+    Arc* _dst_arc;
+    Arc* _next;
+    Arc* _prev;
 
     Arc();
 
@@ -74,11 +73,8 @@ typedef std::vector<Arc> Arcs;
 
 class ArcList {
 public:
-    int16_t _begin;
-    int16_t _begin_empty;
-    int16_t _size;
-    int16_t _capacity;
-    Arcs    arcs;
+    Arc* _begin;
+    int  _size;
 
     ArcList();
 
@@ -88,10 +84,8 @@ public:
 
     friend IncidenceGraph;
 
-protected:
-    int _next_empty_index();
-    void _add_arc(Arc& arc, int index);
-    void _remove_arc(Arc& arc, NodePtr& src);
+    void _add_arc(Arc* arc);
+    void _remove_arc(Arc* arc);
 };
 
 class ArcListIterator {
@@ -116,8 +110,6 @@ public:
 
     ArcListIterator& operator++();
     ArcListIterator  operator++(int);
-    // bool operator==(const ArcListIterator& other) const;
-    // bool operator!=(const ArcListIterator& other) const;
     int  operator*() const;
     int* operator->() const;
 
@@ -133,7 +125,6 @@ public:
     int8_t              _sign_bit;
     int                 _sign_bit_n;
     int                 _id;
-    int32_t             _pad[200];
     std::vector<int>    _grey_subfaces;
     std::vector<int>    _black_subfaces;
     std::string         _key; // target sign vector
@@ -157,6 +148,19 @@ public:
 
 typedef std::vector<int> Rank;
 
+struct aligned_allocator_mm_malloc_free
+{
+  typedef std::size_t size_type; //!< An unsigned integral type that can represent the size of the largest object to be allocated.
+  typedef std::ptrdiff_t difference_type; //!< A signed integral type that can represent the difference of any two pointers.
+
+  static char * malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const size_type bytes)
+  { return static_cast<char *>((_mm_malloc)(bytes, 64)); }
+  static void free BOOST_PREVENT_MACRO_SUBSTITUTION(char * const block)
+  { (_mm_free)(block); }
+};
+
+typedef boost::object_pool<Arc, aligned_allocator_mm_malloc_free> ArcPool;
+
 class IncidenceGraph : public std::enable_shared_from_this<IncidenceGraph> {
 public:
     Eigen::MatrixXd A;
@@ -164,6 +168,7 @@ public:
     std::vector<NodePtr> _nodes;
     std::vector<Rank>    _lattice;
     int                  _num_nodes_created;
+    ArcPool              _arc_pool;
 
     IncidenceGraph(int d);
     ~IncidenceGraph();
@@ -186,8 +191,11 @@ public:
     void      add_node_to_rank(NodePtr node);
     void   remove_node(NodePtr node);
 
-    void add_arc(NodePtr& src, NodePtr& dst);   // O(1) add
-    void remove_arc(Arc& arc);                  // O(1) remove
+    // O(1) add
+    void add_arc(NodePtr& sub, NodePtr& super,
+                 Arc* arc1=nullptr, Arc* arc2=nullptr);   
+    // O(1) remove
+    void remove_arc(Arc* arc);
 
     Rank& rank(int k);
 };

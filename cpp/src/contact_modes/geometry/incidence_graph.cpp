@@ -163,85 +163,56 @@ int partial_order(const std::string& lhs, const std::string& rhs) {
     }
 }
 
-Arc::Arc() {
-    dst_id = -1;
-    src_id = -1;
-    _dst_arc_idx = -1;
-    _src_arc_idx = -1;
-    _next = -1;
-    _prev = -1;
-}
+Arc::Arc() 
+    : dst_id(-1), src_id(-1), _dst_arc(nullptr), 
+    _next(nullptr), _prev(nullptr) {}
 
-ArcList::ArcList() {
-    arcs.clear();
-    _begin = -1;
-    _begin_empty = -1;
-    _size = 0;
-    _capacity = 0;
-}
+ArcList::ArcList() : _begin(nullptr), _size(0) {}
 
-void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst) {
-    // Get corresponding arc-list of source and destination nodes.
-    ArcList* src_list;
-    ArcList* dst_list;
-    if (src->rank > dst->rank) {
-        src_list = &src->subfaces;
-        dst_list = &dst->superfaces;
-    } else if (src->rank < dst->rank) {
-        src_list = &src->superfaces;
-        dst_list = &dst->subfaces;
-    } else {
-        assert(false);
+void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst,
+                             Arc* arc_src, Arc* arc_dst) {
+    // Get corresponding arc-list of source (sub) and destination (super) nodes.
+    ArcList* src_list = &src->superfaces;
+    ArcList* dst_list = &dst->subfaces;
+
+    // Allocate arcs from memory pool.
+    if (!arc_src) {
+        arc_src = _arc_pool.malloc();
     }
+    if (!arc_dst) {
+        arc_dst = _arc_pool.malloc();
+    }
+
     // Create arcs.
-    int src_idx = src_list->_next_empty_index();
-    int dst_idx = dst_list->_next_empty_index();
-    Arc arc_src;
-    arc_src.dst_id = dst->_id;
-    arc_src.src_id = src->_id;
-    arc_src._dst_arc_idx = dst_idx;
-    arc_src._src_arc_idx = src_idx;
-    Arc arc_dst;
-    arc_dst.dst_id = src->_id;
-    arc_dst.src_id = dst->_id;
-    arc_dst._dst_arc_idx = src_idx;
-    arc_dst._src_arc_idx = dst_idx;
+    arc_src->dst_id = dst->_id;
+    arc_src->src_id = src->_id;
+    arc_src->_dst_arc = arc_dst;
+    arc_dst->dst_id = src->_id;
+    arc_dst->src_id = dst->_id;
+    arc_dst->_dst_arc = arc_src;
+
     // Add arcs.
-    src_list->_add_arc(arc_src, src_idx);
-    dst_list->_add_arc(arc_dst, dst_idx);
+    src_list->_add_arc(arc_src);
+    dst_list->_add_arc(arc_dst);
 }
 
-int ArcList::_next_empty_index() {
-    if (_begin_empty != -1) {
-        int tmp = _begin_empty;
-        _begin_empty = arcs[_begin_empty]._next;
-        return tmp;
+void ArcList::_add_arc(Arc* arc) {
+    arc->_prev = nullptr;
+    if (!_begin) {
+        arc->_next = nullptr;
     } else {
-        return _size;
+        _begin->_prev = arc;
+        arc->_next = _begin;
     }
-}
-
-void ArcList::_add_arc(Arc& arc, int index) {
-    if (_begin >= 0) {
-        arcs[_begin]._prev = index;
-        arc._next = _begin;
-    }
-    _begin = index;
-
-    if (index == _capacity) {
-        arcs.push_back(arc);
-        _capacity++;
-    } else {
-        arcs[index] = arc;
-    }
+    _begin = arc;
     _size += 1;
 }
 
-void IncidenceGraph::remove_arc(Arc& arc_src) {
-    NodePtr src = std::move(_nodes[arc_src.src_id]);
-    NodePtr dst = std::move(_nodes[arc_src.dst_id]);
+void IncidenceGraph::remove_arc(Arc* arc) {
+    NodePtr& src = _nodes[arc->src_id];
+    NodePtr& dst = _nodes[arc->dst_id];
 
-    // Get corresponding arc-list of destination node.
+    // Get corresponding arc-lists.
     ArcList* src_list;
     ArcList* dst_list;
     if (src->rank > dst->rank) {
@@ -253,47 +224,34 @@ void IncidenceGraph::remove_arc(Arc& arc_src) {
     } else {
         assert(false);
     }
-    // Get destination arc.
-    Arc& arc_dst = dst_list->arcs[arc_src._dst_arc_idx];
-    // Remove arcs.
-    src_list->_remove_arc(arc_src, src);
-    dst_list->_remove_arc(arc_dst, dst);
 
-    _nodes[arc_src.src_id] = std::move(src);
-    _nodes[arc_src.dst_id] = std::move(dst);
+    // Remove arcs.
+    src_list->_remove_arc(arc);
+    dst_list->_remove_arc(arc->_dst_arc);
 }
 
-void ArcList::_remove_arc(Arc& arc, NodePtr& src) {
+void ArcList::_remove_arc(Arc* arc) {
     _size -= 1;
+
     // Connect previous and next arcs.
-    if (arc._prev >= 0) {
-        Arc& prev = arcs[arc._prev];
-        prev._next = arc._next;
+    if (arc->_prev) {
+        arc->_prev->_next = arc->_next;
     }
-    if (arc._next >= 0) {
-        Arc& next = arcs[arc._next];
-        next._prev = arc._prev;
+    if (arc->_next) {
+        arc->_next->_prev = arc->_prev;
     }
+
     // Update beginning index.
-    if (_begin == arc._src_arc_idx) {
-        _begin = arc._next;
-    }
-    // Push onto empty list.
-    if (_begin_empty == -1) {
-        arc._next = -1;
-        _begin_empty = arc._src_arc_idx;
-    } else {
-        arcs[_begin_empty]._prev = arc._src_arc_idx;
-        arc._next = _begin_empty;
-        _begin_empty = arc._src_arc_idx;
+    if (_begin == arc) {
+        _begin = arc->_next;
     }
 }
 
 ArcListIterator ArcList::begin() {
-    if (_begin == -1) {
+    if (!_begin) {
         return end();
     }
-    return ArcListIterator(this, &arcs[_begin]);
+    return ArcListIterator(this, _begin);
 }
 
 ArcListIterator ArcList::end() {
@@ -308,10 +266,10 @@ ArcListIterator::ArcListIterator(ArcList* arc_list, Arc* arc) {
 ArcListIterator& ArcListIterator::operator++() {
     if (!this->arc) {
         throw std::runtime_error("Increment a past-the-end iterator");
-    } else if (arc->_next == -1) {
+    } else if (arc->_next == nullptr) {
         this->arc = nullptr;
     } else {
-        this->arc = &arc_list->arcs[arc->_next];
+        this->arc = arc->_next;
     }
     return *this;
 }
@@ -349,8 +307,7 @@ bool operator!=(const ArcListIterator& lhs, const ArcListIterator& rhs) {
 std::ostream& operator<<(std::ostream& out, const Arc& arc) {
     out << "arc: dst = " << arc.dst_id << std::endl
         << "     src = " << arc.src_id << std::endl
-        << " dst idx = " << arc._dst_arc_idx << std::endl
-        << " src idx = " << arc._src_arc_idx << std::endl
+        << " dst idx = " << arc._dst_arc << std::endl
         << "    next = " << arc._next << std::endl
         << "    prev = " << arc._prev;
     return out;
@@ -375,7 +332,9 @@ Node::Node(int k) {
 std::ostream& operator<<(std::ostream& out, Node& node) {
     out << "node: " << node._id << "\n"
         << "rank: " << (int) node.rank << "\n"
+        << " key: " << node._key << "\n"
         << "  sv: " << node.sign_vector << "\n"
+        << "#sub: " << node.subfaces.size() << "\n"
         << " sub: ";
     bool first = true;
     for (int i : node.subfaces) {
@@ -387,7 +346,9 @@ std::ostream& operator<<(std::ostream& out, Node& node) {
             out << "      " << f->sign_vector << std::endl;
         }
     }
-    out << " sup: ";
+    out 
+    << "#sup: " << node.superfaces.size() << "\n"
+    << " sup: ";
     first = true;
     for (int i : node.superfaces) {
         NodePtr f = node._graph->node(i);
@@ -532,9 +493,8 @@ void Node::update_interior_point(double eps) {
         this->update_sign_vector(eps);
         bool match = this->_key == this->sign_vector.substr(0, this->_key.size());
         if (!match) {
-            std::cout << "rank: " << (int) this->rank << "\n"
-                      << " key: " << this->_key << "\n"
-                      << "  sv: " << this->sign_vector << std::endl;
+            std::cout << *this->subfaces._begin << std::endl;
+            std::cout << *this << std::endl;
         }
         assert(match);
     }

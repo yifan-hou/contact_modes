@@ -3,7 +3,8 @@
 #include <contact_modes/geometry/incidence_graph.hpp>
 
 
-TEST(INCIDENCE_GRAPH, ARC_LIST) {
+TEST(INCIDENCE_GRAPH, ARC_POOL) {
+    boost::object_pool<Arc> p;
     
 }
 

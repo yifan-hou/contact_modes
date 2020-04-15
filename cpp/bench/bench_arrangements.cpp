@@ -1,7 +1,14 @@
 #include <contact_modes/geometry/arrangements.hpp>
 #include <chrono>
 #include <iostream>
+// #include <contact_modes/extern/MemoryPool.h>
 
+
+template <std::size_t alignment>
+inline bool is_aligned(void * ptr) noexcept {
+    std::size_t max = 1u;
+    return std::align(alignment, 1u, ptr, max);
+}
 
 int main() {
     // Set random seed.
@@ -20,9 +27,9 @@ int main() {
     // }
 
     // Benchmark increment arrangements.
-    for (int j = 0; j < 5; j++)
+    for (int j = 0; j < 20; j++)
     {
-        srand(1);
+        srand(0);
 
         int n = 12;
         int d = 11;
