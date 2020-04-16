@@ -8,17 +8,16 @@ static int DEBUG=0;
 static int PROFILE=1;
 
 // TODO Replace me
-int get_position(NodePtr f, const Eigen::VectorXd& a, double b, double eps) {
+int get_position(Node* f, const Eigen::VectorXd& a, double b, double eps) {
     return get_position(a.dot(f->interior_point) - b, eps);
 }
 
-void get_vector(NodePtr e, Eigen::VectorXd& v_e) {
+void get_vector(Node* e, Eigen::VectorXd& v_e) {
     assert(e->rank == 1);
-    IncidenceGraphPtr I = e->_graph;
+    IncidenceGraph* I = e->_graph;
     v_e.resize(I->A.cols());
     v_e.setZero();
-    for (int u_id : e->subfaces) {
-        NodePtr u = I->node(u_id);
+    for (Node* u : e->subfaces) {
         v_e += u->interior_point;
     }
     if (e->subfaces.size() == 2) {
@@ -30,7 +29,7 @@ void get_vector(NodePtr e, Eigen::VectorXd& v_e) {
     }
 }
 
-int get_color_vertex(NodePtr v, const Eigen::VectorXd& a, double b, double eps) {
+int get_color_vertex(Node* v, const Eigen::VectorXd& a, double b, double eps) {
     assert(v->rank == 0);
     int s = get_position(v, a, b, eps);
     if (s == 0) {
@@ -40,13 +39,13 @@ int get_color_vertex(NodePtr v, const Eigen::VectorXd& a, double b, double eps) 
     }
 }
 
-int get_color_edge(NodePtr e, const Eigen::VectorXd& a, double b, double eps) {
+int get_color_edge(Node* e, const Eigen::VectorXd& a, double b, double eps) {
     assert(e->rank == 1);
-    IncidenceGraphPtr I = e->_graph;
+    IncidenceGraph* I = e->_graph;
     if (e->subfaces.size() == 2) {
         auto it = e->subfaces.begin();
-        NodePtr v0 = I->node(*it++);
-        NodePtr v1 = I->node(*it);
+        Node* v0 = *it++;
+        Node* v1 = *it;
         assert(v0 != v1);
         int s0 = get_position(v0, a, b, eps);
         int s1 = get_position(v1, a, b, eps);
@@ -62,7 +61,7 @@ int get_color_edge(NodePtr e, const Eigen::VectorXd& a, double b, double eps) {
             assert(false);
         }
     } else if (e->subfaces.size() == 1) {
-        NodePtr v0 = I->node(*e->subfaces.begin());
+        Node* v0 = *e->subfaces.begin();
         int s0 = get_position(v0, a, b, eps);
         Eigen::VectorXd v_e(e->interior_point.size());
         get_vector(e, v_e);
@@ -104,7 +103,7 @@ int sign_vector_to_base3(std::string sv) {
     return n;
 }
 
-IncidenceGraphPtr initial_arrangement(
+IncidenceGraph* initial_arrangement(
     const Eigen::MatrixXd& A, 
     const Eigen::VectorXd& b, 
     double eps) {
@@ -137,10 +136,10 @@ IncidenceGraphPtr initial_arrangement(
     }
 
     // Allocate k-faces, 0 <= k <= d.
-    IncidenceGraphPtr I = std::make_shared<IncidenceGraph>(d);
+    IncidenceGraph* I = new IncidenceGraph(d);
     I->_nodes.resize((int) pow(3, d));
     for (int i = 0; i < I->_nodes.size(); i++) {
-        NodePtr node = std::make_shared<Node>(-10);
+        Node* node = I->_node_pool.construct(-10);
         node->_id = i;
         node->_graph = I;
         I->_nodes[i] = node;
@@ -149,8 +148,10 @@ IncidenceGraphPtr initial_arrangement(
     I->A = A;
     I->b = b;
 
+    // I->_arc_pool.set_next_size(24000000);
+
     // We build faces from top to bottom, starting with the d+1 face.
-    NodePtr one = I->make_node(d+1);
+    Node* one = I->make_node(d+1);
     I->add_node_to_rank(one);
     // Next we build the regions, i.e. d faces.
     int num_d_faces = 1 << d;
@@ -169,7 +170,7 @@ IncidenceGraphPtr initial_arrangement(
         }
         // Create region.
         int i_f = sign_vector_to_base3(sv);
-        NodePtr f = std::move(I->_nodes[i_f]);
+        Node* f = I->_nodes[i_f];
         f->rank = d;
         f->_key = sv;
         I->add_node_to_rank(f);
@@ -178,8 +179,7 @@ IncidenceGraphPtr initial_arrangement(
     }
     // k faces, 0 <= k <= d-1
     for (int k = d-1; k >= 0; k--) {
-        for (int i_g : I->rank(k + 1)) {
-            NodePtr g = I->node(i_g);
+        for (Node* g : I->rank(k + 1)) {
             sv = g->_key;
             assert(sv.size() == d);
             for (int i = 0; i < d; i++) {
@@ -188,7 +188,7 @@ IncidenceGraphPtr initial_arrangement(
                 }
                 char tmp = sv[i];
                 sv[i] = '0';
-                NodePtr f = I->_nodes[sign_vector_to_base3(sv)];
+                Node* f = I->_nodes[sign_vector_to_base3(sv)];
                 f->rank = k;
                 f->_key = sv;
                 if (f->_black_bit == 0) {
@@ -201,8 +201,8 @@ IncidenceGraphPtr initial_arrangement(
         }
     }
     // -1 face
-    NodePtr zero = I->make_node(-1);
-    NodePtr v = I->node(I->rank(0)[0]);
+    Node* zero = I->make_node(-1);
+    Node* v = I->rank(0)[0];
     I->add_arc(zero, v);
     I->add_node_to_rank(zero);
 
@@ -220,16 +220,14 @@ IncidenceGraphPtr initial_arrangement(
 
     // Compute interior point for 1 faces.
     {
-        for (int i_e : I->rank(1)) {
-            NodePtr e = I->node(i_e);
+        for (Node* e : I->rank(1)) {
             e->update_interior_point(eps);
         }
     }
 
     // Compute interior point for k faces.
     for (int k = 2; k < d + 1; k++) {
-        for (int i_f : I->rank(k)) {
-            NodePtr f = I->node(i_f);
+        for (Node* f : I->rank(k)) {
             f->update_interior_point(eps);
         }
     }
@@ -254,7 +252,7 @@ IncidenceGraphPtr initial_arrangement(
 }
 
 void increment_arrangement(Eigen::VectorXd a, double b, 
-                           IncidenceGraphPtr I, double eps) {
+                           IncidenceGraph* I, double eps) {
     // Normalize halfspace, |a| = 1.
     double norm_a = a.norm();
     a /= norm_a;
@@ -273,13 +271,13 @@ void increment_arrangement(Eigen::VectorXd a, double b,
         start = std::chrono::high_resolution_clock::now();
     }
     int n = I->A.rows();
-    NodePtr v = I->node(I->rank(0)[0]);
+    Node* v = I->rank(0)[0];
     // Find an incident edge e on v such that aff(e) is not parallel to h.
-    NodePtr e;
+    Node* e;
     Eigen::VectorXd v_e;
     double dist;
-    for (int i : v->superfaces) {
-        e = I->node(i);
+    for (auto it = v->superfaces.begin(); it != v->superfaces.end(); it++) {
+        e = *it;
         get_vector(e, v_e);
         dist = a.dot(v_e);
         if (dist > eps) {
@@ -291,18 +289,18 @@ void increment_arrangement(Eigen::VectorXd a, double b,
         assert(dist > eps);
     }
     // Find edge e₀ such that cl(e₀) ∩ h ≠ ∅.
-    NodePtr e0 = e;
+    Node* e0 = e;
     Eigen::VectorXd v_e0 = v_e;
     while (true) {
         if (get_color_edge(e0, a, b, eps) > COLOR_AH_WHITE) {
             break;
         }
         // Find v(e0) closer to h.
-        NodePtr v;
+        Node* v;
         if (e0->subfaces.size() == 2) {
             auto i = e0->subfaces.begin();
-            NodePtr v0 = I->node(*i++);
-            NodePtr v1 = I->node(*i);
+            Node* v0 = *i++;
+            Node* v1 = *i;
             double d0 = abs(a.dot(v0->interior_point) - b);
             double d1 = abs(a.dot(v1->interior_point) - b);
             if (d0 < d1) {
@@ -311,16 +309,15 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 v = v1;
             }
         } else if (e0->subfaces.size() == 1) {
-            v = I->node(*e0->subfaces.begin());
+            v = *e0->subfaces.begin();
         } else {
             assert(false);
         }
         // Find e in v such that aff(e0) == aff(e).
-        NodePtr e_min;
+        Node* e_min;
         Eigen::VectorXd v_min;
         double min_dist = std::numeric_limits<float>::infinity();
-        for (int i_e : v->superfaces) {
-            e = I->node(i_e);
+        for (Node* e : v->superfaces) {
             if (e == e0) {
                 continue;
             }
@@ -358,30 +355,28 @@ void increment_arrangement(Eigen::VectorXd a, double b,
         std::cout << "phase 2: " << std::endl;
     }
     // Add some 2 face incident upon e₀ to Q and mark it green.
-    NodePtr f = I->node(*e0->superfaces.begin());
+    Node* f = *e0->superfaces.begin();
     f->_color = COLOR_AH_GREEN;
-    std::list<NodePtr> Q;
+    std::list<Node*> Q;
     Q.push_back(f);
     // Color vertices, edges, and 2 faces of 𝓐(H).
     int d = a.size();
-    std::vector<std::vector<NodePtr> > L(d+1);
+    std::vector<std::vector<Node*> > L(d+1);
     for (int k = 0; k < d+1; k++) {
         L[k].clear();
     }
-    NodePtr g;
+    Node* g;
     while (!Q.empty()) {
-        f = std::move(Q.front());
+        f = Q.front();
         Q.pop_front();
-        for (int i_e : f->subfaces) {
-            if (I->_nodes[i_e]->_color != COLOR_AH_WHITE) {
+        for (Node* e : f->subfaces) {
+            if (e->_color != COLOR_AH_WHITE) {
                 continue;
             }
-            e = std::move(I->_nodes[i_e]);
             int color_e = get_color_edge(e, a, b, eps);
             if (color_e > COLOR_AH_WHITE) {
                 // Mark each white vertex v ∈ h crimson and insert v into L₀.
-                for (int i_v : e->subfaces) {
-                    v = std::move(I->_nodes[i_v]);
+                for (Node* v : e->subfaces) {
                     if (v->_color == COLOR_AH_WHITE) {
                         int color_v = get_color_vertex(v, a, b, eps);
                         if (color_v == COLOR_AH_CRIMSON) {
@@ -389,38 +384,31 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                             L[0].push_back(v);
                         }
                     }
-                    I->_nodes[i_v] = std::move(v);
                 }
                 // Color e and insert e into L₁.
                 e->_color = color_e;
                 L[1].push_back(e);
                 // Mark all white 2 faces green and put them into Q.
-                for (int i_g : e->superfaces) {
-                    g = std::move(I->_nodes[i_g]);
+                for (Node* g : e->superfaces) {
                     if (g->_color == COLOR_AH_WHITE) {
                         g->_color = COLOR_AH_GREEN;
                         Q.push_back(g);
                     }
-                    I->_nodes[i_g] = std::move(g);
                 }
             }
-            I->_nodes[i_e] = std::move(e);
         }
     }
     // Color k faces, 2 ≤ k ≤ d.
     for (int k = 2; k < d+1; k++) {
-        for (NodePtr f : L[k-1]) {
-            for (int i_g : f->superfaces) {
-                g = std::move(I->_nodes[i_g]);
+        for (Node* f : L[k-1]) {
+            for (Node* g : f->superfaces) {
                 if (g->_color != COLOR_AH_WHITE && g->_color != COLOR_AH_GREEN) {
-                    I->_nodes[i_g] = std::move(g);
                     continue;
                 }
                 if (f->_color == COLOR_AH_PINK) {
                     bool above = false;
                     bool below = false;
-                    for (int i_fg : g->subfaces) {
-                        NodePtr& f_g = I->_nodes[i_fg];
+                    for (Node* f_g : g->subfaces) {
                         int s;
                         if (f_g->_color == COLOR_AH_RED) {
                             above = true;
@@ -451,8 +439,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 }
                 else if (f->_color == COLOR_AH_CRIMSON) {
                     bool crimson = true;
-                    for (int i_fg : g->subfaces) {
-                        NodePtr& f_g = I->_nodes[i_fg];
+                    for (Node* f_g : g->subfaces) {
                         if (f_g->_color != COLOR_AH_CRIMSON) {
                             crimson = false;
                             break;
@@ -469,7 +456,6 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     assert(false);
                 }
                 L[k].push_back(g);
-                I->_nodes[i_g] = std::move(g);
             }
         }
     }
@@ -495,29 +481,27 @@ void increment_arrangement(Eigen::VectorXd a, double b,
         start = std::chrono::high_resolution_clock::now();
         std::cout << "phase 3:" << std::endl;
     }
-
+    // I->_arc_pool.set_next_size(24000000);
 
     for (int k = 0; k < d + 1; k++) {
         int n_Lk = L[k].size();
         for (int i = 0; i < n_Lk; i++) {
-            NodePtr g = L[k][i];
+            Node* g = L[k][i];
             switch (g->_color) {
 
                 case COLOR_AH_PINK: {
                 g->_color = COLOR_AH_GREY;
                 // Add to grey subfaces of superfaces.
-                for (int i_u : g->superfaces) {
-                    NodePtr& u = I->_nodes[i_u];
-                    u->_grey_subfaces.push_back(g->_id);
+                for (Node* u : g->superfaces) {
+                    u->_grey_subfaces.push_back(g);
                 }
                 break; }
 
                 case COLOR_AH_CRIMSON: {
                 g->_color = COLOR_AH_BLACK;
                 // Add to black subfaces of superfaces.
-                for (int i_u : g->superfaces) {
-                    NodePtr& u = I->_nodes[i_u];
-                    u->_black_subfaces.push_back(g->_id);
+                for (Node* u : g->superfaces) {
+                    u->_black_subfaces.push_back(g);
                 }
                 break; }
                 
@@ -529,23 +513,23 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 // Step 1. Create g_a = g ∩ h⁺ and g_b = g ∩ h⁻. Remove g from
                 // 𝓐(H) and Lₖ and replace with g_a, g_b.
                 if (DEBUG) {
-                    std::cout << "Splitting the following node..." << std::endl;
-                    std::cout << *g << std::endl;
+                    // std::cout << "Splitting the following node..." << std::endl;
+                    // std::cout << *g << std::endl;
                 }
-                NodePtr g_a = g;
+                Node* g_a = g;
                 g_a->_color = COLOR_AH_GREY;
-                NodePtr g_b = I->make_node(k);
+                Node* g_b = I->make_node(k);
                 g_b->_color = COLOR_AH_GREY;
                 I->add_node_to_rank(g_b);
                 L[k].push_back(g_b);
 
-                // if (g->rank < 3 || DEBUG) {
+                if (g->rank < 3 || DEBUG) {
                     g->update_sign_vector(eps);
                     g_a->_key = g->sign_vector;
                     g_a->_key.back() = '+';
                     g_b->_key = g->sign_vector;
                     g_b->_key.back() = '-';
-                // }
+                }
 
                 if (PROFILE) {
                     auto end_step = std::chrono::high_resolution_clock::now();
@@ -554,19 +538,19 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 }
                 // Step 2. Create the black face f = g ∩ h, connect it to g_a
                 // and g_b, and put f into 𝓐(H) and Lₖ₋₁.
-                NodePtr& f = I->make_node(k-1);
+                Node* f = I->make_node(k-1);
                 f->_color = COLOR_AH_BLACK;
                 I->add_arc(f, g_a);
                 I->add_arc(f, g_b);
-                g_a->_black_subfaces = {f->_id};
-                g_b->_black_subfaces = {f->_id};
+                g_a->_black_subfaces = {f};
+                g_b->_black_subfaces = {f};
                 L[k-1].push_back(f);
                 I->add_node_to_rank(f);
 
-                // if (f->rank < 2 || DEBUG) {
+                if (f->rank < 2 || DEBUG) {
                     f->_key = g->sign_vector;
                     f->_key.back() = '0';
-                // }
+                }
 
                 if (PROFILE) {
                     auto end_step = std::chrono::high_resolution_clock::now();
@@ -574,14 +558,13 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     start_step = std::chrono::high_resolution_clock::now();
                 }
                 // Step 3. Connect each red superface of g with g_a and g_b.
-                for (int i_r : g->superfaces) {
-                    NodePtr& r = I->_nodes[i_r];
+                for (Node* r : g->superfaces) {
                     if (DEBUG) {
                         assert(r->_color == COLOR_AH_RED || r->rank == d+1);
                     }
                     I->add_arc(g_b, r);
-                    r->_grey_subfaces.push_back(g_a->_id);
-                    r->_grey_subfaces.push_back(g_b->_id);
+                    r->_grey_subfaces.push_back(g_a);
+                    r->_grey_subfaces.push_back(g_b);
                 }
 
                 if (PROFILE) {
@@ -595,12 +578,12 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 ArcListIterator end  = g->subfaces.end();
                 while (iter != end) {
                     Arc* arc = iter.arc;
-                    int  i_u = *iter++;
+                    Node* u = *iter++;
                     if (DEBUG) {
                         // std::cout << i_u << std::endl;
                         // std::cout << *iter.arc << std::endl;
                     }
-                    NodePtr& u = I->_nodes[i_u];
+                    
                     if (u->_color == COLOR_AH_BLACK) {
                         continue;
                     }
@@ -620,20 +603,20 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     }
                     if (s == 1) {
                         if (u->_color == COLOR_AH_GREY) {
-                            g_a->_grey_subfaces.push_back(u->_id);
+                            g_a->_grey_subfaces.push_back(u);
                         }
                         if (DEBUG) {
-                            std::cout << "add " << u->sign_vector << " to g_a" << std::endl;
+                            // std::cout << "add " << u->sign_vector << " to g_a" << std::endl;
                         }
                     } else if (s == -1) {
                         if (u->_color == COLOR_AH_GREY) {
-                            g_b->_grey_subfaces.push_back(u->_id);
+                            g_b->_grey_subfaces.push_back(u);
                         }
                         g->subfaces._remove_arc(arc);
                         u->superfaces._remove_arc(arc->_dst_arc);
                         I->add_arc(u, g_b, arc, arc->_dst_arc);
                         if (DEBUG) {
-                            std::cout << "add " << u->sign_vector << " to g_b" << std::endl;
+                            // std::cout << "add " << u->sign_vector << " to g_b" << std::endl;
                         }
                     } else {
                         assert(false);
@@ -648,20 +631,19 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 // Step 5. If k = 1, connect f with the -1 face, and connect f
                 // with the black subfaces of the grey subfaces of g, otherwise.
                 if (k == 1) {
-                    NodePtr zero = I->node(I->rank(-1)[0]);
+                    Node* zero = I->rank(-1)[0];
                     I->add_arc(zero, f);
                 } else {
-                    std::vector<int> V;
+                    // std::set<Node*> V;
+                    std::vector<Node*> V;
                     V.clear();
-                    for (int i_u : g->_grey_subfaces) {
-                        NodePtr& u = I->_nodes[i_u];
-                        for (int i_v : u->_black_subfaces) {
-                            NodePtr& v = I->_nodes[i_v];
+                    for (Node* u : g->_grey_subfaces) {
+                        for (Node* v : u->_black_subfaces) {
                             if (PROFILE) {
                                 // TODO
                             }
                             if (v->_black_bit == 0) {
-                                V.push_back(v->_id);
+                                V.push_back(v);
                                 v->_black_bit = 1;
                             }
                         }
@@ -669,8 +651,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                     if (PROFILE) {
                         // TODO
                     }
-                    for (int i_v : V) {
-                        NodePtr& v = I->_nodes[i_v];
+                    for (Node* v : V) {
                         v->_black_bit = 0;
                         I->add_arc(v, f);
                     }
@@ -692,12 +673,12 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 }
                 g_b->update_interior_point(eps);
                 if (DEBUG) {
-                    std::cout << "f" << std::endl;
-                    std::cout << *f << std::endl;
-                    std::cout << "g_a" << std::endl;
-                    std::cout << *g_a << std::endl;
-                    std::cout << "g_b" << std::endl;
-                    std::cout << *g_b << std::endl;
+                    // std::cout << "f" << std::endl;
+                    // std::cout << *f << std::endl;
+                    // std::cout << "g_a" << std::endl;
+                    // std::cout << *g_a << std::endl;
+                    // std::cout << "g_b" << std::endl;
+                    // std::cout << *g_b << std::endl;
                 }
 
                 if (PROFILE) {
@@ -716,7 +697,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
     }
 
     for (int k = 0; k < d + 1; k++) {
-        for (NodePtr& u : L[k]) {
+        for (Node* u : L[k]) {
             u->_color = COLOR_AH_WHITE;
             u->_grey_subfaces.clear();
             u->_black_subfaces.clear();

@@ -38,8 +38,10 @@ int main() {
         A.setRandom();
         b.setRandom();
 
-        IncidenceGraphPtr I = initial_arrangement(A, b, 1e-8);
+        IncidenceGraph* I = initial_arrangement(A, b, 1e-8);
         // I->update_sign_vectors(1e-8);
+
+        I->_num_arcs_created = 0;
 
         for (int i = d; i < n; i++) {
             Eigen::VectorXd a(d);
@@ -48,5 +50,9 @@ int main() {
             b.setRandom();
             increment_arrangement(a, b[0], I, 1e-8);
         }
+
+        std::cout << "num arcs " << I->_num_arcs_created << std::endl;
+
+        delete I;
     }
 }

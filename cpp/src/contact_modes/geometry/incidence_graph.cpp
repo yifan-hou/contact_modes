@@ -164,12 +164,12 @@ int partial_order(const std::string& lhs, const std::string& rhs) {
 }
 
 Arc::Arc() 
-    : dst_id(-1), src_id(-1), _dst_arc(nullptr), 
+    : dst(nullptr), _dst_arc(nullptr), 
     _next(nullptr), _prev(nullptr) {}
 
 ArcList::ArcList() : _begin(nullptr), _size(0) {}
 
-void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst,
+void IncidenceGraph::add_arc(Node* src, Node* dst,
                              Arc* arc_src, Arc* arc_dst) {
     // Get corresponding arc-list of source (sub) and destination (super) nodes.
     ArcList* src_list = &src->superfaces;
@@ -178,17 +178,17 @@ void IncidenceGraph::add_arc(NodePtr& src, NodePtr& dst,
     // Allocate arcs from memory pool.
     if (!arc_src) {
         arc_src = _arc_pool.malloc();
+        _num_arcs_created += 1;
     }
     if (!arc_dst) {
         arc_dst = _arc_pool.malloc();
+        _num_arcs_created += 1;
     }
 
     // Create arcs.
-    arc_src->dst_id = dst->_id;
-    arc_src->src_id = src->_id;
+    arc_src->dst = dst;
     arc_src->_dst_arc = arc_dst;
-    arc_dst->dst_id = src->_id;
-    arc_dst->src_id = dst->_id;
+    arc_dst->dst = src;
     arc_dst->_dst_arc = arc_src;
 
     // Add arcs.
@@ -209,8 +209,8 @@ void ArcList::_add_arc(Arc* arc) {
 }
 
 void IncidenceGraph::remove_arc(Arc* arc) {
-    NodePtr& src = _nodes[arc->src_id];
-    NodePtr& dst = _nodes[arc->dst_id];
+    Node* src = arc->_dst_arc->dst;
+    Node* dst = arc->dst;
 
     // Get corresponding arc-lists.
     ArcList* src_list;
@@ -280,21 +280,13 @@ ArcListIterator ArcListIterator::operator++(int n) {
     return retval;
 }
 
-int  ArcListIterator::operator*() const {
-    return arc->dst_id;
+Node* ArcListIterator::operator*() const {
+    return arc->dst;
 }
 
-int* ArcListIterator::operator->() const {
-    return &arc->dst_id;
+Node** ArcListIterator::operator->() const {
+    return &arc->dst;
 }
-
-// bool ArcListIterator::operator==(const ArcListIterator& other) const {
-//     return this->arc == other.arc && this->arc_list == other.arc_list;
-// }
-
-// bool ArcListIterator::operator!=(const ArcListIterator& other) const {
-//     return !(*this == other);
-// }
 
 bool operator==(const ArcListIterator& lhs, const ArcListIterator& rhs) {
     return lhs.arc == rhs.arc && lhs.arc_list == rhs.arc_list;
@@ -305,28 +297,39 @@ bool operator!=(const ArcListIterator& lhs, const ArcListIterator& rhs) {
 }
 
 std::ostream& operator<<(std::ostream& out, const Arc& arc) {
-    out << "arc: dst = " << arc.dst_id << std::endl
-        << "     src = " << arc.src_id << std::endl
+    out << "arc: dst = " << arc.dst << std::endl
         << " dst idx = " << arc._dst_arc << std::endl
         << "    next = " << arc._next << std::endl
         << "    prev = " << arc._prev;
     return out;
 }
 
-Node::Node(int k) {
-    this->rank = k;
-    this->interior_point.resize(0);
-    this->position.resize(0);
-    this->sign_vector.clear();
-    this->_id = 0;
-    this->_color = COLOR_AH_WHITE;
+Node::Node(int k)
+    : rank(k), _id(-1), _color(COLOR_AH_WHITE),
+      _black_bit(0), _sign_bit_n(0), _sign_bit(0), _graph(nullptr)
+{
     this->_grey_subfaces.clear();
     this->_black_subfaces.clear();
     this->_key.clear();
-    this->_black_bit = false;
-    this->_sign_bit_n = 0;
-    this->_sign_bit = 0;
-    this->_graph = nullptr;
+
+    this->interior_point.resize(0);
+    this->position.resize(0);
+    this->sign_vector.clear();
+}
+
+void Node::reset() {
+    rank = -100;
+    _id = -1;
+    _color = COLOR_AH_WHITE;
+    _black_bit = 0;
+    _sign_bit_n = 0;
+    _sign_bit = 0;
+    _grey_subfaces.clear();
+    _black_subfaces.clear();
+    _key.clear();
+    interior_point.resize(0);
+    position.resize(0);
+    sign_vector.clear();
 }
 
 std::ostream& operator<<(std::ostream& out, Node& node) {
@@ -337,8 +340,7 @@ std::ostream& operator<<(std::ostream& out, Node& node) {
         << "#sub: " << node.subfaces.size() << "\n"
         << " sub: ";
     bool first = true;
-    for (int i : node.subfaces) {
-        NodePtr f = node._graph->node(i);
+    for (Node* f : node.subfaces) {
         if (first) {
             out << f->sign_vector << std::endl;
             first = false;
@@ -350,8 +352,7 @@ std::ostream& operator<<(std::ostream& out, Node& node) {
     << "#sup: " << node.superfaces.size() << "\n"
     << " sup: ";
     first = true;
-    for (int i : node.superfaces) {
-        NodePtr f = node._graph->node(i);
+    for (Node* f : node.superfaces) {
         if (first) {
             out << f->sign_vector;
             first = false;
@@ -359,7 +360,6 @@ std::ostream& operator<<(std::ostream& out, Node& node) {
             out << std::endl << "      " << f->sign_vector;
         }
     }
-        
     return out;
 }
 
@@ -378,8 +378,8 @@ void Node::update_interior_point(double eps) {
         }
         Eigen::MatrixXd A0;
         Eigen::VectorXd b0;
-        get_rows(this->graph()->A, idx, A0);
-        get_rows(this->graph()->b, idx, b0);
+        get_rows(_graph->A, idx, A0);
+        get_rows(_graph->b, idx, b0);
         Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr;
         qr.setThreshold(eps);
         qr.compute(A0);
@@ -392,10 +392,8 @@ void Node::update_interior_point(double eps) {
         // Case: 2 vertices: Average interior points of vertices.
         if (this->subfaces.size() == 2) {
             auto iter = this->subfaces.begin();
-            int i0 = *iter++;
-            int i1 = *iter;
-            NodePtr v0 = this->graph()->node(i0);
-            NodePtr v1 = this->graph()->node(i1);
+            Node* v0 = *iter++;
+            Node* v1 = *iter;
             this->interior_point = (v0->interior_point + v1->interior_point) / 2.0;
         }
 
@@ -403,7 +401,7 @@ void Node::update_interior_point(double eps) {
         // (ray).
         else if (this->subfaces.size() == 1) {
             // Get vertex.
-            NodePtr v = this->graph()->node(*this->subfaces.begin());
+            Node* v = *this->subfaces.begin();
             // Get edge key up to vertex key length.
             std::string e_sv = this->_key.substr(0, v->_key.size());
             if (DEBUG) {
@@ -445,8 +443,8 @@ void Node::update_interior_point(double eps) {
             std::cout << "      edge: " << this->_key << std::endl;
             std::cout << "# subfaces: " << this->subfaces.size() << std::endl;
             std::cout << "  subfaces: ";
-            for (int i_f : subfaces) {
-                std::cout << i_f << " ";
+            for (Node* f : subfaces) {
+                std::cout << f->_id << " ";
             }
             std::cout << std::endl;
             assert(false);
@@ -457,11 +455,7 @@ void Node::update_interior_point(double eps) {
     else {
         this->interior_point.resize(this->graph()->A.cols());
         this->interior_point.setZero();
-        auto iter = this->subfaces.begin();
-        auto  end = this->subfaces.end();
-        while (iter != end) {
-            int idx = *iter++;
-            NodePtr f = _graph->node(idx);
+        for (Node* f : subfaces) {
             this->interior_point += f->interior_point;
         }
         this->interior_point /= this->subfaces.size();
@@ -470,8 +464,7 @@ void Node::update_interior_point(double eps) {
         this->update_sign_vector(eps);
 
         // Assert subfaces obey partial order.
-        for (int i : this->subfaces) {
-            NodePtr f = _graph->node(i);
+        for (Node* f : subfaces) {
             if (f->rank == -1 || f->rank == _graph->A.cols()) {
                 continue;
             }
@@ -532,7 +525,7 @@ void Node::update_sign_vector(double eps) {
 }
 
 IncidenceGraph::IncidenceGraph(int d) 
-    : _num_nodes_created(0)
+    : _num_nodes_created(0), _num_arcs_created(0)
 {
     this->_lattice.resize(d + 3);
     for (int i = 0; i < d + 3; i++) {
@@ -606,23 +599,28 @@ is_aligned(const void * ptr, std::uintptr_t alignment) noexcept {
     return !(iptr % alignment);
 }
 
-NodePtr& IncidenceGraph::make_node(int k) {
-    // NodePtr node(new Node(k));
-    NodePtr node = std::make_shared<Node>(k);
+Node* IncidenceGraph::make_node(int k) {
+    // Node* node = _node_pool.malloc();
+    Node* node = _node_pool.construct(k);
+    // node->reset();
+    node->rank = k;
     node->_id = this->_nodes.size();
-    node->_graph = shared_from_this();
+    node->_graph = this;
     this->_nodes.push_back(node);
-    return this->_nodes[node->_id];
+    if (DEBUG) {
+        // Assert cacheline aligned.
+    }
+    return node;
 }
 
-void IncidenceGraph::add_node_to_rank(NodePtr node) {
-    this->rank(node->rank).push_back(node->_id);
+void IncidenceGraph::add_node_to_rank(Node* node) {
+    this->rank(node->rank).push_back(node);
 }
 
-void IncidenceGraph::remove_node(NodePtr node) {
+void IncidenceGraph::remove_node_from_rank(Node* node) {
     // Remove node.
     auto r = rank(node->rank);
-    auto p = std::find(r.begin(), r.end(), node->_id);
+    auto p = std::find(r.begin(), r.end(), node);
     r.erase(p);
 }
 

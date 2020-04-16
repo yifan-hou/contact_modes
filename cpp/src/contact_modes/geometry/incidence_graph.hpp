@@ -56,11 +56,10 @@ enum {
 int partial_order(const std::string& lhs, const std::string& rhs);
 
 struct Arc {
-    int  dst_id;
-    int  src_id;
-    Arc* _dst_arc;
-    Arc* _next;
-    Arc* _prev;
+    Node* dst;
+    Arc*  _dst_arc;
+    Arc*  _next;
+    Arc*  _prev;
 
     Arc();
 
@@ -96,9 +95,9 @@ public:
     using pointer = int*;
     using difference_type = void;
 
-    Arc* arc;
+    Arc*     arc;
     ArcList* arc_list;
-
+    
     class postinc_return {
     public:
         int value;
@@ -110,8 +109,8 @@ public:
 
     ArcListIterator& operator++();
     ArcListIterator  operator++(int);
-    int  operator*() const;
-    int* operator->() const;
+    Node*  operator*()  const;
+    Node** operator->() const;
 
     friend bool operator==(const ArcListIterator& lhs, const ArcListIterator& rhs);
     friend bool operator!=(const ArcListIterator& lhs, const ArcListIterator& rhs);
@@ -124,20 +123,22 @@ public:
     int8_t              _black_bit;
     int8_t              _sign_bit;
     int                 _sign_bit_n;
-    int                 _id;
-    std::vector<int>    _grey_subfaces;
-    std::vector<int>    _black_subfaces;
-    std::string         _key; // target sign vector
-    IncidenceGraphPtr   _graph;
     ArcList             superfaces;
     ArcList             subfaces;
+    IncidenceGraph*     _graph;
+    std::vector<Node*>  _grey_subfaces;
+    std::vector<Node*>  _black_subfaces;
+    std::string         _key; // target sign vector
+
+    int                 _id;
     Eigen::VectorXd     interior_point;
     Position            position;
     SignVector          sign_vector;
 
     Node(int k);
+    void reset();
 
-    IncidenceGraphPtr graph() { return _graph; }
+    IncidenceGraph* graph() { return _graph; }
 
     void update_interior_point(double eps);
     void update_position(double eps);
@@ -146,7 +147,7 @@ public:
     friend std::ostream& operator<<(std::ostream& out, Node& node);
 };
 
-typedef std::vector<int> Rank;
+typedef std::vector<Node*> Rank;
 
 struct aligned_allocator_mm_malloc_free
 {
@@ -160,15 +161,18 @@ struct aligned_allocator_mm_malloc_free
 };
 
 typedef boost::object_pool<Arc, aligned_allocator_mm_malloc_free> ArcPool;
+typedef boost::object_pool<Node, aligned_allocator_mm_malloc_free> NodePool;
 
 class IncidenceGraph : public std::enable_shared_from_this<IncidenceGraph> {
 public:
     Eigen::MatrixXd A;
     Eigen::VectorXd b;
-    std::vector<NodePtr> _nodes;
-    std::vector<Rank>    _lattice;
-    int                  _num_nodes_created;
-    ArcPool              _arc_pool;
+    std::vector<Node*> _nodes;
+    std::vector<Rank>  _lattice;
+    int                _num_nodes_created;
+    int                _num_arcs_created;
+    NodePool           _node_pool;
+    ArcPool            _arc_pool;
 
     IncidenceGraph(int d);
     ~IncidenceGraph();
@@ -186,13 +190,13 @@ public:
     void update_sign_vectors(double eps);
     SignVectors get_sign_vectors();
 
-    NodePtr&      node(int id) { return _nodes[id]; }
-    NodePtr& make_node(int k);
-    void      add_node_to_rank(NodePtr node);
-    void   remove_node(NodePtr node);
+    Node*       node(int id) { return _nodes[id]; }
+    Node*  make_node(int k);
+    void    add_node_to_rank(Node* node);
+    void remove_node_from_rank(Node* node);
 
     // O(1) add
-    void add_arc(NodePtr& sub, NodePtr& super,
+    void add_arc(Node* sub, Node* super,
                  Arc* arc1=nullptr, Arc* arc2=nullptr);   
     // O(1) remove
     void remove_arc(Arc* arc);
