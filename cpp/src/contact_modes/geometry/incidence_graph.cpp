@@ -627,3 +627,85 @@ void IncidenceGraph::remove_node_from_rank(Node* node) {
 Rank& IncidenceGraph::rank(int k) {
     return this->_lattice[k+1];
 }
+
+void IncidenceGraph::print_neighbor_stats() {
+    this->update_sign_vectors(1e-8);
+    for (int r = 2; r < this->dim(); r++) {
+        auto R = this->rank(r);
+        for (Node* u : R) {
+            // Create subfaces set.
+            std::set<Node*> subfaces;
+            for (Node* f : u->subfaces) {
+                subfaces.insert(f);
+            }
+            // Count subface overlap with superfaces of subfaces.
+            double n_shared_all = 0;
+            double n_total_all = 0;
+            double n_percent_max = 0;
+            for (Node* f : u->subfaces) {
+                for (Node* g : f->superfaces) {
+                    if (g == u) {
+                        continue;
+                    }
+                    double local_count = 0;
+                    for (Node* h : g->subfaces) {
+                        int cnt = subfaces.count(h);
+                        n_shared_all += cnt;
+                        n_total_all += 1;
+                        local_count += cnt;
+                    }
+                    local_count /= g->subfaces.size();
+                    if (local_count > n_percent_max) {
+                        n_percent_max = local_count;
+                    }
+                }
+            }
+            // Create superface set.
+            std::set<Node*> superfaces;
+            for (Node* g : u->superfaces) {
+                superfaces.insert(g);
+            }
+
+            double shared_super = 0;
+            double shared_super_total = 0;
+            for (Node* f : u->subfaces) {
+                for (Node* h : f->superfaces) {
+                    if (h == u) {
+                        continue;
+                    }
+                    for (Node* g : h->superfaces) {
+                        shared_super += superfaces.count(g);
+                        shared_super_total += 1;
+                    }
+                }
+            }
+            // Count duplicate subsubfaces.
+            std::set<Node*> subsubfaces;
+            double n_ss = 0;
+            double t_ss = 0;
+            for (Node* f : u->subfaces) {
+                for (Node* g : f->subfaces) {
+                    if (subsubfaces.count(g)) {
+                        continue;
+                    }
+                    subsubfaces.insert(g);
+                    for (Node* h : g->superfaces) {
+                        if (h == f) {
+                            continue;
+                        }
+                        if (subfaces.count(h)) {
+                            n_ss += 1;
+                            break;
+                        }
+                    }
+                    t_ss += 1;
+                }
+            }
+
+            std::cout << "        rank: " << r << std::endl;
+            std::cout << "  shared sub: " << n_shared_all / n_total_all << std::endl;
+            std::cout << "shared super: " << shared_super / shared_super_total << std::endl;
+            std::cout << "shared subsub " << n_ss / t_ss << " " << n_ss << " " << t_ss << std::endl;
+        }
+    }
+}

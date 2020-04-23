@@ -202,4 +202,6 @@ public:
     void remove_arc(Arc* arc);
 
     Rank& rank(int k);
+
+    void print_neighbor_stats();
 };

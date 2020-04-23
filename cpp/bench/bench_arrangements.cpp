@@ -27,7 +27,7 @@ int main() {
     // }
 
     // Benchmark increment arrangements.
-    for (int j = 0; j < 20; j++)
+    for (int j = 0; j < 1; j++)
     {
         srand(0);
 
@@ -52,6 +52,8 @@ int main() {
         }
 
         std::cout << "num arcs " << I->_num_arcs_created << std::endl;
+
+        // I->print_neighbor_stats();
 
         delete I;
     }

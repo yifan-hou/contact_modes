@@ -137,6 +137,8 @@ IncidenceGraph* initial_arrangement(
 
     // Allocate k-faces, 0 <= k <= d.
     IncidenceGraph* I = new IncidenceGraph(d);
+    I->_node_pool.set_next_size(1000000);
+    I->_arc_pool.set_next_size(24000000);
     I->_nodes.resize((int) pow(3, d));
     for (int i = 0; i < I->_nodes.size(); i++) {
         Node* node = I->_node_pool.construct(-10);
@@ -148,7 +150,7 @@ IncidenceGraph* initial_arrangement(
     I->A = A;
     I->b = b;
 
-    // I->_arc_pool.set_next_size(24000000);
+    
 
     // We build faces from top to bottom, starting with the d+1 face.
     Node* one = I->make_node(d+1);
@@ -460,6 +462,69 @@ void increment_arrangement(Eigen::VectorXd a, double b,
         }
     }
 
+    // Reorganize nodes for cache coherence.
+    std::vector<std::vector<Node*> > L_re(d+1);
+    for (int k = 0; k < d+1; k++) {
+        L_re[k].clear();
+    }
+    for (Node* u : L[d]) {
+        L_re[d].push_back(u);
+    }
+
+    // // ATTEMPT 1: Reorder by levels by subfaces.
+    // for (int k = d; k > 0; k--) {
+    //     for (Node* u : L[k]) {
+    //         int hit = 0;
+    //         int total = 0;
+    //         for (Node* f : u->subfaces) {
+    //             if (!f->_black_bit && f->_color != COLOR_AH_WHITE) {
+    //                 hit += 1;
+    //                 f->_black_bit = 1;
+    //                 L_re[k-1].push_back(f);
+    //             }
+    //             total += 1;
+    //         }
+    //         if (hit > 0) {
+    //             std::cout << "rank " << k << " " << hit << "/" << total << std::endl;
+    //         }
+    //     }
+    // }
+
+    // ATTEMPT 2: Add red children of nodes first.
+    for (int k = d; k > 0; k--) {
+        for (Node* u : L[k]) {
+            if (u->_color == COLOR_AH_RED) {
+                int hit = 0;
+                for (Node* f : u->subfaces) {
+                    if (!f->_black_bit && f->_color == COLOR_AH_RED) {
+                        hit += 1;
+                        f->_black_bit = 1;
+                        L_re[k-1].push_back(f);
+                    }
+                }
+                if (hit > 0) {
+                    printf("rank %d <%d / %d>\n", k, hit, u->subfaces.size());
+                }
+            }
+        }
+        for (Node* u : L[k-1]) {
+            // if (u->_color != COLOR_AH_RED && u->_color != COLOR_AH_WHITE) {
+            //     L_re[k-1].push_back(u);
+            // }
+            if (!u->_black_bit) {
+                L_re[k-1].push_back(u);
+            }
+        }
+    }
+
+    // Reset marker.
+    for (int k = 0; k < d+1; k++) {
+        std::cout << k << std::endl;
+        for (Node* u : L_re[k]) {
+            u->_black_bit = 0;
+        }
+    }
+
     // =========================================================================
     // Phase 3: Update all marked faces.
     // =========================================================================
@@ -481,18 +546,18 @@ void increment_arrangement(Eigen::VectorXd a, double b,
         start = std::chrono::high_resolution_clock::now();
         std::cout << "phase 3:" << std::endl;
     }
-    // I->_arc_pool.set_next_size(24000000);
 
     for (int k = 0; k < d + 1; k++) {
-        int n_Lk = L[k].size();
+        int n_Lk = L_re[k].size();
         for (int i = 0; i < n_Lk; i++) {
-            Node* g = L[k][i];
+            Node* g = L_re[k][i];
             switch (g->_color) {
 
                 case COLOR_AH_PINK: {
                 g->_color = COLOR_AH_GREY;
                 // Add to grey subfaces of superfaces.
                 for (Node* u : g->superfaces) {
+                    // FIXME BUG
                     u->_grey_subfaces.push_back(g);
                 }
                 break; }
@@ -501,6 +566,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 g->_color = COLOR_AH_BLACK;
                 // Add to black subfaces of superfaces.
                 for (Node* u : g->superfaces) {
+                    // FIXME BUG
                     u->_black_subfaces.push_back(g);
                 }
                 break; }
@@ -521,7 +587,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 Node* g_b = I->make_node(k);
                 g_b->_color = COLOR_AH_GREY;
                 I->add_node_to_rank(g_b);
-                L[k].push_back(g_b);
+                L_re[k].push_back(g_b);
 
                 if (g->rank < 3 || DEBUG) {
                     g->update_sign_vector(eps);
@@ -544,7 +610,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
                 I->add_arc(f, g_b);
                 g_a->_black_subfaces = {f};
                 g_b->_black_subfaces = {f};
-                L[k-1].push_back(f);
+                L_re[k-1].push_back(f);
                 I->add_node_to_rank(f);
 
                 if (f->rank < 2 || DEBUG) {
@@ -697,7 +763,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
     }
 
     for (int k = 0; k < d + 1; k++) {
-        for (Node* u : L[k]) {
+        for (Node* u : L_re[k]) {
             u->_color = COLOR_AH_WHITE;
             u->_grey_subfaces.clear();
             u->_black_subfaces.clear();
@@ -707,7 +773,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
     if (PROFILE) {
         auto end = std::chrono::high_resolution_clock::now();
         for (int k = 0; k < d + 1; k++) {
-            std::cout << "  L(" << k << "):" << L[k].size() << std::endl;
+            std::cout << "  L(" << k << "):" << L_re[k].size() << std::endl;
         }
         std::cout << "  total: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e6
         << " ms" << std::endl;
