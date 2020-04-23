@@ -29,8 +29,6 @@ int main() {
     // Benchmark increment arrangements.
     for (int j = 0; j < 20; j++)
     {
-        srand(0);
-
         int n = 12;
         int d = 11;
         Eigen::MatrixXd A(d,d);
@@ -39,7 +37,6 @@ int main() {
         b.setRandom();
 
         IncidenceGraph* I = initial_arrangement(A, b, 1e-8);
-        // I->update_sign_vectors(1e-8);
 
         I->_num_arcs_created = 0;
 

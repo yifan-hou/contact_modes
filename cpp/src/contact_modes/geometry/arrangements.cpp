@@ -49,6 +49,9 @@ int get_color_edge(Node* e, const Eigen::VectorXd& a, double b, double eps) {
         assert(v0 != v1);
         int s0 = get_position(v0, a, b, eps);
         int s1 = get_position(v1, a, b, eps);
+        if (DEBUG) {
+            // printf("edge pos: %d %d\n", s0, s1);
+        }
         if (s0 * s1 == 1) {
             return COLOR_AH_WHITE;
         } else if (s0 == 0 && s1 == 0) {
@@ -66,6 +69,9 @@ int get_color_edge(Node* e, const Eigen::VectorXd& a, double b, double eps) {
         Eigen::VectorXd v_e(e->interior_point.size());
         get_vector(e, v_e);
         int s_e = get_position(a.dot(v_e), eps);
+        if (DEBUG) {
+            // printf("vert pos edge pos: %d %d\n", s0, s_e);
+        }
         if (s0 == 0 && s_e == 0) {
             return COLOR_AH_CRIMSON;
         } else if (s0 == 0 && s_e != 1) {
@@ -291,6 +297,7 @@ void increment_arrangement(Eigen::VectorXd a, double b,
     // Find edge e₀ such that cl(e₀) ∩ h ≠ ∅.
     Node* e0 = e;
     Eigen::VectorXd v_e0 = v_e;
+    v_e0.normalize();
     while (true) {
         if (get_color_edge(e0, a, b, eps) > COLOR_AH_WHITE) {
             break;
@@ -317,23 +324,32 @@ void increment_arrangement(Eigen::VectorXd a, double b,
         Node* e_min;
         Eigen::VectorXd v_min;
         double min_dist = std::numeric_limits<float>::infinity();
+        if (DEBUG) {
+            std::cout << "v.superfaces: " << v->superfaces.size() << std::endl;
+        }
         for (Node* e : v->superfaces) {
             if (e == e0) {
                 continue;
             }
             get_vector(e, v_e);
             v_e.normalize();
-            double dist = (v_e - v_e0.dot(v_e) * v_e).norm();
+            double dist = (v_e0 + v_e).norm();
+            // double dist = (v_e - v_e0.dot(v_e) * v_e).norm();
             if (dist < min_dist) {
                 e_min = e;
                 v_min = v_e;
                 min_dist = dist;
             }
+            if (DEBUG) {
+                // std::cout << e->_key << std::endl;
+                // std::cout << (v_e0 + v_e).norm() << std::endl;
+                // std::cout << dist << std::endl;
+            }
         }
         e0 = e_min;
         if (DEBUG) {
-            std::cout << " e min: " << e_min->_key << std::endl;
-            std::cout << " d min: " << min_dist << std::endl;
+            // std::cout << " e min: " << e_min->_key << std::endl;
+            // std::cout << " d min: " << min_dist << std::endl;
         }
     }
     if (DEBUG) {
