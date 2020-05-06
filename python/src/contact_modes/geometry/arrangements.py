@@ -11,7 +11,7 @@ from .incidence_graph import *
 
 
 DEBUG=False
-PROFILE=True
+PROFILE=False
 
 def num_incidences_simple(d):
     i_sum = 0

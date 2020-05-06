@@ -5,7 +5,7 @@
 
 
 static int DEBUG=0;
-static int PROFILE=1;
+static int PROFILE=0;
 
 // TODO Replace me
 int get_position(Node* f, const Eigen::VectorXd& a, double b, double eps) {
@@ -74,7 +74,7 @@ int get_color_edge(Node* e, const Eigen::VectorXd& a, double b, double eps) {
         }
         if (s0 == 0 && s_e == 0) {
             return COLOR_AH_CRIMSON;
-        } else if (s0 == 0 && s_e != 1) {
+        } else if (s0 == 0 && s_e != 0) {
             return COLOR_AH_PINK;
         } else if  (s0 * s_e == 1) {
             return COLOR_AH_WHITE;
@@ -107,6 +107,66 @@ int sign_vector_to_base3(std::string sv) {
         b *= 3;
     }
     return n;
+}
+
+std::vector<int> initial_hyperplanes(Eigen::MatrixXd& A, 
+                                     Eigen::VectorXd& b, 
+                                     double eps) {
+    // def reorder_halfspaces(A, b, eps=np.finfo(np.float32).eps):
+    // A = A.copy()
+    // b = b.copy()
+    // n = A.shape[0]
+    // d = A.shape[1]
+    // I = list(range(n))
+    // i = 1
+    // j = 1
+    // while i < n and j < d:
+    //     A0 = np.concatenate((A[0:j], A[i,None]), axis=0)
+    //     if np.linalg.matrix_rank(A0, eps) > j:
+    //         A[j], A[i] = A[i].copy(), A[j].copy()
+    //         b[j], b[i] = b[i], b[j]
+    //         I[j], I[i] = I[i], I[j]
+    //         j += 1
+    //     i += 1
+    // return A, b, np.array(I, int)
+    int n = A.rows();
+    int d = A.cols();
+    std::vector<int> rindx(n);
+    for (int i = 0; i < n; i++) {
+        rindx[i] = i;
+    }
+    int i = 1;
+    int j = 1;
+    while (i < n && j < d) {
+        Eigen::MatrixXd A0(j+1, d);
+        A0.topRows(j) = A.topRows(j);
+        A0.bottomRows(1) = A.row(i);
+        Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr;
+        qr.setThreshold(eps);
+        qr.compute(A0);
+        if (DEBUG) {
+            // std::cout << "i " << i << std::endl;
+            // std::cout << "j " << i << std::endl;
+            // std::cout << "A0 size " << A0.rows() << " " << A0.cols() << std::endl;
+            // std::cout << "A0 rank " << qr.rank() << std::endl;
+        }
+        if (qr.rank() > j) {
+            A.row(j).swap(A.row(i));
+            b.row(j).swap(b.row(i));
+            int tmp = rindx[j];
+            rindx[j] = rindx[i];
+            rindx[i] = tmp;
+            j += 1;
+        }
+        i += 1;
+    }
+    if (DEBUG) {
+        Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr;
+        qr.setThreshold(eps);
+        qr.compute(A.topRows(d));
+        assert(qr.rank() == d);
+    }
+    return rindx;
 }
 
 IncidenceGraph* initial_arrangement(

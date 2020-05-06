@@ -23,6 +23,8 @@ pybind11_add_module(_contact_modes
     NO_EXTRAS
     pybind/module.cpp
     pybind/exportGeometry.cpp
+    pybind/incidence_graph_interface.cpp
+    pybind/arrangements_interface.cpp
     )
 
 target_link_libraries(_contact_modes PRIVATE contact_modes pthread)
