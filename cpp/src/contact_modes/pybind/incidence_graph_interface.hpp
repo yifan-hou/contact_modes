@@ -42,10 +42,13 @@ public:
     int num_nodes() const;
     NodePythonPtr node(int i);
     std::vector<NodePythonPtr>   rank(int k);
-    std::vector<Eigen::VectorXd> interior_points();
     void update_sign_vectors(double eps);
+    std::vector<Eigen::VectorXd> interior_points();
+    std::vector<Eigen::VectorXd> interior_points(int k);
     std::vector<Eigen::VectorXi> positions();
+    std::vector<Eigen::VectorXi> positions(int k);
     std::vector<std::string>     sign_vectors();
+    std::vector<std::string>     sign_vectors(int k);
 
 protected:
     IncidenceGraph* _graph;

@@ -79,12 +79,24 @@ std::vector<NodePythonPtr>   IncidenceGraphPython::rank(int k) {
     return r;
 }
 
+void IncidenceGraphPython::update_sign_vectors(double eps) {
+    _graph->update_sign_vectors(eps);
+}
+
 std::vector<Eigen::VectorXd> IncidenceGraphPython::interior_points() {
     std::vector<Eigen::VectorXd> int_pts;
     for (int i = 0; i <= _graph->dim(); i++) {
         for (Node* u : _graph->rank(i)) {
             int_pts.push_back(u->interior_point);
         }
+    }
+    return int_pts;
+}
+
+std::vector<Eigen::VectorXd> IncidenceGraphPython::interior_points(int k) {
+    std::vector<Eigen::VectorXd> int_pts;
+    for (Node* u : _graph->rank(k)) {
+        int_pts.push_back(u->interior_point);
     }
     return int_pts;
 }
@@ -99,8 +111,12 @@ std::vector<Eigen::VectorXi> IncidenceGraphPython::positions() {
     return positions;
 }
 
-void IncidenceGraphPython::update_sign_vectors(double eps) {
-    _graph->update_sign_vectors(eps);
+std::vector<Eigen::VectorXi> IncidenceGraphPython::positions(int k) {
+    std::vector<Eigen::VectorXi> positions;
+    for (Node* u : _graph->rank(k)) {
+        positions.push_back(u->position);
+    }
+    return positions;
 }
 
 std::vector<std::string>     IncidenceGraphPython::sign_vectors() {
@@ -109,6 +125,14 @@ std::vector<std::string>     IncidenceGraphPython::sign_vectors() {
         for (Node* u : _graph->rank(i)) {
             sign_vectors.push_back(u->sign_vector);
         }
+    }
+    return sign_vectors;
+}
+
+std::vector<std::string>     IncidenceGraphPython::sign_vectors(int k) {
+    std::vector<std::string> sign_vectors;
+    for (Node* u : _graph->rank(k)) {
+        sign_vectors.push_back(u->sign_vector);
     }
     return sign_vectors;
 }

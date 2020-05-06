@@ -31,10 +31,25 @@ void exportGeometry(py::module& m) {
         .def("num_nodes", &IncidenceGraphPython::num_nodes)
         .def("node", &IncidenceGraphPython::node)
         .def("rank", &IncidenceGraphPython::rank)
-        .def("interior_points", &IncidenceGraphPython::interior_points)
         .def("update_sign_vectors", &IncidenceGraphPython::update_sign_vectors)
-        .def("positions", &IncidenceGraphPython::positions)
-        .def("sign_vectors", &IncidenceGraphPython::sign_vectors);
+        .def("interior_points", 
+            (std::vector<Eigen::VectorXd> (IncidenceGraphPython::*)())
+            &IncidenceGraphPython::interior_points)
+        .def("interior_points", 
+            (std::vector<Eigen::VectorXd> (IncidenceGraphPython::*)(int))
+            &IncidenceGraphPython::interior_points)
+        .def("positions", 
+            (std::vector<Eigen::VectorXi> (IncidenceGraphPython::*)())
+            &IncidenceGraphPython::positions)
+        .def("positions", 
+            (std::vector<Eigen::VectorXi> (IncidenceGraphPython::*)(int))
+            &IncidenceGraphPython::positions)
+        .def("sign_vectors", 
+            (std::vector<std::string> (IncidenceGraphPython::*)())
+            &IncidenceGraphPython::sign_vectors)
+        .def("sign_vectors", 
+            (std::vector<std::string> (IncidenceGraphPython::*)(int))
+            &IncidenceGraphPython::sign_vectors);
 
     m.def("build_arrangement", &build_arrangement);
 
