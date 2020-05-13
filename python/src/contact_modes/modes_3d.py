@@ -8,6 +8,7 @@ import scipy as sp
 from pyhull.halfspace import Halfspace
 from scipy.linalg import null_space as null
 from scipy.linalg import orth
+from scipy.optimize import linprog
 
 from contact_modes.geometry import (increment_arrangement, initial_arrangement,
                                     reorder_halfspaces)
@@ -256,6 +257,7 @@ def enumerate_contact_separating_3d(A, b):
     # Get interior point using linear programming.
     t_lp = time()
     int_pt = int_pt_cone(A)
+    #int_pt = linprog(np.zeros(3), A, b).x
     info['time lp'] = time() - t_lp
     if DEBUG:
         print('int_pt2')
@@ -304,7 +306,7 @@ def enumerate_contact_separating_3d(A, b):
         lattice.L = [[Face(range(n_pts), 0)]]
         lattice.L[0][0].m = cs_modes[0]
         return cs_modes, lattice, info
-    if dual.shape[1] == 1:
+    if dual.shape[1] == 1 or dual.shape[0] == 1:
         lattice = FaceLattice(M=np.ones((1,1), int), d=1)
         dual_map = [list(np.where(~mask)[0])]
         cs_modes = lattice.csmodes(mask, dual_map)
@@ -459,7 +461,7 @@ def enum_sliding_sticking_3d_proj(A, b, T, bt):
             mask_c = cs_mode == 'c'
             mask_s = ~mask_c
             # mask = np.hstack((mask_s, np.array([mask_c] * num_sliding_planes).T.flatten()))
-            mask = np.hstack((cs_mode=='0', np.array([mask_c] * num_sliding_planes).T.flatten()))
+            mask = np.hstack((cs_mode=='s', np.array([mask_c] * num_sliding_planes).T.flatten()))
             if all(mask_s):
 
                 L = FaceLattice()
@@ -527,8 +529,8 @@ def enum_sliding_sticking_3d_proj(A, b, T, bt):
                         Sign = Sign_uq
 
                     # Hack.
-                    V = V_all
-                    Sign = Sign_all
+                    # V = V_all
+                    # Sign = Sign_all
 
                     # sign_cells = I.sign_vectors(I.dim(), I0)
                     # idx_sc = np.where(np.all(sign_cells[:, 0:sum(mask_s)] == 1, axis=1))[0]
@@ -549,14 +551,13 @@ def enum_sliding_sticking_3d_proj(A, b, T, bt):
                     modes = get_lattice_mode(L,mode_sign)
 
                     print('# modes', len(modes))
-            print(np.array(modes))
-
             num_modes+=len(modes)
-            all_modes.append(modes)
+            modes = [list(m) for m in modes]
+            print(np.array(modes))
+            all_modes.append(np.array(modes))
             face.ss_lattice = L
 
-    info['# faces'] = num_modes
-    
+    #info['# faces'] = num_modes
     print(num_modes)
 
     # np.set_printoptions(suppress=True)
